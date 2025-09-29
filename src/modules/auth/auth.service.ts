@@ -1,9 +1,11 @@
 import { Injectable, BadRequestException, Inject } from '@nestjs/common';
 import { UsersService } from '../users/users.service';
 import { JwtService } from '@nestjs/jwt';
-import { SmsService } from './sms.service';
+import { SmsService } from 'src/infra/sms/sms.service';
 import * as bcrypt from 'bcrypt';
 import Redis from 'ioredis';
+import { v4 as uuidv4 } from 'uuid';
+import { RegisterDto } from '../users/schemas/user.zod.schema';
 
 
 @Injectable()
@@ -20,10 +22,10 @@ export class AuthService {
     }
 
     async register(
-        phone: string,
-        password: string,
-        confirmPassword: string
+        body: RegisterDto
     ): Promise<any> {
+        const { phone, password, confirmPassword } = body
+
         if (password !== confirmPassword) {
             throw new BadRequestException('Passwords do not match');
         }
@@ -34,31 +36,41 @@ export class AuthService {
         const hashed = await bcrypt.hash(password, 10);
         const otp = this.generateOtp();
 
-        await this.redis.setex(`otp:${phone}`, 300, JSON.stringify({ otp, hashed }));
+        const sessionId = uuidv4();
+
+        await this.redis.setex(
+            `otp-session:${sessionId}`,
+            300,
+            JSON.stringify({ phone, otp, hashed })
+        );
 
         await this.smsService.sendOtp(phone, otp);
 
-        return { phone, message: 'OTP sent, please verify' };
+        return { sessionId };
     }
 
 
-    async verifyRegisterOtp(
-        phone: string,
-        otp: string,
-        password: string
-    ):Promise<any> {
-        const data = await this.redis.get(`otp:${phone}`);
+    async verifyRegisterOtp({
+        sessionId,
+        otp,
+    }: any
+    ): Promise<any> {
+        const data = await this.redis.get(`otp-session:${sessionId}`);
         if (!data) throw new BadRequestException('OTP expired or not found');
 
-        const { otp: storedOtp, hashed } = JSON.parse(data);
+        const { phone, hashed, otp: storedOtp } = JSON.parse(data);
         if (storedOtp !== otp) throw new BadRequestException('Invalid OTP');
 
-        const user = await this.userService.create({ 
-            phone, 
-            passwordHash: hashed 
-        });
-        await this.redis.del(`otp:register:${phone}`);
+        const user = await this.userService.createProfile(
+            phone,
+            hashed
+        );
 
-        return { message: 'Register success' };
+        await this.redis.del(`otp-session:${sessionId}`);
+
+        const payload = { sub: user._id.toString() };
+        const accessToken = this.jwtService.sign(payload);
+
+        return { accessToken };
     }
 }

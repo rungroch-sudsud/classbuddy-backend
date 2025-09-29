@@ -1,5 +1,5 @@
-import { RedisModule } from './shared/utils/redis/redis.module';
-import { SmsModule } from './modules/auth/sms.module';
+import { RedisModule } from './infra/redis/redis.module';
+import { SmsModule } from './infra/sms/sms.module';
 import { Module, OnModuleInit } from '@nestjs/common';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';

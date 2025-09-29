@@ -12,6 +12,18 @@ export class User {
   @Prop()
   name?: string;
 
+  @Prop()
+  lastName?: string;
+
+  @Prop()
+  nickName?: string;
+
+  @Prop()
+  age?: number;
+
+  @Prop([String])
+  subject?: number;
+
 }
 
 export type UserDocument = User & Document;
