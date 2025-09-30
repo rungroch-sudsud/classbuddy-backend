@@ -1,5 +1,5 @@
 import { PipeTransform, BadRequestException, ArgumentMetadata } from '@nestjs/common';
-import type { ZodSchema } from 'zod';
+import { ZodSchema, ZodError } from 'zod';
 
 export class ZodValidationPipe implements PipeTransform {
   constructor(private schema?: ZodSchema) { }
@@ -8,37 +8,26 @@ export class ZodValidationPipe implements PipeTransform {
     value: any,
     metadata: ArgumentMetadata
   ) {
-    if (this.schema) {
-      const parsed = this.schema.safeParse(value);
+    const targetSchema: ZodSchema | undefined =
+      this.schema ?? (metadata.metatype as any)?.schema;
+
+    if (targetSchema) {
+      const parsed = targetSchema.safeParse(value);
 
       if (!parsed.success) {
+        const zodError = parsed.error as ZodError;
         throw new BadRequestException({
           error: 'VALIDATION_FAILED',
           message: 'ข้อมูลไม่ถูกต้อง',
-        //   hints: parsed.error.errors.map((i) => i.message),
+          hints: zodError.issues.map(e => e.message),
           data: null,
         });
       }
 
-      return parsed.data;
-    }
-
-    if (metadata.metatype && (metadata.metatype as any).schema) {
-      const dtoSchema: ZodSchema = (metadata.metatype as any).schema;
-      const parsed = dtoSchema.safeParse(value);
-      if (!parsed.success) {
-        throw new BadRequestException({
-          error: 'VALIDATION_FAILED',
-          message: 'ข้อมูลไม่ถูกต้อง',
-        //   hints: parsed.error.errors.map((i) => i.message),
-          data: null,
-        });
-      }
       return parsed.data;
     }
 
     return value;
-
   }
 }
 

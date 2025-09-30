@@ -22,7 +22,7 @@ export class User {
   age?: number;
 
   @Prop([String])
-  subject?: number;
+  subject?: string;
 
 }
 

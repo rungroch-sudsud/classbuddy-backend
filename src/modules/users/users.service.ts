@@ -14,8 +14,10 @@ export class UsersService {
         phone: string,
         passwordHash: string
     ) {
-        const user = new this.userModel(phone, passwordHash);
-        return user.save();
+        return this.userModel.create({
+            phone,
+            password: passwordHash,
+        });
     }
 
 
@@ -30,9 +32,18 @@ export class UsersService {
     ): Promise<any> {
         const update = await this.userModel.findByIdAndUpdate(
             userId,
-            { $set: body },
+            {
+                $set: {
+                    name: body.name,
+                    lastName: body.lastName,
+                    nickName: body.nickName,
+                    age: body.age,
+                    subject: body.subject,
+                },
+            },
             { new: true },
         );
+
         if (!update) throw new NotFoundException('User not found');
 
         return update;
@@ -66,6 +77,13 @@ export class UsersService {
 
         // return publicFileUrl;
 
+    }
+
+
+    async createTeachProfile(
+
+    ):Promise<any> {
+        
     }
 
 }

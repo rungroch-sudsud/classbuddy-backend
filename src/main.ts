@@ -2,6 +2,7 @@ import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
 import { envConfig } from './configs/env.config';
 import { setupSwagger } from './infra/docs/swagger.config';
+import { ZodValidationPipe } from './shared/validators/zod-validation';
 
 
 async function bootstrap() {
@@ -14,7 +15,9 @@ async function bootstrap() {
       allowedHeaders: ['Content-Type', 'Authorization'],
     });
 
+
     setupSwagger(app);
+    app.useGlobalPipes(new ZodValidationPipe());
 
     await app.listen(envConfig.port ?? 3000);
     console.log('server is running on port', envConfig.port)

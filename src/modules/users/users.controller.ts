@@ -29,6 +29,8 @@ import {
 } from '@nestjs/swagger';
 import { UsersService } from './users.service';
 import { CurrentUser } from 'src/shared/utils/currentUser';
+import { JwtGuard } from '../auth/strategies/auth.guard';
+import { UpdateProfileDto } from './schemas/user.zod.schema';
 
 
 
@@ -44,9 +46,11 @@ export class UsersController {
 
 
   @Patch('profile')
+  @UseGuards(JwtGuard)
+  @ApiBody({ type: UpdateProfileDto})
   async updateProfile(
     @CurrentUser() userId: string,
-    @Body() body: any
+    @Body() body: UpdateProfileDto
   ) {
     const user = await this.usersService.updateProfile(userId, body);
 
@@ -55,5 +59,6 @@ export class UsersController {
       data: user,
     };
   }
+
 
 }
