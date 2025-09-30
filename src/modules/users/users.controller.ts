@@ -30,7 +30,8 @@ import {
 import { UsersService } from './users.service';
 import { CurrentUser } from 'src/shared/utils/currentUser';
 import { JwtGuard } from '../auth/strategies/auth.guard';
-import { UpdateProfileDto } from './schemas/user.zod.schema';
+import { CreateTeacherProfileDto, UpdateProfileDto } from './schemas/user.zod.schema';
+import { FileInterceptor } from '@nestjs/platform-express';
 
 
 
@@ -43,11 +44,9 @@ export class UsersController {
   ) { }
 
 
-
-
   @Patch('profile')
   @UseGuards(JwtGuard)
-  @ApiBody({ type: UpdateProfileDto})
+  @ApiBody({ type: UpdateProfileDto })
   async updateProfile(
     @CurrentUser() userId: string,
     @Body() body: UpdateProfileDto
@@ -60,5 +59,42 @@ export class UsersController {
     };
   }
 
+  @Post('profile/upload-image')
+  @UseGuards(JwtGuard)
+  @UseInterceptors(FileInterceptor('file'))
+  async uploadProfileImage(
+    @CurrentUser() userId: string,
+    @UploadedFile() file: Express.Multer.File,
+  ) {
+    const update = await this.usersService.updateProfileImage(userId, file);
+
+    return {
+      message: 'Update profile successfully',
+      data: update,
+    };
+  }
+
+
+
+  @Post('teacher/profile')
+  @UseGuards(JwtGuard)
+  @ApiBody({ type: CreateTeacherProfileDto })
+  async createTeacherProfile(
+    @CurrentUser() userId: string,
+    @Body() body: CreateTeacherProfileDto,
+  ) {
+    const teacher = await this.usersService.createTeachProfile(userId, body);
+
+    return {
+      message: 'Teacher profile created successfully',
+      data: teacher,
+    };
+  }
+
+
+  @Get('teacher')
+  async getAllTeachers(): Promise<any[]> {
+    return this.usersService.findAll();
+  }
 
 }

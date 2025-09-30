@@ -24,6 +24,9 @@ export class User {
   @Prop([String])
   subject?: string;
 
+  @Prop()
+  profileImage?: string;
+
 }
 
 export type UserDocument = User & Document;

@@ -1,13 +1,17 @@
-import { ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
+import { ConflictException, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
-import { Model } from 'mongoose';
+import { Model, Types } from 'mongoose';
 import { User, UserDocument } from './schemas/user.schema';
-import * as bcrypt from 'bcrypt';
+import { Teacher, TeacherDocument } from './schemas/teacher.schema';
+import { s3Service } from 'src/infra/s3';
 
 
 @Injectable()
 export class UsersService {
-    constructor(@InjectModel(User.name) private userModel: Model<UserDocument>) { }
+    constructor(
+        @InjectModel(User.name) private userModel: Model<UserDocument>,
+        @InjectModel(Teacher.name) private teacherModel: Model<TeacherDocument>,
+    ) { }
 
 
     async createProfile(
@@ -47,7 +51,6 @@ export class UsersService {
         if (!update) throw new NotFoundException('User not found');
 
         return update;
-
     }
 
 
@@ -55,35 +58,40 @@ export class UsersService {
         userId: string,
         file: Express.Multer.File,
     ): Promise<any> {
-
-        const user = this.userModel.findById(userId);
-
-        if (!user) {
-            throw new NotFoundException('ไม่พบผู้ใช้งาน');
-        }
-
-        // if (user.user_ !== firebaseUserId) {
-        //     throw new ForbiddenException('คุณไม่มีสิทธิ์อัพเดตรูปภาพของ user นี้');
-        // }
+        const user = await this.userModel.findById(userId);
+        if (!user) throw new NotFoundException('ไม่พบผู้ใช้งาน');
 
         const filePath = `users/${userId}/profile-image`;
-        // const publicFileUrl = await s3Service.uploadPublicReadFile(
-        //     file,
-        //     filePath,
-        // );
+        const publicFileUrl = await s3Service.uploadPublicReadFile(
+            file,
+            filePath,
+        );
 
-        // user.profileImageUrl = publicFileUrl;
-        // await user.save();
+        user.profileImage = publicFileUrl;
+        await user.save();
 
-        // return publicFileUrl;
+        return publicFileUrl;
 
     }
 
 
     async createTeachProfile(
+        userId: string,
+        body: any
+    ): Promise<TeacherDocument> {
+        const exist = await this.teacherModel.findOne({ userId: new Types.ObjectId(userId) });
+        if (exist) throw new ConflictException('Teacher profile already exists');
 
-    ):Promise<any> {
-        
+        const createTeacher = new this.teacherModel({
+            ...body,
+            userId: new Types.ObjectId(userId)
+        });
+        return createTeacher.save();
+    }
+
+
+    async findAll(): Promise<Teacher[]> {
+        return this.teacherModel.find().populate('userId', 'name lastName');
     }
 
 }

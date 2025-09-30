@@ -3,17 +3,10 @@ import mongoose, { Types } from "mongoose";
 import { User } from "./user.schema";
 
 
-class Subject {
-    @Prop({ required: true })
-    name: string;
-
-    @Prop({ required: true })
-    hourlyRate: number;
-}
 
 @Schema({ timestamps: true })
 export class Teacher {
-    @Prop({ type: Types.ObjectId, ref: User.name, required: true })
+    @Prop({ type: Types.ObjectId, ref: User.name, required: true, unique: true })
     userId: Types.ObjectId;
 
     @Prop()
@@ -28,20 +21,24 @@ export class Teacher {
     @Prop()
     description: string;
 
-    @Prop({ type: [{ name: String, hourlyRate: Number }] })
-    subjects: { name: string; hourlyRate: number }[];
+    @Prop([String])
+    skills: string[];
 
     @Prop()
-    review: number;
+    hourlyRate: number;
 
     @Prop()
     experince: number;
 
     @Prop()
-    studen: number;
-
+    classCount: number;
     @Prop()
-    language: string;
+    studen: number;
+    @Prop()
+    review: number;
+
+    @Prop([String])
+    language: string[];
 
     @Prop()
     videoLink: string;

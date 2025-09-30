@@ -8,8 +8,8 @@ const API_VERSION = '2.2.2-alpha';
 
 export function setupSwagger(app: INestApplication) {
     const config = new DocumentBuilder()
-        .setTitle('TripMate Backend API')
-        .setDescription('API Documentation for TripMate Backend')
+        .setTitle('Class Buddy Backend API')
+        .setDescription('API Documentation for Class Buddy')
         .setVersion(API_VERSION)
         .addBearerAuth()
         .build();
