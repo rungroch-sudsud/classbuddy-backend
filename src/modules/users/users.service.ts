@@ -2,22 +2,22 @@ import { ConflictException, ForbiddenException, Injectable, NotFoundException } 
 import { InjectModel } from '@nestjs/mongoose';
 import { Model, Types } from 'mongoose';
 import { User, UserDocument } from './schemas/user.schema';
-import { Teacher, TeacherDocument } from './schemas/teacher.schema';
-import { s3Service } from 'src/infra/s3';
+import { UpdateProfileDto } from './schemas/user.zod.schema';
+import { S3Service } from 'src/infra/s3/s3.service';
 
 
 @Injectable()
 export class UsersService {
     constructor(
         @InjectModel(User.name) private userModel: Model<UserDocument>,
-        @InjectModel(Teacher.name) private teacherModel: Model<TeacherDocument>,
+        private readonly s3Service: S3Service
     ) { }
 
 
     async createProfile(
         phone: string,
         passwordHash: string
-    ) {
+    ): Promise<any> {
         return this.userModel.create({
             phone,
             password: passwordHash,
@@ -32,21 +32,14 @@ export class UsersService {
 
     async updateProfile(
         userId: string,
-        body: any,
-    ): Promise<any> {
+        body: UpdateProfileDto,
+    ): Promise<UserDocument> {
         const update = await this.userModel.findByIdAndUpdate(
             userId,
-            {
-                $set: {
-                    name: body.name,
-                    lastName: body.lastName,
-                    nickName: body.nickName,
-                    age: body.age,
-                    subject: body.subject,
-                },
-            },
+            { $set: body },
             { new: true },
-        );
+        )
+            .select('-password -phone');
 
         if (!update) throw new NotFoundException('User not found');
 
@@ -57,12 +50,12 @@ export class UsersService {
     async updateProfileImage(
         userId: string,
         file: Express.Multer.File,
-    ): Promise<any> {
+    ): Promise<string> {
         const user = await this.userModel.findById(userId);
         if (!user) throw new NotFoundException('ไม่พบผู้ใช้งาน');
 
         const filePath = `users/${userId}/profile-image`;
-        const publicFileUrl = await s3Service.uploadPublicReadFile(
+        const publicFileUrl = await this.s3Service.uploadPublicReadFile(
             file,
             filePath,
         );
@@ -71,27 +64,8 @@ export class UsersService {
         await user.save();
 
         return publicFileUrl;
-
     }
 
 
-    async createTeachProfile(
-        userId: string,
-        body: any
-    ): Promise<TeacherDocument> {
-        const exist = await this.teacherModel.findOne({ userId: new Types.ObjectId(userId) });
-        if (exist) throw new ConflictException('Teacher profile already exists');
-
-        const createTeacher = new this.teacherModel({
-            ...body,
-            userId: new Types.ObjectId(userId)
-        });
-        return createTeacher.save();
-    }
-
-
-    async findAll(): Promise<Teacher[]> {
-        return this.teacherModel.find().populate('userId', 'name lastName');
-    }
 
 }

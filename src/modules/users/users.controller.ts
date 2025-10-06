@@ -30,8 +30,11 @@ import {
 import { UsersService } from './users.service';
 import { CurrentUser } from 'src/shared/utils/currentUser';
 import { JwtGuard } from '../auth/strategies/auth.guard';
-import { CreateTeacherProfileDto, UpdateProfileDto } from './schemas/user.zod.schema';
-import { FileInterceptor } from '@nestjs/platform-express';
+import { UpdateProfileDto } from './schemas/user.zod.schema';
+import { ZodFilePipe } from 'src/shared/validators/zod.validation.pipe';
+import { UploadInterceptor } from 'src/shared/interceptors/upload.interceptor';
+import { ImageFileSchema } from 'src/shared/validators/zod.schema';
+import { UploadFileDto } from 'src/shared/docs/upload.file.docs';
 
 
 
@@ -54,17 +57,20 @@ export class UsersController {
     const user = await this.usersService.updateProfile(userId, body);
 
     return {
-      message: 'User created successfully',
+      message: 'Update profile successfully',
       data: user,
     };
   }
 
-  @Post('profile/upload-image')
+
+  @Post('profile/image')
+  @ApiBody({ type: UploadFileDto })
+  @ApiConsumes('multipart/form-data')
   @UseGuards(JwtGuard)
-  @UseInterceptors(FileInterceptor('file'))
+  @UploadInterceptor('file', 1, 5)
   async uploadProfileImage(
     @CurrentUser() userId: string,
-    @UploadedFile() file: Express.Multer.File,
+    @UploadedFile(new ZodFilePipe(ImageFileSchema)) file: Express.Multer.File,
   ) {
     const update = await this.usersService.updateProfileImage(userId, file);
 
@@ -76,25 +82,6 @@ export class UsersController {
 
 
 
-  @Post('teacher/profile')
-  @UseGuards(JwtGuard)
-  @ApiBody({ type: CreateTeacherProfileDto })
-  async createTeacherProfile(
-    @CurrentUser() userId: string,
-    @Body() body: CreateTeacherProfileDto,
-  ) {
-    const teacher = await this.usersService.createTeachProfile(userId, body);
 
-    return {
-      message: 'Teacher profile created successfully',
-      data: teacher,
-    };
-  }
-
-
-  @Get('teacher')
-  async getAllTeachers(): Promise<any[]> {
-    return this.usersService.findAll();
-  }
 
 }

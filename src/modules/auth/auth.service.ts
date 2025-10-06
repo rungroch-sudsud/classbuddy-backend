@@ -24,7 +24,7 @@ export class AuthService {
 
     async register(
         body: RegisterDto
-    ): Promise<any> {
+    ): Promise<{ sessionId: string }>{
         const { phone, password, confirmPassword } = body
 
         if (password !== confirmPassword) {
@@ -104,7 +104,7 @@ export class AuthService {
 
     async login(
         body: any
-    ): Promise<any> {
+    ):Promise<{ accessToken: string }> {
         const { phone, password } = body;
 
         const user = await this.userService.findByPhone(phone);
@@ -125,5 +125,5 @@ export class AuthService {
 
 
 
-    
+
 }

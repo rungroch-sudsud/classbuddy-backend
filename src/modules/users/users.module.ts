@@ -2,18 +2,18 @@ import { Module } from '@nestjs/common';
 import { UsersService } from './users.service';
 import { MongooseModule } from '@nestjs/mongoose';
 import { User, UserSchema } from './schemas/user.schema';
-import { UsersController } from './users.controller';
-import { Teacher, TeacherSchema } from './schemas/teacher.schema';
+import { UsersController } from './users.controller';import { S3Module } from 'src/infra/s3/s3.module';
+;
 
 @Module({
   imports: [
     MongooseModule.forFeature([
       { name: User.name, schema: UserSchema },
-      { name: Teacher.name, schema: TeacherSchema }
     ]),
+    S3Module,
   ],
   providers: [UsersService],
-  exports: [UsersService],
   controllers: [UsersController],
+  exports: [UsersService],
 })
 export class UsersModule { }

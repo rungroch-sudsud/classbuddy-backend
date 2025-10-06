@@ -1,6 +1,6 @@
 import { Schema, Prop, SchemaFactory } from "@nestjs/mongoose";
-import mongoose, { Types } from "mongoose";
-import { User } from "./user.schema";
+import mongoose, { HydratedDocument, Types } from "mongoose";
+import { User } from "src/modules/users/schemas/user.schema";
 
 
 
@@ -28,14 +28,17 @@ export class Teacher {
     hourlyRate: number;
 
     @Prop()
-    experince: number;
+    experience: number;
 
     @Prop()
     classCount: number;
     @Prop()
-    studen: number;
+    student: number;
     @Prop()
     review: number;
+
+    @Prop()
+    teachCount: number;
 
     @Prop([String])
     language: string[];
@@ -43,12 +46,24 @@ export class Teacher {
     @Prop()
     videoLink: string;
 
+    @Prop([String])
+    certificate: string[];
+
     @Prop()
-    verify: string;
+    idCard: string;
+
+    @Prop()
+    bankName: string;
+
+    @Prop()
+    bankAccountName: string;
+
+    @Prop()
+    bankAccountNumber: string;
 
     @Prop({ default: false })
     isVerified: boolean;
 }
 
-export type TeacherDocument = Teacher & Document;
+export type TeacherDocument = HydratedDocument<Teacher>;
 export const TeacherSchema = SchemaFactory.createForClass(Teacher);

@@ -64,3 +64,34 @@ export class ZodFilePipe implements PipeTransform {
   }
 }
 
+export class ZodFilesPipe implements PipeTransform {
+  constructor(private readonly schema: ZodSchema<any>) {}
+
+  transform(input: Express.Multer.File[] | Express.Multer.File | undefined) {
+    if (!input) {
+      throw new BadRequestException({
+        error: 'VALIDATION_FAILED',
+        message: 'ไม่พบไฟล์',
+        hints: ['กรุณาแนบไฟล์อย่างน้อย 1 ไฟล์'],
+        data: null,
+      });
+    }
+
+    const files = Array.isArray(input) ? input : [input];
+
+    const result = this.schema.safeParse(
+      files.map(f => ({ mimetype: f.mimetype, size: f.size })),
+    );
+
+    if (!result.success) {
+      throw new BadRequestException({
+        error: 'VALIDATION_FAILED',
+        message: 'ไฟล์ไม่ถูกต้อง',
+        hints: result.error.issues.map(i => i.message),
+        data: null,
+      });
+    }
+
+    return files;
+  }
+}

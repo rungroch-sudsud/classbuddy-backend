@@ -2,7 +2,7 @@ import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
 import { envConfig } from './configs/env.config';
 import { setupSwagger } from './infra/docs/swagger.config';
-import { ZodValidationPipe } from './shared/validators/zod-validation';
+import { ZodValidationPipe } from './shared/validators/zod.validation.pipe';
 
 
 async function bootstrap() {

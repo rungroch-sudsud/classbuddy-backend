@@ -1,6 +1,6 @@
 import { Controller, Post, Body, BadRequestException } from '@nestjs/common';
 import { AuthService } from './auth.service';
-import { ZodValidationPipe } from 'src/shared/validators/zod-validation';
+import { ZodValidationPipe } from 'src/shared/validators/zod.validation.pipe';
 import { ApiBearerAuth, ApiBody, ApiTags } from '@nestjs/swagger';
 import { LoginDto, RegisterDto, VerifyOtpDto, VerifyOtpSchema } from './schemas/auth.zod.schema';
 import { LoginSchema, RegisterSchema } from './schemas/auth.zod.schema';
