@@ -13,6 +13,9 @@ import { SubjectsModule } from './modules/subjects/subjects.module';
 import { TeachersModule } from './modules/teachers/teachers.module';
 import { TeachersController } from './modules/teachers/teachers.controller';
 import { SlotsModule } from './modules/slots/slots.module';
+import { BookingService } from './modules/booking/booking.service';
+import { BookingController } from './modules/booking/booking.controller';
+import { BookingModule } from './modules/booking/booking.module';
 
 
 
@@ -28,11 +31,13 @@ import { SlotsModule } from './modules/slots/slots.module';
     SubjectsModule,
     TeachersModule,
     SlotsModule,
+    BookingModule,
   ],
   controllers: [
     AppController,
     SubjectsController,
     TeachersController,
+    BookingController,
     
   ],
   providers: [AppService],

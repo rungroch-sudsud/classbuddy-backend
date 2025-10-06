@@ -12,6 +12,6 @@ import { TeachersModule } from '../teachers/teachers.module';
   ],
   providers: [SlotsService],
   controllers: [SlotsController],
-  exports: [SlotsService],
+  exports: [SlotsService, MongooseModule],
 })
 export class SlotsModule {}

@@ -8,18 +8,29 @@ export class SlotsService {
     constructor(@InjectModel(Slot.name) private slotModel: Model<Slot>) { }
 
     private combineDateAndTime(dateStr: string, timeStr: string): Date {
-        const baseDateStr = dateStr.split('T')[0]; // "2025-10-06T00:00:00.000Z" → "2025-10-06"
+        const [year, month, day] = dateStr.split('-').map(Number);
         const [hours, minutes] = timeStr.split(':').map(Number);
 
+        if (isNaN(year) || isNaN(month) || isNaN(day)) {
+            throw new BadRequestException(`รูปแบบวันที่ไม่ถูกต้อง: ${dateStr}`);
+        }
         if (isNaN(hours) || isNaN(minutes)) {
             throw new BadRequestException(`รูปแบบเวลาไม่ถูกต้อง: ${timeStr}`);
         }
 
-        const date = new Date(baseDateStr);
-
-        date.setHours(hours, minutes, 0, 0);
-        return date;
+        return new Date(year, month - 1, day, hours, minutes);
     }
+
+    private toLocalTime(date: Date | string) {
+        if (!date) return null;
+        return new Date(date).toLocaleTimeString('th-TH', {
+            timeZone: 'Asia/Bangkok',
+            hour: '2-digit',
+            minute: '2-digit',
+            hour12: false,
+        });
+    }
+
 
     async createSlots(
         teacherId: string,
@@ -36,9 +47,6 @@ export class SlotsService {
         }
 
         if (hasCustom) {
-            const baseDate = new Date(body.date);
-            baseDate.setHours(0, 0, 0, 0);
-
             const startTime = this.combineDateAndTime(body.date, body.startTime);
             const endTime = this.combineDateAndTime(body.date, body.endTime);
 
@@ -46,13 +54,26 @@ export class SlotsService {
                 throw new BadRequestException('startTime ต้องน้อยกว่า endTime');
             }
 
+            const overlap = await this.slotModel.exists({
+                teacherId: teacherObjId,
+                date: body.date,
+                $or: [
+                    {
+                        startTime: { $lt: endTime },
+                        endTime: { $gt: startTime },
+                    },
+                ],
+            });
+
+            if (overlap) throw new BadRequestException('ไม่สามารถสร้างเวลาซ้ำได้');
+            
             docs.push({
                 updateOne: {
                     filter: { teacherId: teacherObjId, startTime, endTime },
                     update: {
                         $setOnInsert: {
                             teacherId: teacherObjId,
-                            date: baseDate,
+                            date: body.date,
                             startTime,
                             endTime,
                             status: body.status ?? 'available',
@@ -127,11 +148,17 @@ export class SlotsService {
     }
 
 
-    async getMineSlot(
-        teacherId: string
-    ): Promise<any> {
+    async getMineSlot(teacherId: string): Promise<any> {
         const teacherObjId = new Types.ObjectId(teacherId);
-        return this.slotModel.find({ teacherId: teacherObjId });
+        const slots = await this.slotModel.find({ teacherId: teacherObjId }).lean();
+
+        return slots.map(({ startTime, endTime, ...rest }) => ({
+            ...rest,
+            startTime: this.toLocalTime(startTime),
+            endTime: this.toLocalTime(endTime),
+        }));
     }
+
+
 }
 
