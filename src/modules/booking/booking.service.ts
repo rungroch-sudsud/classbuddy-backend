@@ -13,25 +13,32 @@ export class BookingService {
 
 
     async bookSlot(
-        studentId: string, 
-        slotId: string, 
-        body: any
-    ):Promise<any> {
+        slotId: string,
+        studentId: string,
+    ): Promise<any> {
         const slot = await this.slotModel.findById(slotId);
         if (!slot) throw new NotFoundException('ไม่พบ slot ที่ต้องการจอง');
-        
+
         if (slot.status !== 'available') {
             throw new BadRequestException('Slot นี้ถูกจองหรือไม่ว่างแล้ว');
         }
 
+        const existingBooking = await this.bookingModel.findOne({
+            studentId,
+            slotId,
+        });
+
+        if (existingBooking) throw new BadRequestException('คุณได้จอง slot นี้ไปแล้ว');
+        
         const booking = await this.bookingModel.create({
             studentId,
             teacherId: slot.teacherId,
-            date: slot.date,
+            slotId: slot._id,
             startTime: slot.startTime,
             endTime: slot.endTime,
-            status: 'pending', 
-            ...body,
+            date: slot.date,
+            price: slot.price,
+            status: 'pending',
         });
 
         slot.status = 'booked';

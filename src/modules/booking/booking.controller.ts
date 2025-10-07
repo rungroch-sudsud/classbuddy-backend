@@ -8,6 +8,7 @@ import { ZodFilePipe, ZodFilesPipe } from 'src/shared/validators/zod.validation.
 import { UploadFileDto, UploadFilesDto } from 'src/shared/docs/upload.file.docs';
 import { FilesSchema, ImageFileSchema } from 'src/shared/validators/zod.schema';
 import { BookingService } from './booking.service';
+import { CreateBookingDto } from './schemas/booking.zod.schema';
 
 
 @ApiTags('Booking')
@@ -20,13 +21,18 @@ export class BookingController {
 
 
     @Post(':slotId')
+    // @ApiBody({ type: CreateBookingDto })
     @UseGuards(JwtGuard)
     async book(
         @Param('slotId') slotId: string,
         @CurrentUser() studentId: string,
-        @Body() body:string
     ) {
-        return this.bookingService.bookSlot(slotId, studentId, body);
+        const booking = await this.bookingService.bookSlot(slotId, studentId,);
+
+        return {
+            message: 'Booking successfully',
+            data: booking,
+        };
     }
 
 

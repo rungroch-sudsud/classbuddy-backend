@@ -15,6 +15,9 @@ export class Slot extends Document {
   @Prop({ required: true })
   endTime: Date;
 
+  @Prop({ required: true })
+  price: number;
+
   @Prop({ default: null })
   meetId: string;
 

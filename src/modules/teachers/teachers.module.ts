@@ -14,7 +14,7 @@ import { S3Module } from 'src/infra/s3/s3.module';
     ],
     providers: [TeachersService],
     controllers: [TeachersController],
-    exports: [TeachersService],
+    exports: [TeachersService, MongooseModule],
 })
 
 export class TeachersModule { }

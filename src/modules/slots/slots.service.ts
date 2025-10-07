@@ -1,11 +1,15 @@
-import { BadRequestException, Injectable } from '@nestjs/common';
+import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Slot } from './schemas/slot.schema';
 import { Model, Types } from 'mongoose';
+import { Teacher } from '../teachers/schemas/teacher.schema';
 
 @Injectable()
 export class SlotsService {
-    constructor(@InjectModel(Slot.name) private slotModel: Model<Slot>) { }
+    constructor(
+        @InjectModel(Slot.name) private slotModel: Model<Slot>,
+        @InjectModel(Teacher.name) private readonly teacherModel: Model<Teacher>
+    ) { }
 
     private combineDateAndTime(dateStr: string, timeStr: string): Date {
         const [year, month, day] = dateStr.split('-').map(Number);
@@ -36,7 +40,9 @@ export class SlotsService {
         teacherId: string,
         body: any
     ) {
-        const teacherObjId = new Types.ObjectId(teacherId);
+        const teacher = await this.teacherModel.findOne({ userId: new Types.ObjectId(teacherId) });
+        if (!teacher) throw new NotFoundException('ไม่พบข้อมูลครู');
+        const teacherObjId = teacher._id;
         const docs: any[] = [];
 
         const hasCustom = !!(body.date && body.startTime && body.endTime);
@@ -66,22 +72,18 @@ export class SlotsService {
             });
 
             if (overlap) throw new BadRequestException('ไม่สามารถสร้างเวลาซ้ำได้');
-            
+
+            const durationHours = (endTime.getTime() - startTime.getTime()) / (1000 * 60 * 60);
+            const price = teacher.hourlyRate * durationHours;
+
             docs.push({
-                updateOne: {
-                    filter: { teacherId: teacherObjId, startTime, endTime },
-                    update: {
-                        $setOnInsert: {
-                            teacherId: teacherObjId,
-                            date: body.date,
-                            startTime,
-                            endTime,
-                            status: body.status ?? 'available',
-                            bookedBy: body.bookedBy ?? null,
-                        },
-                    },
-                    upsert: true,
-                },
+                teacherId: teacherObjId,
+                date: body.date,
+                startTime,
+                endTime,
+                price,
+                status: 'available',
+                bookedBy: null,
             });
         }
 
@@ -134,10 +136,7 @@ export class SlotsService {
 
         if (docs.length === 0) return [];
 
-        const newSlots = await this.slotModel.insertMany(
-            docs.map(d => d.updateOne.update.$setOnInsert),
-            { ordered: false }
-        );
+        const newSlots = await this.slotModel.insertMany(docs, { ordered: false });
 
         return { success: true, count: newSlots.length, data: newSlots };
     }

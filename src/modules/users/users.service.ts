@@ -66,6 +66,20 @@ export class UsersService {
         return publicFileUrl;
     }
 
+    async getUserProfileMine(
+        userId: string
+    ): Promise<Record<string, any>> {
+        const user = await this.userModel
+            .findById(new Types.ObjectId(userId))
+            .select('-password')
+
+        if (!user) throw new NotFoundException('ไม่พบข้อมูลผู้ใช้');
+        return user;
+    }
+
+
+
+
 
 
 }

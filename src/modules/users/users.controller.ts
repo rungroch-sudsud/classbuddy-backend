@@ -81,6 +81,16 @@ export class UsersController {
   }
 
 
+  @Get('mine')
+  @UseGuards(JwtGuard)
+  async getMe(@CurrentUser() userId: string) {
+    const user = await this.usersService.getUserProfileMine(userId);
+
+    return {
+      message: 'ดึงโปรไฟล์ของฉันสำเร็จ',
+      data: user,
+    };
+  }
 
 
 
