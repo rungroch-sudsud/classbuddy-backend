@@ -31,6 +31,21 @@ export class TeachersService {
         return createTeacher.save();
     }
 
+    async updatePayments(
+        userId: string,
+        body: any
+    ): Promise<TeacherDocument> {
+        const exist = await this.findTeacher(userId);
+        if (exist) throw new ConflictException('มีครูคนนี้อยู่ในระบบอยู่แล้ว');
+
+        const createTeacher = new this.teacherModel({
+            ...body,
+            userId: new Types.ObjectId(userId)
+        });
+
+        return createTeacher.save();
+    }
+
 
     async updateIdCardImage(
         userId: string,

@@ -14,6 +14,6 @@ import { UsersController } from './users.controller';import { S3Module } from 's
   ],
   providers: [UsersService],
   controllers: [UsersController],
-  exports: [UsersService],
+  exports: [UsersService, MongooseModule],
 })
 export class UsersModule { }

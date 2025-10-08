@@ -5,14 +5,19 @@ import * as qs from 'qs';
 
 @Injectable()
 export class SmsService {
-  constructor(private http: HttpService) {}
+  constructor(private http: HttpService) { }
 
-  async sendOtp(phone: string, otp: string) {
+  async sendOtp(
+    phone: string,
+    otp: string,
+    refCode: string) {
     try {
       const body = qs.stringify({
         msisdn: phone,                           // เบอร์ปลายทาง
         sender: 'ClassBuddy',                   // ใช้ sender ที่อนุมัติแล้ว
-        message: `Your OTP is ${otp}`,           // ข้อความ
+        message:
+          `รหัสยืนยันของคุณคือ ${otp}              กรุณาอย่าเปิดเผยรหัสนี้กับผู้อื่น 
+รหัสอ้างอิง: ${refCode}`
       });
 
       const auth = Buffer.from(

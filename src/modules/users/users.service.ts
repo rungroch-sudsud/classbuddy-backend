@@ -25,7 +25,7 @@ export class UsersService {
     }
 
 
-    async findByPhone(phone: string) {
+    async findByPhone(phone: string):Promise<any> {
         return this.userModel.findOne({ phone }).exec();
     }
 
@@ -78,7 +78,22 @@ export class UsersService {
     }
 
 
+    async updatePasswordByPhone(
+        phone: string, 
+        newHashedPassword: string
+    ): Promise<any> {
+        const user = await this.userModel.findOneAndUpdate(
+            { phone },
+            { password: newHashedPassword },
+            { new: true },
+        );
 
+        if (!user) {
+            throw new NotFoundException('ไม่พบผู้ใช้งานที่มีเบอร์นี้');
+        }
+
+        return user;
+    }
 
 
 
