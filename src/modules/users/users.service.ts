@@ -25,7 +25,7 @@ export class UsersService {
     }
 
 
-    async findByPhone(phone: string):Promise<any> {
+    async findByPhone(phone: string): Promise<any> {
         return this.userModel.findOne({ phone }).exec();
     }
 
@@ -66,6 +66,7 @@ export class UsersService {
         return publicFileUrl;
     }
 
+
     async getUserProfileMine(
         userId: string
     ): Promise<Record<string, any>> {
@@ -78,8 +79,29 @@ export class UsersService {
     }
 
 
+    async toggleBookmark(userId: string, slotId: string) {
+        const user = await this.userModel.findById(userId);
+        if (!user) throw new NotFoundException('ไม่พบผู้ใช้');
+        
+        const index = user.bookmarks.indexOf(slotId);
+        let bookmarked: boolean;
+
+        if (index > -1) {
+            user.bookmarks.splice(index, 1);
+            bookmarked = false;
+        } else {
+            user.bookmarks.push(slotId);
+            bookmarked = true;
+        }
+
+        await user.save();
+        
+        return { bookmarked, bookmarks: user.bookmarks };
+    }
+
+
     async updatePasswordByPhone(
-        phone: string, 
+        phone: string,
         newHashedPassword: string
     ): Promise<any> {
         const user = await this.userModel.findOneAndUpdate(

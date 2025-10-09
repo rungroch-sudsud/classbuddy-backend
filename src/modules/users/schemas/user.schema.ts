@@ -25,6 +25,15 @@ export class User {
   subject?: string[];
 
   @Prop()
+  class?: string;
+
+  @Prop()
+  point?: string;
+
+  @Prop({ type: [String], default: [] })
+  bookmarks: string[];
+
+  @Prop()
   profileImage?: string;
 
 }

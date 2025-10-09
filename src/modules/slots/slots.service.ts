@@ -46,9 +46,9 @@ export class SlotsService {
         const docs: any[] = [];
 
         const hasCustom = !!(body.date && body.startTime && body.endTime);
-        const hasRecurring = !!(body.from && body.to && body.daysOfWeek && body.slots);
+        const hasWeekly = !!(body.from && body.to && body.weeklySlots);
 
-        if (hasCustom && hasRecurring) {
+        if (hasCustom && hasWeekly) {
             throw new BadRequestException('เลือกได้แค่ slotsByDate หรือ recurring rule อย่างใดอย่างหนึ่ง');
         }
 
@@ -77,42 +77,54 @@ export class SlotsService {
             const price = teacher.hourlyRate * durationHours;
 
             docs.push({
-                teacherId: teacherObjId,
-                date: body.date,
-                startTime,
-                endTime,
-                price,
-                status: 'available',
-                bookedBy: null,
+                insertOne: {
+                    document: {
+                        teacherId: teacherObjId,
+                        date: new Date(body.date),
+                        startTime,
+                        endTime,
+                        price,
+                        status: 'available',
+                        bookedBy: null,
+                    },
+                },
             });
         }
 
-        if (hasRecurring) {
+        if (hasWeekly) {
             const startDate = new Date(body.from);
             const endDate = new Date(body.to);
 
             for (let d = new Date(startDate); d <= endDate; d.setDate(d.getDate() + 1)) {
                 const dayOfWeek = d.getDay();
-                if (!body.daysOfWeek.includes(dayOfWeek)) continue;
+                const dayKey = dayOfWeek === 0 ? '7' : String(dayOfWeek);
+
+                const daySlots = body.weeklySlots[dayKey];
+                if (!daySlots || daySlots.length === 0) continue;
 
                 const baseDate = new Date(d);
                 baseDate.setHours(0, 0, 0, 0);
 
-                for (const t of body.slots) {
+                for (const t of daySlots) {
                     const [sh, sm] = t.startTime.split(':').map(Number);
                     const [eh, em] = t.endTime.split(':').map(Number);
 
-                    const startTime = new Date(d);
-                    startTime.setHours(sh, sm, 0, 0);
-
-                    const endTime = new Date(d);
-                    endTime.setHours(eh, em, 0, 0);
+                    const startTime = this.combineDateAndTime(
+                        baseDate.toISOString().split('T')[0],
+                        t.startTime
+                    );
+                    const endTime = this.combineDateAndTime(
+                        baseDate.toISOString().split('T')[0],
+                        t.endTime
+                    );
 
                     if (startTime >= endTime) {
                         throw new BadRequestException(
                             `ช่วงเวลาไม่ถูกต้อง ${baseDate.toISOString()}: ${t.startTime} - ${t.endTime}`
                         );
                     }
+                    const durationHours = (endTime.getTime() - startTime.getTime()) / (1000 * 60 * 60);
+                    const price = teacher.hourlyRate * durationHours;
 
                     docs.push({
                         updateOne: {
@@ -123,7 +135,8 @@ export class SlotsService {
                                     date: baseDate,
                                     startTime,
                                     endTime,
-                                    isBooked: false,
+                                    price,
+                                    status: 'available',
                                     bookedBy: null,
                                 },
                             },
@@ -136,9 +149,9 @@ export class SlotsService {
 
         if (docs.length === 0) return [];
 
-        const newSlots = await this.slotModel.insertMany(docs, { ordered: false });
+        const newSlots = await this.slotModel.bulkWrite(docs, { ordered: false });
 
-        return { success: true, count: newSlots.length, data: newSlots };
+        return { success: true, count: newSlots.upsertedCount, data: newSlots };
     }
 
 
@@ -147,9 +160,14 @@ export class SlotsService {
     }
 
 
-    async getMineSlot(teacherId: string): Promise<any> {
-        const teacherObjId = new Types.ObjectId(teacherId);
-        const slots = await this.slotModel.find({ teacherId: teacherObjId }).lean();
+    async getMineSlot(userId: string): Promise<any> {
+        const teacher = await this.teacherModel.findOne({ 
+            userId: new Types.ObjectId(userId) 
+        });
+        
+        if (!teacher) throw new NotFoundException('ไม่พบข้อมูลครู');
+
+        const slots = await this.slotModel.find({ teacherId: teacher._id }).lean();
 
         return slots.map(({ startTime, endTime, ...rest }) => ({
             ...rest,

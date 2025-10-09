@@ -21,7 +21,6 @@ export class BookingController {
 
 
     @Post(':slotId')
-    // @ApiBody({ type: CreateBookingDto })
     @UseGuards(JwtGuard)
     async book(
         @Param('slotId') slotId: string,
@@ -35,6 +34,15 @@ export class BookingController {
         };
     }
 
+    @UseGuards(JwtGuard)
+    @Get('mine')
+    async getMySlots(@CurrentUser() userId: string) {
+        const slot = await this.bookingService.getMySlot(userId);
 
+        return {
+            message: 'ดึงตารางเรียนของฉันสำเร็จ',
+            data: slot,
+        };
+    }
 
 }

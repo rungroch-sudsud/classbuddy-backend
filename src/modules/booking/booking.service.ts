@@ -29,9 +29,9 @@ export class BookingService {
         });
 
         if (existingBooking) throw new BadRequestException('คุณได้จอง slot นี้ไปแล้ว');
-        
+
         const booking = await this.bookingModel.create({
-            studentId,
+            studentId: new Types.ObjectId(studentId),
             teacherId: slot.teacherId,
             slotId: slot._id,
             startTime: slot.startTime,
@@ -48,5 +48,11 @@ export class BookingService {
         return booking;
     }
 
+    async getMySlot(userId: string) {
+        const bookings = await this.bookingModel
+            .find({ studentId: new Types.ObjectId(userId) })
+            // .populate('slotId');
 
+        return bookings;
+    }
 }

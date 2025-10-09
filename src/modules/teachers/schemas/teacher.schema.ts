@@ -1,5 +1,7 @@
 import { Schema, Prop, SchemaFactory } from "@nestjs/mongoose";
 import mongoose, { HydratedDocument, Types } from "mongoose";
+import { Slot } from "src/modules/slots/schemas/slot.schema";
+import { SubjectList } from "src/modules/subjects/schema/subject.schema";
 import { User } from "src/modules/users/schemas/user.schema";
 
 
@@ -14,6 +16,9 @@ export class Teacher {
 
     @Prop()
     lastName: string;
+
+    @Prop({ type: Types.ObjectId, ref: SubjectList.name, })
+    subject: Types.ObjectId;
 
     @Prop()
     bio: string;

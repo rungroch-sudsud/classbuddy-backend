@@ -17,3 +17,17 @@ export const CreateSlotSchema = z.object({
 });
 
 export class CreateSlotDto extends createZodDto(CreateSlotSchema) {}
+
+
+const timeString = z.string().regex(/^([01]\d|2[0-3]):([0-5]\d)$/);
+
+export const weeklySchema = z.object({
+  from: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+  to: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+  weeklySlots: z.record(z.string(), z.array(z.object({
+    startTime: timeString,
+    endTime: timeString,
+  }))),
+});
+
+export class CreateWeeklySlotDto extends createZodDto(weeklySchema) {}

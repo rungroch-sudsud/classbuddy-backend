@@ -3,6 +3,7 @@ import { InjectModel } from '@nestjs/mongoose';
 import { isValidObjectId, Model, Types } from 'mongoose';
 import { Teacher, TeacherDocument } from './schemas/teacher.schema';
 import { S3Service } from 'src/infra/s3/s3.service';
+import { UpdateTeacherBankDto, UpdateTeacherDto } from './schemas/teacher.zod.schema';
 
 
 @Injectable()
@@ -148,6 +149,59 @@ export class TeachersService {
             page,
             limit,
         };
+    }
+
+
+    async getTeacherProfileMine(
+        userId: string
+    ): Promise<Record<string, any>> {
+        const user = await this.teacherModel.findOne({
+            userId: new Types.ObjectId(userId)
+        })
+            .select(`
+            -password 
+            -bankName 
+            -bankAccountName 
+            -bankAccountNumber
+            `)
+            .populate('subject');
+
+        if (!user) throw new NotFoundException('ไม่พบข้อมูลผู้ใช้');
+        return user;
+    }
+
+
+    async updateTeacherProfile(
+        userId: string,
+        body: UpdateTeacherDto,
+    ): Promise<Teacher> {
+        const teacher = await this.findTeacher(userId);
+        if (!teacher) throw new NotFoundException('ไม่พบข้อมูลครู');
+
+        if (body.subject) {
+            (body as any).subject = new Types.ObjectId(body.subject);
+        }
+
+        Object.assign(teacher, body);
+        await teacher.save();
+
+        return teacher;
+    }
+
+
+    async updateBank(
+        userId: string,
+        body: UpdateTeacherBankDto
+    ) {
+        const teacher = await this.findTeacher(userId);
+        if (!teacher) throw new NotFoundException('ไม่พบข้อมูลครู');
+
+        teacher.bankName = body.bankName;
+        teacher.bankAccountName = body.bankAccountName;
+        teacher.bankAccountNumber = body.bankAccountNumber;
+        await teacher.save();
+
+        return teacher;
     }
 
 
