@@ -2,15 +2,50 @@ import { createZodDto } from 'nestjs-zod';
 import { z } from 'zod';
 
 
+export const EducationSchema = z.object({
+  level: z
+    .string()
+    .min(1, 'กรุณาเลือกระดับการศึกษา')
+    .describe('ระดับการศึกษา')
+    .default('ปริญญาตรี'),
+
+  institution: z
+    .string()
+    .min(1, 'กรุณากรอกชื่อสถานศึกษา')
+    .describe('ชื่อสถานศึกษา')
+    .default('มหาวิทยาลัยเกษตรศาสตร์'),
+
+  faculty: z
+    .string()
+    .min(1, 'กรุณากรอกชื่อคณะ')
+    .describe('คณะ')
+    .default('คณะศึกษาศาสตร์'),
+
+  major: z
+    .string()
+    .min(1, 'กรุณากรอกชื่อสาขา')
+    .describe('สาขา / ภาควิชา')
+    .default('วิชาเอกการสอนคณิตศาสตร์'),
+});
+
+
 export const CreateTeacherProfileSchema = z.object({
   name: z.string().min(1, 'กรุณากรอกชื่อ').default('ไฮเซนเบิร์ก'),
   lastName: z.string().optional().default('ไวท์'),
-  subject: z.string(),
-  bio: z.string().optional().default('เคมีม.ปลาย'),
-  description: z.string().optional().default('ครูไวท์ มีประสบการณ์สอนเคมี ม.ปลายมากกว่า 5 ปี...'),
-  skills: z.array(z.string()).default(['เคมี', 'ฟิสิกส์']),
-  hourlyRate: z.number().min(1, 'Hourly rate must be greater than 0').default(50),
-  experince: z.number().default(0),
+  subject: z.string().default('68dc04e789c7812ddcd30b52'),
+  bio: z.string().optional().default('ครูไวท์ มีประสบการณ์สอนเคมี ม.ปลายมากกว่า 5 ปี...'),
+  hourlyRate: z.number().min(1, 'Hourly rate must be greater than 0').default(300),
+  educationHistory: z
+    .array(EducationSchema)
+    .optional()
+    .default([
+      {
+        level: 'ปริญญาตรี',
+        institution: 'มหาวิทยาลัยเกษตรศาสตร์',
+        faculty: 'คณะศึกษาศาสตร์',
+        major: 'วิชาเอกการสอนคณิตศาสตร์',
+      },
+    ]),
   language: z.string().optional().default('ไทย'),
   videoLink: z.string().url().optional().default('https://youtube.com/me'),
   verify: z.string().optional().default('image'),
@@ -20,16 +55,25 @@ export class CreateTeacherProfileDto extends createZodDto(CreateTeacherProfileSc
 
 
 export const UpdateTeacherSchema = z.object({
-  name: z.string().min(1, 'กรุณากรอกชื่อ').optional(),
-  lastName: z.string().optional(),
+  name: z.string().min(1, 'กรุณากรอกชื่อ').default('ไฮเซนเบิร์ก').optional(),
+  lastName: z.string().default('ไวท์').optional(),
   subject: z
     .string()
+    .default('68dc04e789c7812ddcd30b52')
     .optional(),
-  bio: z.string().optional(),
-  description: z.string().optional(),
-  skills: z.array(z.string()).optional(),
-  hourlyRate: z.number().min(1, 'Hourly rate ต้องมากกว่า 0').optional(),
-  experience: z.number().min(0).optional(),
+  bio: z.string().default('ครูไวท์ มีประสบการณ์สอนเคมี ม.ปลายมากกว่า 5 ปี...').optional(),
+  hourlyRate: z.number().min(300, 'Hourly rate ต้องมากกว่า 300').optional(),
+    educationHistory: z
+    .array(EducationSchema)
+    .optional()
+    .default([
+      {
+        level: 'ปริญญาตรี',
+        institution: 'มหาวิทยาลัยเกษตรศาสตร์',
+        faculty: 'คณะศึกษาศาสตร์',
+        major: 'วิชาเอกการสอนคณิตศาสตร์',
+      },
+    ]),
   language: z.array(z.string()).optional(),
   videoLink: z.string().url('กรุณาใส่ลิงก์ที่ถูกต้อง').optional(),
 });

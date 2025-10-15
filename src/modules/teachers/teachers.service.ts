@@ -71,6 +71,29 @@ export class TeachersService {
         return publicFileUrl;
     }
 
+    async updateIdCardWithPerson(
+        userId: string,
+        file: Express.Multer.File,
+    ): Promise<string> {
+        const teacher = await this.findTeacher(userId)
+        if (!teacher) throw new NotFoundException('ไม่พบครูในระบบ');
+
+        if (teacher.isVerified === true) {
+            throw new BadRequestException('บัญชีได้รับการยืนยันแล้ว ไม่สามารถอัปโหลดบัตรประชาชนได้');
+        }
+
+        const filePath = `teacher/${userId}/id-card-with-person`;
+        const publicFileUrl = await this.s3Service.uploadPublicReadFile(
+            file,
+            filePath,
+        );
+
+        teacher.idCardWithPerson = publicFileUrl;
+        await teacher.save();
+
+        return publicFileUrl;
+    }
+
 
     async updateCertificate(
         userId: string,

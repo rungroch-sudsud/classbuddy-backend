@@ -8,6 +8,12 @@ export const UpdateProfileSchema = z.object({
   nickName: z.string().min(1, 'กรุณากรอกชื่อเล่น').optional().describe('ชื่อเล่น').default('คลาส'),
   age: z.number().int().positive().optional().describe('อายุ').default(24),
   subject: z.array(z.string()).optional().describe('วิชา').default(['คณิตศาสตร์', 'วิทยาศาสตร์']),
+    email: z
+    .string()
+    .email('กรุณากรอกอีเมลให้ถูกต้อง')
+    .optional()
+    .describe('อีเมล')
+    .default('example@email.com'),
 });
 
 export class UpdateProfileDto extends createZodDto(UpdateProfileSchema) { }

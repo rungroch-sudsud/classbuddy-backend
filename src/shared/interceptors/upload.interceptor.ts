@@ -16,19 +16,23 @@ export function UploadInterceptor(
       const isImage = file.mimetype.match(/^image\/(jpeg|png|webp)$/);
       const isPdf = file.mimetype === 'application/pdf';
 
-      if (
-        (allowedTypes.includes('image') && isImage) ||
-        (allowedTypes.includes('pdf') && isPdf)
-      ) {
+      const allowImage = allowedTypes.includes('image');
+      const allowPdf = allowedTypes.includes('pdf');
+
+      if ((allowImage && isImage) || (allowPdf && isPdf)) {
         return callback(null, true);
       }
 
-      return callback(
-        new BadRequestException(
-          `File type not allowed. Only ${allowedTypes.join(', ')} supported.`,
-        ),
-        false,
-      );
+      let message = '';
+      if (allowImage && !allowPdf) {
+        message = 'รองรับเฉพาะไฟล์รูปภาพเท่านั้น (jpeg, png, webp)';
+      } else if (!allowImage && allowPdf) {
+        message = 'รองรับเฉพาะไฟล์ PDF เท่านั้น';
+      } else {
+        message = 'File type not allowed. Only image or PDF supported.';
+      }
+
+      return callback(new BadRequestException(message), false);
     },
   };
 

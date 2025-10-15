@@ -6,6 +6,9 @@ export class User {
   @Prop({ unique: true, required: true })
   phone: string;
 
+  @Prop({ unique: true, sparse: true })
+  email?: string;
+
   @Prop({ required: true })
   password: string;
 
