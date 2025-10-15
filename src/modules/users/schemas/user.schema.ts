@@ -27,8 +27,11 @@ export class User {
   @Prop()
   class?: string;
 
-  @Prop()
-  point?: string;
+  // @Prop()
+  // point?: string;
+
+  @Prop({ default: 'user' })
+  role: 'user' | 'teacher';
 
   @Prop({ type: [String], default: [] })
   bookmarks: string[];

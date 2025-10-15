@@ -22,6 +22,12 @@ export class Booking {
     @Prop({ type: Number, required: true })
     price: number;
 
+    @Prop({ type: String })
+    meetId?: string;
+
+    @Prop({ type: String })
+    notes?: string;
+
     @Prop({
         type: String,
         enum: ['pending', 'confirmed', 'cancelled', 'completed'],
@@ -29,11 +35,8 @@ export class Booking {
     })
     status: string;
 
-    @Prop({ type: String })
-    meetId?: string;
-
-    @Prop({ type: String })
-    notes?: string;
+    @Prop({ type: Date })
+    paidAt?: Date;
 }
 
 export type BookingDocument = HydratedDocument<Booking>;

@@ -1,7 +1,9 @@
+import { WebhookService } from './modules/payments/webhook.service';
+import { WebhookController } from './modules/payments/webhook.controller';
 import { S3Module } from './infra/s3/s3.module';
 import { RedisModule } from './infra/redis/redis.module';
 import { SmsModule } from './infra/sms/sms.module';
-import { Module, OnModuleInit } from '@nestjs/common';
+import { Module } from '@nestjs/common';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { ConfigModule } from '@nestjs/config';
@@ -13,9 +15,10 @@ import { SubjectsModule } from './modules/subjects/subjects.module';
 import { TeachersModule } from './modules/teachers/teachers.module';
 import { TeachersController } from './modules/teachers/teachers.controller';
 import { SlotsModule } from './modules/slots/slots.module';
-import { BookingService } from './modules/booking/booking.service';
 import { BookingController } from './modules/booking/booking.controller';
 import { BookingModule } from './modules/booking/booking.module';
+import { PaymentsController } from './modules/payments/payments.controller';
+import { PaymentsModule } from './modules/payments/payments.module';
 
 
 
@@ -32,15 +35,19 @@ import { BookingModule } from './modules/booking/booking.module';
     TeachersModule,
     SlotsModule,
     BookingModule,
+    PaymentsModule,
   ],
   controllers: [
+    WebhookController,
     AppController,
     SubjectsController,
     TeachersController,
     BookingController,
-    
+    PaymentsController,
+
   ],
-  providers: [AppService],
+  providers: [
+    WebhookService, AppService],
   exports: [],
 })
 

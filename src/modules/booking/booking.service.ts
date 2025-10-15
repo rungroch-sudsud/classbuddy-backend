@@ -48,6 +48,7 @@ export class BookingService {
         return booking;
     }
 
+    
     async getMySlot(userId: string) {
         const bookings = await this.bookingModel
             .find({ studentId: new Types.ObjectId(userId) })

@@ -12,7 +12,6 @@ import { SlotsModule } from '../slots/slots.module';
         ]),
         SlotsModule
     ],
-    
     providers: [BookingService],
     controllers: [BookingController],
     exports: [BookingService],

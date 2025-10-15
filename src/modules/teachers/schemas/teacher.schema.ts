@@ -17,14 +17,18 @@ export class Teacher {
     @Prop()
     lastName: string;
 
-    @Prop({ type: Types.ObjectId, ref: SubjectList.name, })
-    subject: Types.ObjectId;
-
     @Prop()
     bio: string;
 
     @Prop()
     description: string;
+
+    @Prop({ type: Types.ObjectId, ref: SubjectList.name, })
+    subject: Types.ObjectId;
+
+    // Education History
+    // @Prop({ required: true })
+    // level: string;
 
     @Prop([String])
     skills: string[];
@@ -68,6 +72,12 @@ export class Teacher {
 
     @Prop({ default: false })
     isVerified: boolean;
+
+    @Prop()
+    recipientId?: string;
+
+    @Prop()
+    lastPayoutAt?: Date;
 }
 
 export type TeacherDocument = HydratedDocument<Teacher>;
