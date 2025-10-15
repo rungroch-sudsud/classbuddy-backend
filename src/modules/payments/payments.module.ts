@@ -15,9 +15,11 @@ import { WebhookController } from './webhook.controller';
 import { WebhookService } from './webhook.service';
 import { PayoutProcessor } from './processors/payout.processor';
 import { PayoutScheduler } from './processors/payout.scheduler';
+import { ConfigModule, ConfigService } from '@nestjs/config';
 
 @Module({
     imports: [
+        ConfigModule,
         MongooseModule.forFeature([
             { name: Wallet.name, schema: WalletSchema },
             { name: Payment.name, schema: PaymentSchema },
@@ -27,11 +29,15 @@ import { PayoutScheduler } from './processors/payout.scheduler';
             { name: Teacher.name, schema: TeacherSchema },
             { name: PayoutLog.name, schema: PayoutLogSchema }
         ]),
-        BullModule.forRoot({
-            connection: {
-                host: process.env.REDIS_HOST,
-                port: Number(process.env.REDIS_PORT)
-            },
+        BullModule.forRootAsync({
+            imports: [ConfigModule],
+            useFactory: (configService: ConfigService) => ({
+                connection: {
+                    host: configService.get<string>('REDIS_HOST') || '127.0.0.1',
+                    port: parseInt(configService.get<string>('REDIS_PORT') || '6379', 10),
+                },
+            }),
+            inject: [ConfigService],
         }),
         BullModule.registerQueue({
             name: 'payout',
@@ -39,8 +45,8 @@ import { PayoutScheduler } from './processors/payout.scheduler';
     ],
     controllers: [PaymentsController, WebhookController],
     providers: [
-        PaymentsService, 
-        WebhookService, 
+        PaymentsService,
+        WebhookService,
         PayoutProcessor,
         PayoutScheduler,
     ],
