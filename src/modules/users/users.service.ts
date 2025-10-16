@@ -73,6 +73,7 @@ export class UsersService {
         const user = await this.userModel
             .findById(new Types.ObjectId(userId))
             .select('-password')
+            .populate('subject')
 
         if (!user) throw new NotFoundException('ไม่พบข้อมูลผู้ใช้');
         return user;

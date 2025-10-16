@@ -1,5 +1,6 @@
 import { Schema, Prop, SchemaFactory } from "@nestjs/mongoose";
-import { Document } from 'mongoose'
+import { Document, Types } from 'mongoose'
+import { SubjectList } from "src/modules/subjects/schema/subject.schema";
 
 @Schema({ timestamps: true })
 export class User {
@@ -24,8 +25,8 @@ export class User {
   @Prop()
   age?: number;
 
-  @Prop([String])
-  subject?: string[];
+  @Prop({ type: [{ type: Types.ObjectId, ref: SubjectList.name }] })
+  subject?: Types.ObjectId;
 
   @Prop()
   class?: string;

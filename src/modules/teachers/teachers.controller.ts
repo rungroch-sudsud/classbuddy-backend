@@ -137,6 +137,18 @@ export class TeachersController {
         };
     }
 
+
+    @Get(':teacherId')
+    async getTeacherById(@Param('teacherId') teacherId: string) {
+        const find = await this.teacherService.getTeacherProfileById(teacherId);
+
+        return {
+            message: 'ดึงโปรไฟล์ครูสำเร็จ',
+            data: find,
+        };
+    }
+
+
     @Patch('profile')
     @ApiBody({ type: UpdateTeacherDto })
     @UseGuards(JwtGuard)
@@ -152,6 +164,24 @@ export class TeachersController {
         return {
             message: 'อัพเดทข้อมูลผู้ใช้สำเร็จ',
             data: updated,
+        };
+    }
+
+
+    @Post('profile/image')
+    @ApiBody({ type: UploadFileDto })
+    @ApiConsumes('multipart/form-data')
+    @UseGuards(JwtGuard)
+    @UploadInterceptor('file', 1, 5)
+    async uploadProfileImage(
+        @CurrentUser() teacherId: string,
+        @UploadedFile(new ZodFilePipe(ImageFileSchema)) file: Express.Multer.File,
+    ) {
+        const update = await this.teacherService.updateTeacherProfileImage(teacherId, file);
+
+        return {
+            message: 'Update profile successfully',
+            data: update,
         };
     }
 
@@ -187,5 +217,16 @@ export class TeachersController {
         };
     }
 
+    //Count Class
+    @Get('count-class/mine')
+    @UseGuards(JwtGuard)
+    async updateTeachCount(@CurrentUser() teacherId: string) {
+       const count = await this.teacherService.getTeachCount(teacherId);
+
+        return {
+            message: 'แสดงจำนวนคลาสที่สอน',
+            count,
+        };
+    }
 
 }

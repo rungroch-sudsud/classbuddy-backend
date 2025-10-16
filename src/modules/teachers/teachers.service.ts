@@ -4,12 +4,15 @@ import { isValidObjectId, Model, Types } from 'mongoose';
 import { Teacher, TeacherDocument } from './schemas/teacher.schema';
 import { S3Service } from 'src/infra/s3/s3.service';
 import { UpdateTeacherBankDto, UpdateTeacherDto } from './schemas/teacher.zod.schema';
+import { Slot, SlotDocument } from '../slots/schemas/slot.schema';
 
 
 @Injectable()
 export class TeachersService {
-    constructor(@InjectModel(Teacher.name) private teacherModel: Model<TeacherDocument>,
-        private readonly s3Service: S3Service
+    constructor(
+        private readonly s3Service: S3Service,
+        @InjectModel(Teacher.name) private teacherModel: Model<TeacherDocument>,
+        @InjectModel(Slot.name) private slotModel: Model<SlotDocument>
     ) { }
 
     private async findTeacher(userId: string): Promise<TeacherDocument | null> {
@@ -31,6 +34,7 @@ export class TeachersService {
 
         return createTeacher.save();
     }
+
 
     async updatePayments(
         userId: string,
@@ -70,6 +74,7 @@ export class TeachersService {
 
         return publicFileUrl;
     }
+
 
     async updateIdCardWithPerson(
         userId: string,
@@ -160,6 +165,10 @@ export class TeachersService {
         const [data, total] = await Promise.all([
             this.teacherModel
                 .find(query)
+                .select(`
+                    -idCard -idCardWithPerson -bankName
+                     -bankAccountName -bankAccountNumber
+                     `)
                 .sort(sortOption)
                 .skip(skip)
                 .limit(limit),
@@ -181,6 +190,20 @@ export class TeachersService {
         const user = await this.teacherModel.findOne({
             userId: new Types.ObjectId(userId)
         })
+            .select(`
+            -password 
+            `)
+            .populate('subject');
+
+        if (!user) throw new NotFoundException('ไม่พบข้อมูลผู้ใช้');
+        return user;
+    }
+
+
+    async getTeacherProfileById(
+        teacherId: string
+    ): Promise<Record<string, any>> {
+        const user = await this.teacherModel.findById(new Types.ObjectId(teacherId))
             .select(`
             -password 
             -bankName 
@@ -209,6 +232,26 @@ export class TeachersService {
         await teacher.save();
 
         return teacher;
+    }
+
+
+    async updateTeacherProfileImage(
+        teacherId: string,
+        file: Express.Multer.File,
+    ): Promise<string> {
+        const teacher = await this.findTeacher(teacherId);
+        if (!teacher) throw new NotFoundException('ไม่พบข้อมูลครู');
+
+        const filePath = `teacher/${teacherId}/profile-image`;
+        const publicFileUrl = await this.s3Service.uploadPublicReadFile(
+            file,
+            filePath,
+        );
+
+        teacher.profileImage = publicFileUrl;
+        await teacher.save();
+
+        return publicFileUrl;
     }
 
 
@@ -246,5 +289,16 @@ export class TeachersService {
         return teacher
     }
 
+    // Count Class
+    async getTeachCount(userId: string): Promise<number> {
+        const teacher = await this.findTeacher(userId);
+        if (!teacher) throw new NotFoundException('ไม่เจอครูคนนี้');
+        
+        const count = await this.slotModel.countDocuments({
+            teacherId: teacher._id,
+            status: 'completed',
+        });
+        return count;
+    }
 
 }

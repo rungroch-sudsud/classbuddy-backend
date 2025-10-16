@@ -23,10 +23,10 @@ export class Slot extends Document {
 
   @Prop({
     type: String,
-    enum: ['available', 'booked', 'cancelled', 'expired'],
+    enum: ['available', 'booked', 'completed', 'cancelled', 'expired'],
     default: 'available',
   })
-  status: 'available' | 'booked' | 'cancelled' | 'expired';
+  status: string;
 
   @Prop({ type: Types.ObjectId, ref: 'User', default: null })
   bookedBy: Types.ObjectId

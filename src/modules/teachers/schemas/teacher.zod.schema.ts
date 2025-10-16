@@ -48,7 +48,6 @@ export const CreateTeacherProfileSchema = z.object({
     ]),
   language: z.string().optional().default('ไทย'),
   videoLink: z.string().url().optional().default('https://youtube.com/me'),
-  verify: z.string().optional().default('image'),
 });
 
 export class CreateTeacherProfileDto extends createZodDto(CreateTeacherProfileSchema) { }
@@ -63,7 +62,7 @@ export const UpdateTeacherSchema = z.object({
     .optional(),
   bio: z.string().default('ครูไวท์ มีประสบการณ์สอนเคมี ม.ปลายมากกว่า 5 ปี...').optional(),
   hourlyRate: z.number().min(300, 'Hourly rate ต้องมากกว่า 300').optional(),
-    educationHistory: z
+  educationHistory: z
     .array(EducationSchema)
     .optional()
     .default([

@@ -29,9 +29,9 @@ export class Teacher {
 
     @Prop([
         {
-            level: { type: String, required: true },          
-            institution: { type: String, required: true },    
-            faculty: { type: String, required: true },       
+            level: { type: String, required: true },
+            institution: { type: String, required: true },
+            faculty: { type: String, required: true },
             major: { type: String, required: true },
         },
     ])
@@ -53,7 +53,11 @@ export class Teacher {
     @Prop() bankAccountName: string;
     @Prop() bankAccountNumber: string;
 
-    @Prop({ default: false }) 
+    @Prop()
+    profileImage?: string;
+
+
+    @Prop({ default: false })
     isVerified: boolean;
     @Prop() recipientId?: string;
     @Prop() lastPayoutAt?: Date;
