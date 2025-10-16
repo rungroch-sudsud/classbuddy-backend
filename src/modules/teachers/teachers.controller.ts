@@ -217,16 +217,5 @@ export class TeachersController {
         };
     }
 
-    //Count Class
-    @Get('count-class/mine')
-    @UseGuards(JwtGuard)
-    async updateTeachCount(@CurrentUser() teacherId: string) {
-       const count = await this.teacherService.getTeachCount(teacherId);
-
-        return {
-            message: 'แสดงจำนวนคลาสที่สอน',
-            count,
-        };
-    }
 
 }

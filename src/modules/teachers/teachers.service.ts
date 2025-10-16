@@ -19,6 +19,35 @@ export class TeachersService {
         return this.teacherModel.findOne({ userId: new Types.ObjectId(userId) });
     }
 
+    private async getTeachingStats(teacherId: string | Types.ObjectId) {
+        const id = new Types.ObjectId(teacherId);
+
+        const [stats] = await this.slotModel.aggregate([
+            {
+                $match: {
+                    teacherId: id,
+                    status: 'completed'
+                }
+            },
+            {
+                $group: {
+                    _id: null,
+                    count: { $sum: 1 },
+                    totalHours: {
+                        $sum: {
+                            $divide: [
+                                { $subtract: ["$endTime", "$startTime"] },
+                                1000 * 60 * 60
+                            ]
+                        }
+                    }
+                }
+            }
+        ]);
+        if (!stats) return { count: 0, totalHours: 0 };
+        return stats;
+    }
+
 
     async createTeacherProfile(
         userId: string,
@@ -162,7 +191,7 @@ export class TeachersService {
 
         const skip = (page - 1) * limit;
 
-        const [data, total] = await Promise.all([
+        const [teachers, total] = await Promise.all([
             this.teacherModel
                 .find(query)
                 .select(`
@@ -171,12 +200,24 @@ export class TeachersService {
                      `)
                 .sort(sortOption)
                 .skip(skip)
-                .limit(limit),
+                .limit(limit)
+                .lean(),
             this.teacherModel.countDocuments(query),
         ]);
 
+        const teachersWithStats = await Promise.all(
+            teachers.map(async (teacher) => {
+                const stats = await this.getTeachingStats(teacher._id);
+                return {
+                    ...teacher,
+                    teachingCount: stats?.count,
+                    teachingHours: stats?.totalHours,
+                };
+            })
+        );
+
         return {
-            data,
+            data: teachersWithStats,
             total,
             page,
             limit,
@@ -185,35 +226,39 @@ export class TeachersService {
 
 
     async getTeacherProfileMine(
-        userId: string
+        teacherId: string
     ): Promise<Record<string, any>> {
-        const user = await this.teacherModel.findOne({
-            userId: new Types.ObjectId(userId)
-        })
-            .select(`
-            -password 
-            `)
-            .populate('subject');
+        const teacher = await this.findTeacher(teacherId);
+        if (!teacher) throw new NotFoundException('ไม่พบข้อมูลผู้ใช้');
 
-        if (!user) throw new NotFoundException('ไม่พบข้อมูลผู้ใช้');
-        return user;
+        await teacher.populate('subject');
+        const stats = await this.getTeachingStats(teacher._id);
+
+        return {
+            ...teacher.toObject(),
+            teachingCount: stats.count,
+            teachingHours: stats.totalHours,
+        };
     }
 
 
     async getTeacherProfileById(
         teacherId: string
     ): Promise<Record<string, any>> {
-        const user = await this.teacherModel.findById(new Types.ObjectId(teacherId))
-            .select(`
-            -password 
-            -bankName 
-            -bankAccountName 
-            -bankAccountNumber
-            `)
-            .populate('subject');
+        if (!Types.ObjectId.isValid(teacherId)) {
+            throw new BadRequestException('รหัสของครูไม่ถูกต้อง');
+        }
+        const teacher = await this.teacherModel.findById(new Types.ObjectId(teacherId))
+        if (!teacher) throw new NotFoundException('ไม่พบข้อมูลผู้ใช้');
 
-        if (!user) throw new NotFoundException('ไม่พบข้อมูลผู้ใช้');
-        return user;
+        await teacher.populate('subject');
+        const stats = await this.getTeachingStats(teacher._id);
+
+        return {
+            ...teacher.toObject(),
+            teachingCount: stats.count,
+            teachingHours: stats.totalHours,
+        };
     }
 
 
@@ -289,16 +334,26 @@ export class TeachersService {
         return teacher
     }
 
-    // Count Class
-    async getTeachCount(userId: string): Promise<number> {
-        const teacher = await this.findTeacher(userId);
-        if (!teacher) throw new NotFoundException('ไม่เจอครูคนนี้');
-        
-        const count = await this.slotModel.countDocuments({
-            teacherId: teacher._id,
-            status: 'completed',
-        });
-        return count;
+
+    async rejectTeacher(teacherId: string) {
+        if (!isValidObjectId(teacherId)) {
+            throw new BadRequestException('ไอดีของครูไม่ถูกต้อง');
+        }
+
+        const teacher = await this.teacherModel.findById(teacherId);
+        if (!teacher) throw new NotFoundException('ไม่พบครูในระบบ');
+
+        if (teacher.isVerified) {
+            throw new BadRequestException('ครูคนนี้ได้รับการยืนยันแล้ว ไม่สามารถปฏิเสธได้');
+        }
+
+        teacher.idCard = null;
+        teacher.idCardWithPerson = null;
+        teacher.certificate = [];
+
+        await teacher.save();
+
+        return teacher;
     }
 
 }

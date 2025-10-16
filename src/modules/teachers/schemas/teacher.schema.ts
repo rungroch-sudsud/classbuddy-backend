@@ -42,11 +42,16 @@ export class Teacher {
         major: string;
     }[];
 
-
     @Prop() videoLink: string;
-    @Prop([String]) certificate: string[];
-    @Prop() idCard: string;
-    @Prop() idCardWithPerson: string;
+
+    @Prop({ type: [String], default: [] })
+    certificate: string[];
+
+    @Prop({ type: String, default: null })
+    idCard: string | null;
+
+    @Prop({ type: String, default: null })
+    idCardWithPerson: string | null;
 
 
     @Prop() bankName: string;
