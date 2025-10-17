@@ -1,3 +1,4 @@
+import { Types } from 'mongoose';
 import { createZodDto } from 'nestjs-zod';
 import { z } from 'zod';
 
@@ -90,3 +91,22 @@ export const updateTeacherBankSchema = z.object({
 });
 
 export class UpdateTeacherBankDto extends createZodDto(updateTeacherBankSchema) { }
+
+
+export const reviewTeacherSchema = z.object({
+  rating: z.preprocess(
+    (val) => Number(val),
+    z
+      .number()
+      .min(1, 'คะแนนต่ำสุดคือ 1')
+      .max(5, 'คะแนนสูงสุดคือ 5')
+      .refine((val) => !isNaN(val), { message: 'กรุณาใส่คะแนนรีวิวเป็นตัวเลข' })
+  ),
+  comment: z
+    .string()
+    .min(1, 'กรุณาใส่ความคิดเห็นอย่างน้อย 1 ตัวอักษร')
+    .max(500, 'ความคิดเห็นยาวเกินไป')
+    .optional(),
+});
+
+export class reviewTeacherDto extends createZodDto(reviewTeacherSchema) { }

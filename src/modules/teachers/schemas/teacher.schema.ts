@@ -19,13 +19,35 @@ export class Teacher {
     subject: Types.ObjectId;
 
     @Prop() hourlyRate: number;
-
     @Prop([String]) language: string[];
 
-    @Prop() classCount: number;
-    @Prop() student: number;
-    @Prop() review: number;
-    @Prop() teachCount: number;
+    @Prop([
+        {
+            reviewerId: { type: Types.ObjectId, ref: 'User', required: true },
+            rating: { type: Number, min: 1, max: 5, required: true },
+            comment: { type: String },
+        },
+    ])
+    reviews: {
+        reviewerId: Types.ObjectId;
+        rating: number;
+        comment?: string;
+    }[];
+
+    @Prop({ default: 0 })
+    averageRating: number;
+
+    @Prop({ default: 0 })
+    reviewCount: number;
+
+    @Prop()
+    teachCount?: number;
+
+    @Prop()
+    classCount?: number;
+
+    @Prop()
+    experience?: number;
 
     @Prop([
         {

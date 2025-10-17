@@ -3,7 +3,7 @@ import { InjectModel } from '@nestjs/mongoose';
 import { isValidObjectId, Model, Types } from 'mongoose';
 import { Teacher, TeacherDocument } from './schemas/teacher.schema';
 import { S3Service } from 'src/infra/s3/s3.service';
-import { UpdateTeacherBankDto, UpdateTeacherDto } from './schemas/teacher.zod.schema';
+import { reviewTeacherDto, UpdateTeacherBankDto, UpdateTeacherDto } from './schemas/teacher.zod.schema';
 import { Slot, SlotDocument } from '../slots/schemas/slot.schema';
 
 
@@ -160,7 +160,7 @@ export class TeachersService {
 
     async getTeachers(
         search?: string,
-        sort?: 'recommend' | 'rating' | 'priceAsc' | 'priceDesc',
+        sort?: 'rating' | 'priceAsc' | 'priceDesc',
         page = 1,
         limit = 10,
     ): Promise<any> {
@@ -170,14 +170,14 @@ export class TeachersService {
             query.$or = [
                 { 'userId.name': { $regex: search, $options: 'i' } },
                 { 'userId.lastName': { $regex: search, $options: 'i' } },
-                { skills: { $regex: search, $options: 'i' } },
+                { bio: { $regex: search, $options: 'i' } },
             ];
         }
 
         let sortOption = {};
         switch (sort) {
             case 'rating':
-                sortOption = { rating: -1 };
+                sortOption = { averageRating: -1 };
                 break;
             case 'priceAsc':
                 sortOption = { hourlyRate: 1 };
@@ -186,7 +186,7 @@ export class TeachersService {
                 sortOption = { hourlyRate: -1 };
                 break;
             default:
-                sortOption = { recommendScore: -1 };
+                sortOption = { averageRating: -1 };
         }
 
         const skip = (page - 1) * limit;
@@ -354,6 +354,37 @@ export class TeachersService {
         await teacher.save();
 
         return teacher;
+    }
+
+
+    //Revice Section
+    async addReview(
+        teacherId: string,
+        reviewerId: string,
+        body: reviewTeacherDto
+    ): Promise<any> {
+        const teacher = await this.teacherModel.findById(teacherId);
+        if (!teacher) throw new NotFoundException('ไม่พบครู');
+
+        const alreadyReviewed = teacher.reviews.find(
+            (r) => r.reviewerId.toString() === reviewerId
+        );
+        if (alreadyReviewed) throw new BadRequestException('คุณได้รีวิวครูคนนี้ไปแล้ว');
+
+        teacher.reviews.push({
+            reviewerId: new Types.ObjectId(reviewerId),
+            rating: body.rating,
+            comment: body.comment
+        });
+
+        const total = teacher.reviews.reduce((sum, r) => sum + r.rating, 0);
+        const count = teacher.reviews.length;
+        teacher.averageRating = total / count;
+        teacher.reviewCount = count;
+
+        await teacher.save();
+
+        return { teacher };
     }
 
 }

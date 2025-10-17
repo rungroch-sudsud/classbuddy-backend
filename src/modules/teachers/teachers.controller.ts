@@ -2,7 +2,7 @@ import { Body, Controller, Get, Param, Patch, Post, Query, UploadedFile, Uploade
 import { ApiBearerAuth, ApiBody, ApiConsumes, ApiQuery, ApiTags } from '@nestjs/swagger';
 import { JwtGuard } from '../auth/strategies/auth.guard';
 import { CurrentUser } from 'src/shared/utils/currentUser';
-import { CreateTeacherProfileDto, UpdateTeacherBankDto, UpdateTeacherDto } from './schemas/teacher.zod.schema';
+import { CreateTeacherProfileDto, reviewTeacherDto, UpdateTeacherBankDto, UpdateTeacherDto } from './schemas/teacher.zod.schema';
 import { TeachersService } from './teachers.service';
 import { UploadInterceptor } from 'src/shared/interceptors/upload.interceptor';
 import { ZodFilePipe, ZodFilesPipe } from 'src/shared/validators/zod.validation.pipe';
@@ -108,12 +108,12 @@ export class TeachersController {
     @ApiQuery({
         name: 'sort',
         required: false,
-        enum: ['recommend', 'rating', 'priceAsc', 'priceDesc'],
+        enum: [ 'rating', 'priceAsc', 'priceDesc'],
         description: '(รวมเรียงราคาน้อย→มาก / มาก→น้อย)'
     })
     async getTeachersDefault(
         @Query('search') search?: string,
-        @Query('sort') sort?: 'recommend' | 'rating' | 'priceAsc' | 'priceDesc',
+        @Query('sort') sort?: 'rating' | 'priceAsc' | 'priceDesc',
         @Query('page') page = '1',
         @Query('limit') limit = '10',
     ) {
@@ -214,6 +214,23 @@ export class TeachersController {
         return {
             message: 'ยืนยันตัวตนครูคนนี้เรียบร้อย',
             data: verify,
+        };
+    }
+
+
+    //Review Section
+    @Post('review/:teacherId')
+    @ApiBody({ type: reviewTeacherDto })
+    @UseGuards(JwtGuard)
+    async addReview(
+        @Param('teacherId') teacherId: string,
+        @CurrentUser() reviewerId: string,
+        @Body() body: any,
+    ) {
+        const review = await this.teacherService.addReview(teacherId, reviewerId, body);
+        return {
+            message: 'รีวิวครูคนนี้สำเร็จ',
+            data: review,
         };
     }
 
