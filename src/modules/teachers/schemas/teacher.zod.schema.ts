@@ -33,9 +33,18 @@ export const EducationSchema = z.object({
 export const CreateTeacherProfileSchema = z.object({
   name: z.string().min(1, 'กรุณากรอกชื่อ').default('ไฮเซนเบิร์ก'),
   lastName: z.string().optional().default('ไวท์'),
-  subject: z.string().default('68dc04e789c7812ddcd30b52'),
   bio: z.string().optional().default('ครูไวท์ มีประสบการณ์สอนเคมี ม.ปลายมากกว่า 5 ปี...'),
-  hourlyRate: z.number().min(1, 'Hourly rate must be greater than 0').default(300),
+  subjects: z.array(
+    z.object({
+      subject: z.string().min(1, 'ต้องมี subjectId'),
+      hourlyRate: z.number().min(1, 'เรทราคาต่อชั่วโมง'),
+    })
+  ).default([
+    {
+      subject: '68f32adfcfa4052122ba24d7',
+      hourlyRate: 300,
+    },
+  ]),
   educationHistory: z
     .array(EducationSchema)
     .optional()
@@ -47,6 +56,7 @@ export const CreateTeacherProfileSchema = z.object({
         major: 'วิชาเอกการสอนคณิตศาสตร์',
       },
     ]),
+  experience: z.number().optional().default(1),
   language: z.string().optional().default('ไทย'),
   videoLink: z.string().url().optional().default('https://youtube.com/me'),
 });

@@ -65,16 +65,16 @@ export class UsersService {
         user.profileImage = publicFileUrl;
         await user.save();
 
-        if (user.role === 'teacher') {
-            const teacher = await this.teacherModel.findOne({ 
-                userId: new Types.ObjectId(userId)
-             });
+        // if (user.role === 'teacher') {
+        //     const teacher = await this.teacherModel.findOne({ 
+        //         userId: new Types.ObjectId(userId)
+        //      });
 
-            if (teacher) {
-                teacher.profileImage = publicFileUrl;
-                await teacher.save();
-            }
-        }
+        //     if (teacher) {
+        //         teacher.profileImage = publicFileUrl;
+        //         await teacher.save();
+        //     }
+        // }
 
         return publicFileUrl;
     }

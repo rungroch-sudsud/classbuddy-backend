@@ -153,8 +153,16 @@ export class TeachersService {
     }
 
 
-    async getAllTeacher(): Promise<TeacherDocument[]> {
-        return this.teacherModel.find()
+    async getAllTeacher(): Promise<any[]> {
+        const teachers = await this.teacherModel.find()
+            .populate('userId', '_id profileImage')
+            .lean();
+
+        return teachers.map((teacher: any) => ({
+            ...teacher,
+            userId: teacher.userId?._id ?? null,
+            profileImage: teacher.userId?.profileImage ?? null,
+        }));
     }
 
 
@@ -194,6 +202,7 @@ export class TeachersService {
         const [teachers, total] = await Promise.all([
             this.teacherModel
                 .find(query)
+                .populate('userId', '_id profileImage')
                 .select(`
                     -idCard -idCardWithPerson -bankName
                      -bankAccountName -bankAccountNumber
@@ -206,10 +215,15 @@ export class TeachersService {
         ]);
 
         const teachersWithStats = await Promise.all(
-            teachers.map(async (teacher) => {
+            teachers.map(async (teacher: any) => {
                 const stats = await this.getTeachingStats(teacher._id);
+                const profileImage = teacher.userId?.profileImage ?? null;
+                const userId = teacher.userId?._id ?? null;
+
                 return {
                     ...teacher,
+                    userId,
+                    profileImage,
                     teachingCount: stats?.count,
                     teachingHours: stats?.totalHours,
                 };
@@ -231,11 +245,20 @@ export class TeachersService {
         const teacher = await this.findTeacher(teacherId);
         if (!teacher) throw new NotFoundException('ไม่พบข้อมูลผู้ใช้');
 
-        await teacher.populate('subject');
+        await teacher.populate([
+            { path: 'subjects.subject' },
+            { path: 'userId', select: '_id profileImage' },
+        ]);
+
         const stats = await this.getTeachingStats(teacher._id);
+        const obj = teacher.toObject();
+
+        const profileImage = (obj.userId as any)?.profileImage ?? null;
 
         return {
-            ...teacher.toObject(),
+            ...obj,
+            userId: obj.userId?._id,
+            profileImage,
             teachingCount: stats.count,
             teachingHours: stats.totalHours,
         };
@@ -251,11 +274,20 @@ export class TeachersService {
         const teacher = await this.teacherModel.findById(new Types.ObjectId(teacherId))
         if (!teacher) throw new NotFoundException('ไม่พบข้อมูลผู้ใช้');
 
-        await teacher.populate('subject');
+        await teacher.populate([
+            { path: 'subjects.subject' },
+            { path: 'userId', select: '_id profileImage' },
+        ]);
+
         const stats = await this.getTeachingStats(teacher._id);
+        const obj = teacher.toObject();
+
+        const profileImage = (obj.userId as any)?.profileImage ?? null;
 
         return {
-            ...teacher.toObject(),
+            ...obj,
+            userId: obj.userId?._id,
+            profileImage,
             teachingCount: stats.count,
             teachingHours: stats.totalHours,
         };

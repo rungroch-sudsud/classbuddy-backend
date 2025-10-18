@@ -14,3 +14,7 @@ export class SubjectList {
 
 export type SubjectListDocument = SubjectList & Document;
 export const SubjectSchema = SchemaFactory.createForClass(SubjectList);
+
+SubjectSchema.set('id', false);
+SubjectSchema.set('toJSON', { virtuals: true, versionKey: false });
+SubjectSchema.set('toObject', { virtuals: true });

@@ -16,23 +16,25 @@ export class Teacher {
     @Prop() bio: string;
 
     @Prop([
-        {
-            subjectId: {
-                type: Types.ObjectId,
-                ref: 'SubjectList',
-                required: true
+        new mongoose.Schema(
+            {
+                subject: {
+                    type: Types.ObjectId,
+                    ref: 'SubjectList',
+                    required: true,
+                },
+                hourlyRate: {
+                    type: Number,
+                    required: true,
+                },
             },
-            hourlyRate: {
-                type: Number,
-                required: true
-            },
-        },
+            { _id: true, id: false }
+        ),
     ])
     subjects: {
-        subjectId: Types.ObjectId;
+        subject: Types.ObjectId;
         hourlyRate: number;
     }[];
-
 
     @Prop([
         {
@@ -93,10 +95,6 @@ export class Teacher {
     @Prop() bankName: string;
     @Prop() bankAccountName: string;
     @Prop() bankAccountNumber: string;
-
-    @Prop()
-    profileImage?: string;
-
 
     @Prop({ default: false })
     isVerified: boolean;
