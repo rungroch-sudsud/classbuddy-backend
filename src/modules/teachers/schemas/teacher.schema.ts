@@ -15,26 +15,10 @@ export class Teacher {
     @Prop() lastName: string;
     @Prop() bio: string;
 
-    @Prop([
-        new mongoose.Schema(
-            {
-                subject: {
-                    type: Types.ObjectId,
-                    ref: 'SubjectList',
-                    required: true,
-                },
-                hourlyRate: {
-                    type: Number,
-                    required: true,
-                },
-            },
-            { _id: true, id: false }
-        ),
-    ])
-    subjects: {
-        subject: Types.ObjectId;
-        hourlyRate: number;
-    }[];
+    @Prop({ type: [{ type: Types.ObjectId, ref: SubjectList.name }] })
+    subjects?: Types.ObjectId[];
+
+    @Prop() hourlyRate: number;
 
     @Prop([
         {
@@ -68,19 +52,17 @@ export class Teacher {
         {
             level: { type: String, required: true },
             institution: { type: String, required: true },
-            faculty: { type: String, required: true },
-            major: { type: String, required: true },
         },
     ])
     educationHistory: {
         level: string;
         institution: string;
-        faculty: string;
-        major: string;
     }[];
 
-    @Prop([String]) language: string[];
-    @Prop() videoLink: string;
+    @Prop([String])
+    language: string[];
+    @Prop()
+    videoLink?: string;
 
     @Prop({ type: [String], default: [] })
     certificate: string[];

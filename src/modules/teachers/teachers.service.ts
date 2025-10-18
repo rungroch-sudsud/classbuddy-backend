@@ -154,14 +154,17 @@ export class TeachersService {
 
 
     async getAllTeacher(): Promise<any[]> {
-        const teachers = await this.teacherModel.find()
+        const teachers = await this.teacherModel
+            .find()
             .populate('userId', '_id profileImage')
+            .populate('subjects') 
             .lean();
 
         return teachers.map((teacher: any) => ({
             ...teacher,
             userId: teacher.userId?._id ?? null,
             profileImage: teacher.userId?.profileImage ?? null,
+            subjects: teacher.subjects ?? [],
         }));
     }
 
@@ -203,6 +206,7 @@ export class TeachersService {
             this.teacherModel
                 .find(query)
                 .populate('userId', '_id profileImage')
+                .populate('subjects')
                 .select(`
                     -idCard -idCardWithPerson -bankName
                      -bankAccountName -bankAccountNumber
@@ -246,12 +250,13 @@ export class TeachersService {
         if (!teacher) throw new NotFoundException('ไม่พบข้อมูลผู้ใช้');
 
         await teacher.populate([
-            { path: 'subjects.subject' },
+            { path: 'subjects' },
             { path: 'userId', select: '_id profileImage' },
         ]);
 
         const stats = await this.getTeachingStats(teacher._id);
         const obj = teacher.toObject();
+
 
         const profileImage = (obj.userId as any)?.profileImage ?? null;
 
@@ -271,17 +276,18 @@ export class TeachersService {
         if (!Types.ObjectId.isValid(teacherId)) {
             throw new BadRequestException('รหัสของครูไม่ถูกต้อง');
         }
-        const teacher = await this.teacherModel.findById(new Types.ObjectId(teacherId))
-        if (!teacher) throw new NotFoundException('ไม่พบข้อมูลผู้ใช้');
 
-        await teacher.populate([
-            { path: 'subjects.subject' },
-            { path: 'userId', select: '_id profileImage' },
-        ]);
+        const teacher = await this.teacherModel
+            .findById(new Types.ObjectId(teacherId))
+            .populate([
+                { path: 'subjects' },
+                { path: 'userId', select: '_id profileImage' },
+            ]);
+
+        if (!teacher) throw new NotFoundException('ไม่พบข้อมูลผู้ใช้');
 
         const stats = await this.getTeachingStats(teacher._id);
         const obj = teacher.toObject();
-
         const profileImage = (obj.userId as any)?.profileImage ?? null;
 
         return {
@@ -298,17 +304,17 @@ export class TeachersService {
         userId: string,
         body: UpdateTeacherDto,
     ): Promise<Teacher> {
-        const teacher = await this.findTeacher(userId);
-        if (!teacher) throw new NotFoundException('ไม่พบข้อมูลครู');
+        const updated = await this.teacherModel
+            .findOneAndUpdate(
+                { userId: new Types.ObjectId(userId) },
+                { $set: body },
+                { new: true }
+            )
+            .select('-idCard -idCardWithPerson -bankAccountName -bankAccountNumber');
 
-        if (body.subject) {
-            (body as any).subject = new Types.ObjectId(body.subject);
-        }
+        if (!updated) throw new NotFoundException('ไม่พบข้อมูลครู');
 
-        Object.assign(teacher, body);
-        await teacher.save();
-
-        return teacher;
+        return updated;
     }
 
 
