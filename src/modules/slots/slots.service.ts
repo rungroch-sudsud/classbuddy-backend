@@ -74,7 +74,7 @@ export class SlotsService {
             if (overlap) throw new BadRequestException('ไม่สามารถสร้างเวลาซ้ำได้');
 
             const durationHours = (endTime.getTime() - startTime.getTime()) / (1000 * 60 * 60);
-            const price = teacher.hourlyRate * durationHours;
+            // const price = teacher.hourlyRate * durationHours;
 
             docs.push({
                 insertOne: {
@@ -83,7 +83,7 @@ export class SlotsService {
                         date: new Date(body.date),
                         startTime,
                         endTime,
-                        price,
+                        // price,
                         status: 'available',
                         bookedBy: null,
                     },
@@ -124,7 +124,7 @@ export class SlotsService {
                         );
                     }
                     const durationHours = (endTime.getTime() - startTime.getTime()) / (1000 * 60 * 60);
-                    const price = teacher.hourlyRate * durationHours;
+                    // const price = teacher.hourlyRate * durationHours;
 
                     docs.push({
                         updateOne: {
@@ -135,7 +135,7 @@ export class SlotsService {
                                     date: baseDate,
                                     startTime,
                                     endTime,
-                                    price,
+                                    // price,
                                     status: 'available',
                                     bookedBy: null,
                                 },

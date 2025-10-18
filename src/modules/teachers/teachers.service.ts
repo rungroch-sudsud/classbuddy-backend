@@ -280,26 +280,6 @@ export class TeachersService {
     }
 
 
-    async updateTeacherProfileImage(
-        teacherId: string,
-        file: Express.Multer.File,
-    ): Promise<string> {
-        const teacher = await this.findTeacher(teacherId);
-        if (!teacher) throw new NotFoundException('ไม่พบข้อมูลครู');
-
-        const filePath = `teacher/${teacherId}/profile-image`;
-        const publicFileUrl = await this.s3Service.uploadPublicReadFile(
-            file,
-            filePath,
-        );
-
-        teacher.profileImage = publicFileUrl;
-        await teacher.save();
-
-        return publicFileUrl;
-    }
-
-
     async updateBank(
         userId: string,
         body: UpdateTeacherBankDto

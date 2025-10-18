@@ -4,12 +4,14 @@ import { Model, Types } from 'mongoose';
 import { User, UserDocument } from './schemas/user.schema';
 import { UpdateProfileDto } from './schemas/user.zod.schema';
 import { S3Service } from 'src/infra/s3/s3.service';
+import { Teacher, TeacherDocument } from '../teachers/schemas/teacher.schema';
 
 
 @Injectable()
 export class UsersService {
     constructor(
         @InjectModel(User.name) private userModel: Model<UserDocument>,
+        @InjectModel(Teacher.name) private teacherModel: Model<TeacherDocument>,
         private readonly s3Service: S3Service
     ) { }
 
@@ -63,6 +65,17 @@ export class UsersService {
         user.profileImage = publicFileUrl;
         await user.save();
 
+        if (user.role === 'teacher') {
+            const teacher = await this.teacherModel.findOne({ 
+                userId: new Types.ObjectId(userId)
+             });
+
+            if (teacher) {
+                teacher.profileImage = publicFileUrl;
+                await teacher.save();
+            }
+        }
+
         return publicFileUrl;
     }
 
@@ -83,7 +96,7 @@ export class UsersService {
     async toggleBookmark(userId: string, slotId: string) {
         const user = await this.userModel.findById(userId);
         if (!user) throw new NotFoundException('ไม่พบผู้ใช้');
-        
+
         const index = user.bookmarks.indexOf(slotId);
         let bookmarked: boolean;
 
@@ -96,7 +109,7 @@ export class UsersService {
         }
 
         await user.save();
-        
+
         return { bookmarked, bookmarks: user.bookmarks };
     }
 

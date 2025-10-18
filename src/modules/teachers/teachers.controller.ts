@@ -168,23 +168,6 @@ export class TeachersController {
     }
 
 
-    @Post('profile/image')
-    @ApiBody({ type: UploadFileDto })
-    @ApiConsumes('multipart/form-data')
-    @UseGuards(JwtGuard)
-    @UploadInterceptor('file', 1, 5)
-    async uploadProfileImage(
-        @CurrentUser() teacherId: string,
-        @UploadedFile(new ZodFilePipe(ImageFileSchema)) file: Express.Multer.File,
-    ) {
-        const update = await this.teacherService.updateTeacherProfileImage(teacherId, file);
-
-        return {
-            message: 'Update profile successfully',
-            data: update,
-        };
-    }
-
 
     @Patch('profile/bank-info')
     @ApiBody({ type: UpdateTeacherBankDto })

@@ -15,11 +15,24 @@ export class Teacher {
     @Prop() lastName: string;
     @Prop() bio: string;
 
-    @Prop({ type: Types.ObjectId, ref: SubjectList.name })
-    subject: Types.ObjectId;
+    @Prop([
+        {
+            subjectId: {
+                type: Types.ObjectId,
+                ref: 'SubjectList',
+                required: true
+            },
+            hourlyRate: {
+                type: Number,
+                required: true
+            },
+        },
+    ])
+    subjects: {
+        subjectId: Types.ObjectId;
+        hourlyRate: number;
+    }[];
 
-    @Prop() hourlyRate: number;
-    @Prop([String]) language: string[];
 
     @Prop([
         {
@@ -64,6 +77,7 @@ export class Teacher {
         major: string;
     }[];
 
+    @Prop([String]) language: string[];
     @Prop() videoLink: string;
 
     @Prop({ type: [String], default: [] })
