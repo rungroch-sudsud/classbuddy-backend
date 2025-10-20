@@ -1,6 +1,5 @@
 import { Schema, Prop, SchemaFactory } from "@nestjs/mongoose";
 import mongoose, { HydratedDocument, Types } from "mongoose";
-import { Slot } from "src/modules/slots/schemas/slot.schema";
 import { SubjectList } from "src/modules/subjects/schema/subject.schema";
 import { User } from "src/modules/users/schemas/user.schema";
 
@@ -8,30 +7,32 @@ import { User } from "src/modules/users/schemas/user.schema";
 
 @Schema({ timestamps: true })
 export class Teacher {
-    @Prop({ type: Types.ObjectId, ref: User.name, required: true, unique: true })
+    @Prop({
+        type: Types.ObjectId,
+        ref: User.name,
+        required: true,
+        unique: true
+    })
     userId: Types.ObjectId;
 
-    @Prop() name: string;
-    @Prop() lastName: string;
-    @Prop() bio: string;
+    @Prop()
+    name: string;
 
-    @Prop({ type: [{ type: Types.ObjectId, ref: SubjectList.name }] })
+    @Prop()
+    lastName: string;
+
+    @Prop()
+    bio: string;
+
+    @Prop({
+        type: [{
+            type: Types.ObjectId,
+            ref: SubjectList.name
+        }]
+    })
     subjects?: Types.ObjectId[];
 
     @Prop() hourlyRate: number;
-
-    @Prop([
-        {
-            reviewerId: { type: Types.ObjectId, ref: 'User', required: true },
-            rating: { type: Number, min: 1, max: 5, required: true },
-            comment: { type: String },
-        },
-    ])
-    reviews: {
-        reviewerId: Types.ObjectId;
-        rating: number;
-        comment?: string;
-    }[];
 
     @Prop({ default: 0 })
     averageRating: number;
@@ -61,6 +62,7 @@ export class Teacher {
 
     @Prop([String])
     language: string[];
+
     @Prop()
     videoLink?: string;
 
@@ -73,15 +75,46 @@ export class Teacher {
     @Prop({ type: String, default: null })
     idCardWithPerson: string | null;
 
+    @Prop([
+        {
+            reviewerId: {
+                type: Types.ObjectId,
+                ref: 'User',
+                required: true
+            },
+            rating: {
+                type: Number,
+                min: 1,
+                max: 5,
+                required: true
+            },
+            comment: { type: String },
+        },
+    ])
+    reviews: {
+        reviewerId: Types.ObjectId;
+        rating: number;
+        comment?: string;
+    }[];
 
-    @Prop() bankName: string;
-    @Prop() bankAccountName: string;
-    @Prop() bankAccountNumber: string;
+
+    @Prop()
+    bankName: string;
+
+    @Prop()
+    bankAccountName: string;
+
+    @Prop()
+    bankAccountNumber: string;
 
     @Prop({ default: false })
     isVerified: boolean;
-    @Prop() recipientId?: string;
-    @Prop() lastPayoutAt?: Date;
+
+    @Prop()
+    recipientId?: string;
+
+    @Prop()
+    lastPayoutAt?: Date;
 }
 
 

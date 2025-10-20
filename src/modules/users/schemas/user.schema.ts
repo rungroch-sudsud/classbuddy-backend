@@ -26,7 +26,7 @@ export class User {
   age?: number;
 
   @Prop({ type: [{ type: Types.ObjectId, ref: SubjectList.name }] })
-  subjects?: Types.ObjectId;
+  subjects?: Types.ObjectId[];
 
   @Prop()
   class?: string;

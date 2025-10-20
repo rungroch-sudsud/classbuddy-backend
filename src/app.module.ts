@@ -19,6 +19,9 @@ import { BookingController } from './modules/booking/booking.controller';
 import { BookingModule } from './modules/booking/booking.module';
 import { PaymentsController } from './modules/payments/payments.controller';
 import { PaymentsModule } from './modules/payments/payments.module';
+import { NotificationsController } from './modules/notifications/notifications.controller';
+import { NotificationsService } from './modules/notifications/notifications.service';
+import { NotificationsModule } from './modules/notifications/notifications.module';
 
 
 
@@ -36,6 +39,7 @@ import { PaymentsModule } from './modules/payments/payments.module';
     SlotsModule,
     BookingModule,
     PaymentsModule,
+    NotificationsModule,
   ],
   controllers: [
     WebhookController,
@@ -44,10 +48,11 @@ import { PaymentsModule } from './modules/payments/payments.module';
     TeachersController,
     BookingController,
     PaymentsController,
+    NotificationsController,
 
   ],
   providers: [
-    WebhookService, AppService],
+    WebhookService, AppService, NotificationsService],
   exports: [],
 })
 

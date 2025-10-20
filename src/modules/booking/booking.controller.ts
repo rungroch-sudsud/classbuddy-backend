@@ -34,8 +34,8 @@ export class BookingController {
         };
     }
 
-    @UseGuards(JwtGuard)
     @Get('mine')
+    @UseGuards(JwtGuard)
     async getMySlots(@CurrentUser() userId: string) {
         const slot = await this.bookingService.getMySlot(userId);
 
@@ -44,5 +44,26 @@ export class BookingController {
             data: slot,
         };
     }
+
+
+    @UseGuards(JwtGuard)
+    @Post('request')
+    async createBooking(
+        @CurrentUser() userId: string,
+        @Param('teacherId') teacherId: string,
+        @Body() body: string
+    ) {
+        const create = await this.bookingService.createBooking(
+            userId,
+            teacherId,
+            body
+        );
+
+        return {
+            message: 'ส่งคำขอสำเร็จ',
+            data: create,
+        };
+    }
+
 
 }

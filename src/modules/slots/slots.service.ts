@@ -74,7 +74,7 @@ export class SlotsService {
             if (overlap) throw new BadRequestException('ไม่สามารถสร้างเวลาซ้ำได้');
 
             const durationHours = (endTime.getTime() - startTime.getTime()) / (1000 * 60 * 60);
-            // const price = teacher.hourlyRate * durationHours;
+            const price = teacher.hourlyRate * durationHours;
 
             docs.push({
                 insertOne: {
@@ -83,7 +83,7 @@ export class SlotsService {
                         date: new Date(body.date),
                         startTime,
                         endTime,
-                        // price,
+                        price,
                         status: 'available',
                         bookedBy: null,
                     },
@@ -161,10 +161,10 @@ export class SlotsService {
 
 
     async getMineSlot(userId: string): Promise<any> {
-        const teacher = await this.teacherModel.findOne({ 
-            userId: new Types.ObjectId(userId) 
+        const teacher = await this.teacherModel.findOne({
+            userId: new Types.ObjectId(userId)
         });
-        
+
         if (!teacher) throw new NotFoundException('ไม่พบข้อมูลครู');
 
         const slots = await this.slotModel.find({ teacherId: teacher._id }).lean();
@@ -176,6 +176,25 @@ export class SlotsService {
         }));
     }
 
+
+    async getSlotById(
+        teacherId: string,
+        date?: string,
+    ): Promise<any> {
+        if (!Types.ObjectId.isValid(teacherId)) {
+            throw new BadRequestException('teacher id ไม่ถูกต้อง');
+        }
+
+        const filter: any = { teacherId: new Types.ObjectId(teacherId) };
+        if (date) filter.date = date;
+
+        const slots = await this.slotModel
+            .find(filter)
+            .sort({ date: 1, time: 1 })
+            .lean();
+
+        return slots
+    }
 
 }
 

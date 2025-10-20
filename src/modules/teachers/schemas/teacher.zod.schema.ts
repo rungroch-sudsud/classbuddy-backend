@@ -84,8 +84,12 @@ export class UpdateTeacherDto extends createZodDto(UpdateTeacherSchema) { }
 
 
 export const updateTeacherBankSchema = z.object({
-  bankName: z.string().min(1, 'กรุณากรอกชื่อธนาคาร'),
-  bankAccountName: z.string().min(1, 'กรุณากรอกชื่อบัญชี'),
+  bankName: z
+    .string()
+    .min(1, 'กรุณากรอกชื่อธนาคาร'),
+  bankAccountName: z
+    .string()
+    .min(1, 'กรุณากรอกชื่อบัญชี'),
   bankAccountNumber: z
     .string()
     .min(5, 'เลขบัญชีไม่ถูกต้อง')

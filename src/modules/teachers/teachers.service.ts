@@ -157,7 +157,7 @@ export class TeachersService {
         const teachers = await this.teacherModel
             .find()
             .populate('userId', '_id profileImage')
-            .populate('subjects') 
+            .populate('subjects')
             .lean();
 
         return teachers.map((teacher: any) => ({
@@ -282,17 +282,19 @@ export class TeachersService {
             .populate([
                 { path: 'subjects' },
                 { path: 'userId', select: '_id profileImage' },
-            ]);
+            ])
+            .lean();
 
         if (!teacher) throw new NotFoundException('ไม่พบข้อมูลผู้ใช้');
 
         const stats = await this.getTeachingStats(teacher._id);
-        const obj = teacher.toObject();
-        const profileImage = (obj.userId as any)?.profileImage ?? null;
+        const profileImage = (teacher.userId as any)?.profileImage ?? null;
+
+
 
         return {
-            ...obj,
-            userId: obj.userId?._id,
+            ...teacher,
+            userId: teacher.userId?._id,
             profileImage,
             teachingCount: stats.count,
             teachingHours: stats.totalHours,

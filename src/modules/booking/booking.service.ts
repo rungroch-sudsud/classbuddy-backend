@@ -3,12 +3,14 @@ import { InjectModel } from '@nestjs/mongoose';
 import { Booking } from './schemas/booking.schema';
 import { Model, Types } from 'mongoose';
 import { Slot } from '../slots/schemas/slot.schema';
+import { Notification } from '../notifications/schema/notification';
 
 @Injectable()
 export class BookingService {
     constructor(
         @InjectModel(Booking.name) private bookingModel: Model<Booking>,
         @InjectModel(Slot.name) private slotModel: Model<Slot>,
+        @InjectModel(Notification.name) private notificationModel: Model<Notification>
     ) { }
 
 
@@ -41,19 +43,47 @@ export class BookingService {
             status: 'pending',
         });
 
-        slot.status = 'booked';
-        slot.bookedBy = new Types.ObjectId(studentId);
+        // slot.status = 'booked';
+        // slot.bookedBy = new Types.ObjectId(studentId);
         await slot.save();
 
         return booking;
     }
 
-    
+
     async getMySlot(userId: string) {
         const bookings = await this.bookingModel
             .find({ studentId: new Types.ObjectId(userId) })
-            // .populate('slotId');
+        // .populate('slotId');
 
         return bookings;
+    }
+
+
+
+    async createBooking(
+        userId: string,
+        teacherId: string,
+        body: any
+    ): Promise<any> {
+        const booking = await this.bookingModel.create({
+            userId,
+            teacherId,
+            ...body,
+        });
+
+        const request = await this.notificationModel.create({
+            senderId: new Types.ObjectId(userId),
+            recipientId: new Types.ObjectId(teacherId),
+            message: `มีคำขอจองคลาสใหม่ วันที่ ${body.date} เวลา ${body.startTime} - ${body.endTime}`,
+            type: 'booking-request',
+            meta: {
+                date: body.date,
+                startTime: body.startTime,
+                endTime: body.endTime,
+            },
+        });
+
+        return { booking, request}
     }
 }
