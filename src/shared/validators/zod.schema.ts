@@ -7,8 +7,8 @@ export const ImageFileSchema = z.object({
   size: z
     .number()
     .positive({ message: 'ไฟล์ต้องมีขนาดมากกว่า 0' })
-    .max(5 * 1024 * 1024, {
-      message: 'ไฟล์ใหญ่เกินกำหนด (ไม่เกิน 5 MB)',
+    .max(10 * 1024 * 1024, {
+      message: 'ไฟล์ใหญ่เกินกำหนด (ไม่เกิน 10 MB)',
     }),
 });
 
@@ -25,8 +25,8 @@ export const FilesSchema = z
       size: z
         .number()
         .positive({ message: 'ไฟล์ต้องมีขนาดมากกว่า 0' })
-        .max(5 * 1024 * 1024, {
-          message: 'ไฟล์ใหญ่เกินกำหนด (ไม่เกิน 5 MB)',
+        .max(10 * 1024 * 1024, {
+          message: 'ไฟล์ใหญ่เกินกำหนด (ไม่เกิน 10 MB)',
         }),
     }),
   )

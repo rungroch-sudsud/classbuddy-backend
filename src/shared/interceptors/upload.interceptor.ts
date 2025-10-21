@@ -6,7 +6,7 @@ import { memoryStorage } from 'multer';
 export function UploadInterceptor(
   fieldName: string,
   maxCount = 1,
-  fileSizeMB = 5,
+  fileSizeMB = 10,
   allowedTypes: ('image' | 'pdf')[] = ['image']
 ) {
   const multerOptions = {

@@ -74,7 +74,7 @@ export class TeachersController {
     @ApiBody({ type: UploadFilesDto })
     @ApiConsumes('multipart/form-data')
     @UseGuards(JwtGuard)
-    @UploadInterceptor('files', 3, 5, ['image', 'pdf'])
+    @UploadInterceptor('files', 3, 10, ['image', 'pdf'])
     async uploadCertificate(
         @CurrentUser() userId: string,
         @UploadedFiles(new ZodFilesPipe(FilesSchema)) files: Express.Multer.File[],
