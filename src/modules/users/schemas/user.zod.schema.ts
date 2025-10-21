@@ -10,6 +10,7 @@ export const UpdateProfileSchema = z.object({
     .string()
     .min(4, 'กรุณากรอกชื่อ')
     .max(50, 'ชื่อจริงห้ามเกิน 50 ตัวอักษร')
+    .optional()
     .describe('ชื่อจริง'),
   lastName: z
     .string()
