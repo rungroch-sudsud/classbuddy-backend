@@ -7,11 +7,25 @@ import { User } from "src/modules/users/schemas/user.schema";
 @Schema({ timestamps: true })
 export class Notification {
 
-    @Prop({ type: Types.ObjectId, ref: User.name, required: true })
+    @Prop({
+        type: Types.ObjectId,
+        required: true,
+        refPath: 'recipientType',
+    })
     recipientId: Types.ObjectId;
 
-    @Prop({ type: Types.ObjectId, ref: User.name })
-    senderId?: Types.ObjectId;
+    @Prop({ type: String, enum: ['User', 'Teacher'], required: true })
+    recipientType: string;
+
+    @Prop({
+        type: Types.ObjectId,
+        refPath: 'senderType',
+        default: null,
+    })
+    senderId?: Types.ObjectId | null;
+
+    @Prop({ type: String, enum: ['User', 'Teacher', 'System'], default: 'System' })
+    senderType: string;
 
     @Prop({ required: true })
     message: string;
@@ -19,8 +33,10 @@ export class Notification {
     @Prop({
         type: String,
         enum: [
-            'booking-request',
-            'booking-approve',
+            'booking_request',
+            'booking_wait_payment',
+            'booking_reject',
+            'booking_paid',
             'system'
         ],
         default: 'system'

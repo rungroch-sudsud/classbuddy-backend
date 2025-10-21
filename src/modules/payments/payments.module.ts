@@ -16,6 +16,7 @@ import { WebhookService } from './webhook.service';
 import { PayoutProcessor } from './processors/payout.processor';
 import { PayoutScheduler } from './processors/payout.scheduler';
 import { ConfigModule, ConfigService } from '@nestjs/config';
+import { Notification, NotificationSchema } from '../notifications/schema/notification';
 
 @Module({
     imports: [
@@ -27,7 +28,8 @@ import { ConfigModule, ConfigService } from '@nestjs/config';
             { name: User.name, schema: UserSchema },
             { name: Slot.name, schema: SlotSchema },
             { name: Teacher.name, schema: TeacherSchema },
-            { name: PayoutLog.name, schema: PayoutLogSchema }
+            { name: PayoutLog.name, schema: PayoutLogSchema },
+            { name: Notification.name, schema: NotificationSchema }
         ]),
         BullModule.forRootAsync({
             imports: [ConfigModule],

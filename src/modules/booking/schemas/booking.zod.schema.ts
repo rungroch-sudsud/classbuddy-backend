@@ -15,6 +15,7 @@ export const CreateBookingSchema = z.object({
         .describe('เวลาเริ่มต้น'),
 
     endTime: z.string().regex(timeRegex, 'เวลาสิ้นสุดต้องอยู่ในรูปแบบ HH:mm'),
+    subject: z.string().regex(/^[0-9a-fA-F]{24}$/, 'รหัสวิชาไม่ถูกต้อง'),
 })
     .superRefine(({ startTime, endTime }, ctx) => {
         if (!startTime || !endTime) return;
@@ -26,6 +27,7 @@ export const CreateBookingSchema = z.object({
             });
         }
     });
+
 
 
 export class CreateBookingDto extends createZodDto(CreateBookingSchema) { }

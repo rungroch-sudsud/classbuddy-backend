@@ -1,5 +1,5 @@
 import { Body, Controller, Get, Param, Patch, Post, Query, UploadedFile, UploadedFiles, UseGuards } from '@nestjs/common';
-import { ApiBearerAuth, ApiBody, ApiConsumes, ApiQuery, ApiTags } from '@nestjs/swagger';
+import { ApiBearerAuth, ApiBody, ApiConsumes, ApiOperation, ApiQuery, ApiTags } from '@nestjs/swagger';
 import { JwtGuard } from '../auth/strategies/auth.guard';
 import { CurrentUser } from 'src/shared/utils/currentUser';
 
@@ -20,19 +20,19 @@ export class BookingController {
     ) { }
 
 
-    @Post(':slotId')
-    @UseGuards(JwtGuard)
-    async book(
-        @Param('slotId') slotId: string,
-        @CurrentUser() studentId: string,
-    ) {
-        const booking = await this.bookingService.bookSlot(slotId, studentId,);
+    // @Post(':slotId')
+    // @UseGuards(JwtGuard)
+    // async book(
+    //     @Param('slotId') slotId: string,
+    //     @CurrentUser() studentId: string,
+    // ) {
+    //     const booking = await this.bookingService.bookSlot(slotId, studentId,);
 
-        return {
-            message: 'Booking successfully',
-            data: booking,
-        };
-    }
+    //     return {
+    //         message: 'Booking successfully',
+    //         data: booking,
+    //     };
+    // }
 
     @Get('mine')
     @UseGuards(JwtGuard)
@@ -47,11 +47,11 @@ export class BookingController {
 
 
     @UseGuards(JwtGuard)
-    @Post('request')
+    @Post(':teacherId')
     async createBooking(
         @CurrentUser() userId: string,
         @Param('teacherId') teacherId: string,
-        @Body() body: string
+        @Body() body: CreateBookingDto
     ) {
         const create = await this.bookingService.createBooking(
             userId,
@@ -62,6 +62,41 @@ export class BookingController {
         return {
             message: 'ส่งคำขอสำเร็จ',
             data: create,
+        };
+    }
+
+
+    @Patch('teacher/:bookingId/approve')
+    @UseGuards(JwtGuard)
+    async approveBooking(
+        @CurrentUser() teacherId: string,
+        @Param('bookingId') bookingId: string,
+    ) {
+        const result = await this.bookingService.updateBookingStatus(
+            teacherId,
+            bookingId,
+            'approved',
+        );
+        return {
+            message: 'อนุมัติการจองสำเร็จ',
+            data: result,
+        };
+    }
+
+    @Patch('teacher/:bookingId/reject')
+    @UseGuards(JwtGuard)
+    async rejectBooking(
+        @Param('bookingId') bookingId: string,
+        @CurrentUser() userId: string,
+    ) {
+        const result = await this.bookingService.updateBookingStatus(
+            userId,
+            bookingId,
+            'rejected',
+        );
+        return {
+            message: 'ปฏิเสธการจองสำเร็จ',
+            data: result,
         };
     }
 

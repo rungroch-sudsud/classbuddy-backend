@@ -45,7 +45,7 @@ export class PaymentsService {
             throw new BadRequestException('You are not the owner of this booking');
         }
 
-        if (booking.status !== 'pending') {
+        if (booking.status !== 'wait_for_payment') {
             throw new BadRequestException('This booking has already been paid or cancelled');
         }
 

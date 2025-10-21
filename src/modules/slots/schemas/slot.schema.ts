@@ -6,6 +6,9 @@ export class Slot extends Document {
   @Prop({ type: Types.ObjectId, ref: 'Teacher', required: true })
   teacherId: string;
 
+  @Prop()
+  bookingId: string;
+
   @Prop({ type: String, required: true })
   date: string;
 
@@ -23,8 +26,8 @@ export class Slot extends Document {
 
   @Prop({
     type: String,
-    enum: ['available', 'booked', 'completed', 'cancelled', 'expired'],
-    default: 'available',
+    enum: [ 'wait_for_payment', 'paid', 'rejected', 'expired'],
+    default: 'wait_for_payment',
   })
   status: string;
 

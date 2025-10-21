@@ -20,7 +20,6 @@ import { BookingModule } from './modules/booking/booking.module';
 import { PaymentsController } from './modules/payments/payments.controller';
 import { PaymentsModule } from './modules/payments/payments.module';
 import { NotificationsController } from './modules/notifications/notifications.controller';
-import { NotificationsService } from './modules/notifications/notifications.service';
 import { NotificationsModule } from './modules/notifications/notifications.module';
 
 
@@ -52,7 +51,7 @@ import { NotificationsModule } from './modules/notifications/notifications.modul
 
   ],
   providers: [
-    WebhookService, AppService, NotificationsService],
+    WebhookService, AppService],
   exports: [],
 })
 
