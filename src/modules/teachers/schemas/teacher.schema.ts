@@ -107,8 +107,11 @@ export class Teacher {
     @Prop()
     bankAccountNumber: string;
 
-    @Prop({ default: false })
-    isVerified: boolean;
+    @Prop({
+        default: 'draft',
+        enum: ['draft', 'pending', 'verified', 'rejected']
+    })
+    verifyStatus: string;
 
     @Prop()
     recipientId?: string;

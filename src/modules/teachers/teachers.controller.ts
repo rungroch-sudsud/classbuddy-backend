@@ -108,7 +108,7 @@ export class TeachersController {
     @ApiQuery({
         name: 'sort',
         required: false,
-        enum: [ 'rating', 'priceAsc', 'priceDesc'],
+        enum: ['rating', 'priceAsc', 'priceDesc'],
         description: '(รวมเรียงราคาน้อย→มาก / มาก→น้อย)'
     })
     async getTeachersDefault(
@@ -168,6 +168,17 @@ export class TeachersController {
     }
 
 
+    @Get('verify/pending')
+    @UseGuards(JwtGuard)
+    async getPendingTeachers() {
+        const find = await this.teacherService.getPendingTeachers();
+
+        return {
+            message: 'ดึงข้อมูลสำเร็จ',
+            data: find,
+        };
+    }
+
     @Patch(':teacherId/verify')
     @UseGuards(JwtGuard)
     async verifyTeacher(
@@ -179,6 +190,19 @@ export class TeachersController {
             data: verify,
         };
     }
+
+    @Patch(':teacherId/reject')
+    @UseGuards(JwtGuard)
+    async rejectTeacher(
+        @Param('teacherId') teacherId: string) {
+        const reject = await this.teacherService.rejectTeacher(teacherId);
+
+        return {
+            message: 'ปฎิเสธการยืนยันตัวตนครูคนนี้เรียบร้อย',
+            data: reject,
+        };
+    }
+
 
 
     //Review Section

@@ -5,6 +5,7 @@ import { Teacher, TeacherDocument } from './schemas/teacher.schema';
 import { S3Service } from 'src/infra/s3/s3.service';
 import { reviewTeacherDto, UpdateTeacherDto } from './schemas/teacher.zod.schema';
 import { Slot, SlotDocument } from '../slots/schemas/slot.schema';
+import { Notification } from '../notifications/schema/notification';
 
 
 @Injectable()
@@ -12,7 +13,8 @@ export class TeachersService {
     constructor(
         private readonly s3Service: S3Service,
         @InjectModel(Teacher.name) private teacherModel: Model<TeacherDocument>,
-        @InjectModel(Slot.name) private slotModel: Model<SlotDocument>
+        @InjectModel(Slot.name) private slotModel: Model<SlotDocument>,
+        @InjectModel(Notification.name) private notificationModel: Model<Notification>
     ) { }
 
     private async findTeacher(userId: string): Promise<TeacherDocument | null> {
@@ -46,6 +48,15 @@ export class TeachersService {
         ]);
         if (!stats) return { count: 0, totalHours: 0 };
         return stats;
+    }
+
+    private checkIfVerificationComplete(teacher: Teacher): boolean {
+        return (
+            !!teacher.idCard &&
+            !!teacher.idCardWithPerson &&
+            !!teacher.certificate &&
+            teacher.certificate.length > 0
+        );
     }
 
 
@@ -88,7 +99,7 @@ export class TeachersService {
         const teacher = await this.findTeacher(userId)
         if (!teacher) throw new NotFoundException('ไม่พบครูในระบบ');
 
-        if (teacher.isVerified === true) {
+        if (teacher.verifyStatus === 'verified') {
             throw new BadRequestException('บัญชีได้รับการยืนยันแล้ว ไม่สามารถอัปโหลดบัตรประชาชนได้');
         }
 
@@ -99,6 +110,11 @@ export class TeachersService {
         );
 
         teacher.idCard = publicFileUrl;
+
+        if (this.checkIfVerificationComplete(teacher)) {
+            teacher.verifyStatus = 'pending';
+        }
+
         await teacher.save();
 
         return publicFileUrl;
@@ -112,7 +128,7 @@ export class TeachersService {
         const teacher = await this.findTeacher(userId)
         if (!teacher) throw new NotFoundException('ไม่พบครูในระบบ');
 
-        if (teacher.isVerified === true) {
+        if (teacher.verifyStatus === 'verified') {
             throw new BadRequestException('บัญชีได้รับการยืนยันแล้ว ไม่สามารถอัปโหลดบัตรประชาชนได้');
         }
 
@@ -123,6 +139,11 @@ export class TeachersService {
         );
 
         teacher.idCardWithPerson = publicFileUrl;
+
+        if (this.checkIfVerificationComplete(teacher)) {
+            teacher.verifyStatus = 'pending';
+        }
+
         await teacher.save();
 
         return publicFileUrl;
@@ -136,7 +157,7 @@ export class TeachersService {
         const teacher = await this.findTeacher(userId)
         if (!teacher) throw new NotFoundException('ไม่พบครูในระบบ');
 
-        if (teacher.isVerified === true) {
+        if (teacher.verifyStatus === 'verified') {
             throw new BadRequestException('บัญชีได้รับการยืนยันแล้ว ไม่สามารถอัปโหลดบัตรประชาชนได้');
         }
 
@@ -147,6 +168,11 @@ export class TeachersService {
         );
 
         teacher.certificate = publicFileUrls;
+
+        if (this.checkIfVerificationComplete(teacher)) {
+            teacher.verifyStatus = 'pending';
+        }
+
         await teacher.save();
 
         return publicFileUrls;
@@ -310,12 +336,19 @@ export class TeachersService {
                 { $set: body },
                 { new: true }
             )
-  
+
         if (!updated) throw new NotFoundException('ไม่พบข้อมูลครู');
 
         return updated;
     }
 
+
+    async getPendingTeachers(): Promise<Teacher[]> {
+        return this.teacherModel
+            .find({ verifyStatus: 'pending' })
+            .select('name lastName idCard idCardWithPerson certificate verifyStatus')
+            .lean();
+    }
 
     async verifyTeacher(teacherId: string) {
         if (!isValidObjectId(teacherId)) {
@@ -325,16 +358,28 @@ export class TeachersService {
         const teacher = await this.teacherModel.findById(teacherId);
         if (!teacher) throw new NotFoundException('ไม่พบครูในระบบ');
 
-        if (teacher.isVerified) {
+        if (teacher.verifyStatus === 'verified') {
             throw new BadRequestException('บัญชีนี้ยืนยันตัวตนเรียบร้อยแล้ว');
         }
 
-        teacher.isVerified = true;
+        teacher.verifyStatus = 'verified';
         await teacher.save();
+
+        await this.notificationModel.create({
+            recipientId: teacher._id,
+            recipientType: 'Teacher',
+            message: 'บัญชีของคุณได้รับการยืนยันตัวตนเรียบร้อยแล้ว',
+            type: 'system',
+            senderType: 'System',
+            isRead: false,
+            meta: {
+                teacherId: teacher._id,
+                verifiedAt: new Date(),
+            },
+        });
 
         return teacher
     }
-
 
     async rejectTeacher(teacherId: string) {
         if (!isValidObjectId(teacherId)) {
@@ -344,7 +389,7 @@ export class TeachersService {
         const teacher = await this.teacherModel.findById(teacherId);
         if (!teacher) throw new NotFoundException('ไม่พบครูในระบบ');
 
-        if (teacher.isVerified) {
+        if (teacher.verifyStatus === 'verified') {
             throw new BadRequestException('ครูคนนี้ได้รับการยืนยันแล้ว ไม่สามารถปฏิเสธได้');
         }
 
@@ -353,6 +398,15 @@ export class TeachersService {
         teacher.certificate = [];
 
         await teacher.save();
+
+        await this.notificationModel.create({
+            recipientId: teacher._id,
+            recipientType: 'Teacher',
+            message: 'การยืนยันตัวตนของคุณไม่ผ่าน โปรดตรวจสอบและอัปโหลดเอกสารใหม่อีกครั้ง',
+            type: 'system',
+            senderType: 'System',
+            isRead: false,
+        });
 
         return teacher;
     }

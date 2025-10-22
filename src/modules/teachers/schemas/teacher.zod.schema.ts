@@ -51,6 +51,9 @@ export const CreateTeacherProfileSchema = z.object({
     .string()
     .url()
     .optional(),
+  bankName: z.string().optional(),
+  bankAccountName: z.string().optional(),
+  bankAccountNumber: z.string().optional(),
 });
 
 export class CreateTeacherProfileDto extends createZodDto(CreateTeacherProfileSchema) { }
