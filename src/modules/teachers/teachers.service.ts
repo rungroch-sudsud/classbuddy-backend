@@ -3,7 +3,7 @@ import { InjectModel } from '@nestjs/mongoose';
 import { isValidObjectId, Model, Types } from 'mongoose';
 import { Teacher, TeacherDocument } from './schemas/teacher.schema';
 import { S3Service } from 'src/infra/s3/s3.service';
-import { reviewTeacherDto, UpdateTeacherBankDto, UpdateTeacherDto } from './schemas/teacher.zod.schema';
+import { reviewTeacherDto, UpdateTeacherDto } from './schemas/teacher.zod.schema';
 import { Slot, SlotDocument } from '../slots/schemas/slot.schema';
 
 
@@ -290,8 +290,6 @@ export class TeachersService {
         const stats = await this.getTeachingStats(teacher._id);
         const profileImage = (teacher.userId as any)?.profileImage ?? null;
 
-
-
         return {
             ...teacher,
             userId: teacher.userId?._id,
@@ -312,27 +310,10 @@ export class TeachersService {
                 { $set: body },
                 { new: true }
             )
-            .select('-idCard -idCardWithPerson -bankAccountName -bankAccountNumber');
-
+  
         if (!updated) throw new NotFoundException('ไม่พบข้อมูลครู');
 
         return updated;
-    }
-
-
-    async updateBank(
-        userId: string,
-        body: UpdateTeacherBankDto
-    ) {
-        const teacher = await this.findTeacher(userId);
-        if (!teacher) throw new NotFoundException('ไม่พบข้อมูลครู');
-
-        teacher.bankName = body.bankName;
-        teacher.bankAccountName = body.bankAccountName;
-        teacher.bankAccountNumber = body.bankAccountNumber;
-        await teacher.save();
-
-        return teacher;
     }
 
 

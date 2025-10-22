@@ -34,6 +34,9 @@ export class Booking {
     // @Prop({ type: String })
     // notes?: string;
 
+    @Prop({ type: Object, default: {} })
+    meta?: Record<string, any>;
+    
     @Prop({
         type: String,
         enum: ['pending', 'wait_for_payment', 'paid', 'rejected'],

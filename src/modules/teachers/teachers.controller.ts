@@ -2,7 +2,7 @@ import { Body, Controller, Get, Param, Patch, Post, Query, UploadedFile, Uploade
 import { ApiBearerAuth, ApiBody, ApiConsumes, ApiQuery, ApiTags } from '@nestjs/swagger';
 import { JwtGuard } from '../auth/strategies/auth.guard';
 import { CurrentUser } from 'src/shared/utils/currentUser';
-import { CreateTeacherProfileDto, reviewTeacherDto, UpdateTeacherBankDto, UpdateTeacherDto } from './schemas/teacher.zod.schema';
+import { CreateTeacherProfileDto, reviewTeacherDto, UpdateTeacherDto } from './schemas/teacher.zod.schema';
 import { TeachersService } from './teachers.service';
 import { UploadInterceptor } from 'src/shared/interceptors/upload.interceptor';
 import { ZodFilePipe, ZodFilesPipe } from 'src/shared/validators/zod.validation.pipe';
@@ -163,26 +163,6 @@ export class TeachersController {
 
         return {
             message: 'อัพเดทข้อมูลผู้ใช้สำเร็จ',
-            data: updated,
-        };
-    }
-
-
-
-    @Patch('profile/bank-info')
-    @ApiBody({ type: UpdateTeacherBankDto })
-    @UseGuards(JwtGuard)
-    async updateBankInfo(
-        @CurrentUser() userId: string,
-        @Body() body: any,
-    ) {
-        const updated = await this.teacherService.updateBank(
-            userId,
-            body,
-        );
-
-        return {
-            message: 'อัพเดทข้อมูลเรียบร้อย',
             data: updated,
         };
     }
