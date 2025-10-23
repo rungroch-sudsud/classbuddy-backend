@@ -29,7 +29,7 @@ export class Teacher {
     })
     lastName: string;
 
-    @Prop({ maxlength: 150 })
+    @Prop({ minlength: 150 })
     bio?: string;
 
     @Prop({
