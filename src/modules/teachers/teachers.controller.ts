@@ -168,42 +168,6 @@ export class TeachersController {
     }
 
 
-    @Get('verify/pending')
-    @UseGuards(JwtGuard)
-    async getPendingTeachers() {
-        const find = await this.teacherService.getPendingTeachers();
-
-        return {
-            message: 'ดึงข้อมูลสำเร็จ',
-            data: find,
-        };
-    }
-
-    @Patch(':teacherId/verify')
-    @UseGuards(JwtGuard)
-    async verifyTeacher(
-        @Param('teacherId') teacherId: string) {
-        const verify = await this.teacherService.verifyTeacher(teacherId);
-
-        return {
-            message: 'ยืนยันตัวตนครูคนนี้เรียบร้อย',
-            data: verify,
-        };
-    }
-
-    @Patch(':teacherId/reject')
-    @UseGuards(JwtGuard)
-    async rejectTeacher(
-        @Param('teacherId') teacherId: string) {
-        const reject = await this.teacherService.rejectTeacher(teacherId);
-
-        return {
-            message: 'ปฎิเสธการยืนยันตัวตนครูคนนี้เรียบร้อย',
-            data: reject,
-        };
-    }
-
-
 
     //Review Section
     @Post('review/:teacherId')

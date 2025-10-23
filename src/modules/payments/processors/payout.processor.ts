@@ -15,6 +15,7 @@ const Omise = require('omise');
 export class PayoutProcessor extends WorkerHost {
     private omise: any;
     private paymentsService: PaymentsService;
+
     constructor(
         @InjectConnection() private readonly connection: Connection,
         @InjectModel(Wallet.name) private walletModel: Model<Wallet>,
@@ -33,11 +34,11 @@ export class PayoutProcessor extends WorkerHost {
         this.paymentsService = this.moduleRef.get(PaymentsService, { strict: false });
     }
 
+
     async process(job: Job) {
         if (job.name === 'weekly-payout') {
             console.log('Running weekly payout job...');
             const result = await this.paymentsService.payoutTeachers();
-            console.log(`Queued ${result.queued} teachers for payout.`);
             return { success: true, queued: result.queued };
         }
 
@@ -49,26 +50,26 @@ export class PayoutProcessor extends WorkerHost {
                 await session.withTransaction(async () => {
                     let recipientId = data.recipientId;
 
-                    if (!recipientId) {
-                        console.log(`🧾 Creating Omise recipient for ${data.name}`);
-                        const recipient = await this.omise.recipients.create({
-                            name: `${data.name} ${data.lastName}`,
-                            type: 'individual',
-                            bank_account: {
-                                brand: data.bankName.toLowerCase(),
-                                number: data.bankAccountNumber,
-                                name: data.bankAccountName,
-                            },
-                        });
+                    // if (!recipientId) {
+                    //     console.log(`🧾 Creating Omise recipient for ${data.name}`);
+                    //     const recipient = await this.omise.recipients.create({
+                    //         name: `${data.name} ${data.lastName}`,
+                    //         type: 'individual',
+                    //         bank_account: {
+                    //             brand: data.bankName.toLowerCase(),
+                    //             number: data.bankAccountNumber,
+                    //             name: data.bankAccountName,
+                    //         },
+                    //     });
 
-                        recipientId = recipient.id;
+                    //     // recipientId = recipient.id;
+                    // }
 
-                        await this.teacherModel.updateOne(
-                            { _id: data.teacherId },
-                            { $set: { recipientId } },
-                            { session },
-                        );
-                    }
+                    await this.teacherModel.updateOne(
+                        { _id: data.teacherId },
+                        { $set: { recipientId } },
+                        { session },
+                    );
 
                     const transfer = await this.omise.transfers.create({
                         recipient: recipientId,
@@ -120,7 +121,6 @@ export class PayoutProcessor extends WorkerHost {
                 throw error;
             } finally {
                 await session.endSession();
-                console.log(`🔚 Session closed for ${data.name}`);
             }
         }
     }

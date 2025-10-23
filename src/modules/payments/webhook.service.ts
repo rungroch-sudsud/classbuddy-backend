@@ -1,4 +1,4 @@
-import { BadRequestException, ConflictException, Injectable, Logger, NotFoundException } from '@nestjs/common';
+import { BadRequestException, ConflictException, Injectable, InternalServerErrorException, Logger, NotFoundException } from '@nestjs/common';
 import { InjectModel, InjectConnection } from '@nestjs/mongoose';
 
 import { Payment, PaymentStatus, PaymentType } from './schemas/payment.schema';
@@ -31,6 +31,48 @@ export class WebhookService {
         const secretKey = process.env.OMISE_SECRET_KEY;
         const publicKey = process.env.OMISE_PUBLIC_KEY;
         this.omise = Omise({ secretKey, publicKey });
+    }
+
+
+    private async handleRecipientWebhook(evt: any) {
+        try {
+            const recipient = evt?.data;
+
+            if (!recipient?.id) return;
+            
+            if (recipient.object !== 'recipient' || !recipient.verified) {
+                return console.log(`[Omise Webhook] Recipient ${recipient.id} ยังไม่ verified`);
+            } 
+
+            const recipientId = recipient.id;
+            const teacher = await this.teacherModel.findOne({ recipientId });
+
+            if (!teacher) {
+                return console.warn(`[Omise Webhook] ไม่พบ Teacher ที่มี recipientId: ${recipientId}`);
+            }
+
+            if (teacher.verifyStatus === 'verified') {
+                return console.log(`[Omise Webhook] Teacher ${teacher.name} verified ไปเรียบร้อยแล้ว`);
+            }
+
+            teacher.verifyStatus = 'verified';
+            teacher.verifiedAt = new Date();
+            await teacher.save();
+
+            await this.notificationModel.create({
+                senderType: 'System',
+                recipientId: teacher._id,
+                recipientType: 'Teacher',
+                message: 'บัญชีของคุณได้รับการยืนยันตัวตนเรียบร้อยแล้ว',
+                meta: { recipientId, verifiedAt: teacher.verifiedAt },
+            });
+
+            console.log(`[Omise Webhook] ${teacher.name} ${teacher.lastname} ${teacher._id} ถูกยืนยันสำเร็จจาก Omise`);
+
+        } catch (error) {
+            console.error('[OmiseWebhookError', error);
+            throw new InternalServerErrorException('เกิดข้อผิดพลาดในการประมวลผล recipient webhook');
+        }
     }
 
 
@@ -222,124 +264,33 @@ export class WebhookService {
 
 
     async handleOmiseWebhook(evt: any) {
-        const objectType = evt?.data.object;
-        const objectId = evt?.data.id;
-        console.log(`[Omise Webhook] ${evt.key} → ${objectType} (${objectId})`);
+        try {
+            const objectType = evt?.data.object;
+            const objectId = evt?.data.id;
+            console.log(`[Omise Webhook] ${evt.key} → ${objectType} (${objectId})`);
 
-        if (!objectType || !objectId) return;
-        switch (objectType) {
+            if (!objectType || !objectId) return;
+            switch (objectType) {
 
-            case 'charge':
-                await this.handleChargeWebhook(evt);
-                break;
-            case 'transfer':
-                await this.handleTransferWebhook(evt);
-                break;
-            case 'recipient':
-                console.log('Ignoring recipint webhook ');
-                break;
+                case 'charge':
+                    await this.handleChargeWebhook(evt);
+                    break;
+                case 'transfer':
+                    await this.handleTransferWebhook(evt);
+                    break;
+                case 'recipient':
+                    await this.handleRecipientWebhook(evt);
+                    break;
 
-            default:
-                console.log('[Webhook] Recipient event received:', evt.data);
-                break;
+                default:
+                    console.log('[Webhook] Recipient event received:', evt.data);
+                    break;
+            }
+
+        } catch (error) {
+            console.error('Error processing Omise Webhook:', error);
+            throw new InternalServerErrorException('Webhook processing error');
         }
     }
 
-
-    // async handleOmiseWebhook(evt: any) {
-    //     const key = evt?.key;
-    //     const chargeId = evt?.data?.id;
-    //     if (!key || !chargeId) return;
-
-    //     const charge = await this.omise.charges.retrieve(chargeId);
-    //     const status = charge.status as PaymentStatus
-    //     const { bookingId, userId } = charge.metadata ?? {};
-    //     const amountTHB = Math.round((charge.amount ?? 0)) / 100;
-
-    //     const bookingObjId = bookingId ? new Types.ObjectId(bookingId) : null;
-    //     const userObjId = userId ? new Types.ObjectId(userId) : null;
-
-    //     const session = await this.connection.startSession();
-    //     await session.withTransaction(async () => {
-
-    //         const setNow: any = { status, raw: charge };
-    //         if (status === 'successful') setNow.paidAt = new Date();
-
-    //         const setOnInsert: any = {
-    //             chargeId,
-    //             sourceId: charge?.source?.id,
-    //             bookingId: bookingObjId ?? undefined,
-    //             userId: userObjId ?? undefined,
-    //             amount: amountTHB,
-    //             currency: charge?.currency ?? 'thb',
-    //             createdAt: new Date(),
-    //         };
-
-    //         for (const key in setOnInsert) {
-    //             if (setOnInsert[key] === undefined) delete setOnInsert[key];
-    //         }
-
-    //         await this.paymentModel.findOneAndUpdate(
-    //             { chargeId },
-    //             { $set: setNow, $setOnInsert: setOnInsert },
-    //             { new: true, upsert: true, session },
-    //         );
-
-    //         if (status !== PaymentStatus.SUCCESS) {
-    //             throw new ConflictException(`Charge ${chargeId} is currently '${status}'`);
-    //         }
-
-    //         // เติม point ให้ user
-    //         await this.walletModel.updateOne(
-    //             { userId: userObjId },
-    //             { $inc: { availableBalance: amountTHB } },
-    //             { upsert: true, session },
-    //         );
-
-    //         // ดึง booking และเช็กยอด
-    //         const booking = await this.bookingModel.findById(bookingObjId).session(session);
-    //         if (!booking) throw new Error('Booking not found');
-
-    //         if (booking.price !== amountTHB) {
-    //             throw new Error(`Payment amount mismatch: expected ${booking.price}, got ${amountTHB}`);
-    //         }
-
-    //         // 5. หัก point ทันทีเพื่อจ่าย booking
-    //         const wallet = await this.walletModel.findOne({ userId: userObjId }).session(session);
-    //         if (!wallet || wallet.availableBalance < booking.price) {
-    //             throw new Error('Insufficient balance after topup — this should not happen');
-    //         }
-
-    //         await this.walletModel.updateOne(
-    //             { userId: userObjId },
-    //             { $inc: { availableBalance: -booking.price } },
-    //             { session },
-    //         );
-
-    //         // เปลี่ยน booking เป็น paid
-    //         booking.status = 'confirmed';
-    //         booking.paidAt = new Date();
-    //         await booking.save({ session });
-
-    //         // เปลี่ยน slot ของครูเป็น booked
-    //         if (booking.slotId) {
-    //             await this.slotModel.updateOne(
-    //                 { _id: booking.slotId },
-    //                 { $set: { status: 'booked' } },
-    //                 { session },
-    //             );
-    //         }
-
-    //         // เพิ่ม point ให้ pendingBalance ของ teacher
-    //         if (booking.teacherId) {
-    //             await this.walletModel.updateOne(
-    //                 { userId: booking.teacherId },
-    //                 { $inc: { pendingBalance: booking.price } },
-    //                 { upsert: true, session },
-    //             );
-    //         }
-    //     });
-
-    //     session.endSession();
-    // }
 }

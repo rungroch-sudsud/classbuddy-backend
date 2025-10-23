@@ -15,14 +15,22 @@ export class Teacher {
     })
     userId: Types.ObjectId;
 
-    @Prop()
+    @Prop({
+        minlength: 2,
+        maxlength: 20,
+        required: true
+    })
     name: string;
 
-    @Prop()
+    @Prop({
+        minlength: 2,
+        maxlength: 20,
+        required: true
+    })
     lastName: string;
 
-    @Prop()
-    bio: string;
+    @Prop({ maxlength: 150 })
+    bio?: string;
 
     @Prop({
         type: [{
@@ -32,48 +40,53 @@ export class Teacher {
     })
     subjects?: Types.ObjectId[];
 
-    @Prop() hourlyRate: number;
+    @Prop({
+        min: 200,
+        max: 3000,
+        required: true
+    })
+    hourlyRate: number;
 
-    @Prop({ default: 0 })
-    averageRating: number;
+    @Prop({ min: 0, default: 0 })
+    averageRating?: number;
 
-    @Prop({ default: 0 })
-    reviewCount: number;
+    @Prop({ min: 0, default: 0 })
+    reviewCount?: number;
 
-    @Prop()
+    @Prop({ min: 0, default: 0 })
     teachCount?: number;
 
-    @Prop()
+    @Prop({ min: 0, default: 0 })
     classCount?: number;
 
-    @Prop()
+    @Prop({ min: 0, max: 80, required: true })
     experience?: number;
 
     @Prop([
         {
-            level: { type: String, required: true },
-            institution: { type: String, required: true },
+            level: { type: String, maxlength: 50, required: true },
+            institution: { type: String, maxlength: 50, required: true },
         },
     ])
-    educationHistory: {
+    educationHistory?: {
         level: string;
         institution: string;
     }[];
 
     @Prop([String])
-    language: string[];
+    language?: string[];
 
-    @Prop()
+    @Prop({ maxlength: 500 })
     videoLink?: string;
 
     @Prop({ type: [String], default: [] })
-    certificate: string[];
+    certificate?: string[];
 
     @Prop({ type: String, default: null })
-    idCard: string | null;
+    idCard?: string | null;
 
     @Prop({ type: String, default: null })
-    idCardWithPerson: string | null;
+    idCardWithPerson?: string | null;
 
     @Prop([
         {
@@ -97,29 +110,27 @@ export class Teacher {
         comment?: string;
     }[];
 
+    @Prop({ maxlength: 20 })
+    bankName?: string;
 
-    @Prop()
-    bankName: string;
+    @Prop({ maxlength: 60 })
+    bankAccountName?: string;
 
-    @Prop()
-    bankAccountName: string;
-
-    @Prop()
-    bankAccountNumber: string;
+    @Prop({ maxlength: 20 })
+    bankAccountNumber?: string;
 
     @Prop({
-        default: 'draft',
-        enum: ['draft', 'pending', 'verified', 'rejected']
+        enum: ['draft', 'pending', 'process', 'verified'],
+        default: 'draft'
     })
     verifyStatus: string;
 
-    @Prop()
+    @Prop({ default: '' })
     recipientId?: string;
 
     @Prop()
     lastPayoutAt?: Date;
 }
-
 
 export type TeacherDocument = HydratedDocument<Teacher>;
 export const TeacherSchema = SchemaFactory.createForClass(Teacher);

@@ -1,13 +1,11 @@
-import { BadRequestException, ConflictException, Injectable, Logger, NotFoundException } from '@nestjs/common';
+import { BadRequestException, ConflictException, Injectable, NotFoundException } from '@nestjs/common';
 import { InjectModel, InjectConnection } from '@nestjs/mongoose';
-
 import { Payment, PaymentStatus, PaymentType } from './schemas/payment.schema';
-import mongoose, { Model, Types, Connection } from 'mongoose';
+import { Model, Types, Connection } from 'mongoose';
 import { Wallet } from './schemas/wallet.schema';
 import { Booking } from '../booking/schemas/booking.schema';
 import { User } from '../users/schemas/user.schema';
 import { Teacher } from '../teachers/schemas/teacher.schema';
-import { Slot } from '../slots/schemas/slot.schema';
 import { PayoutLog } from './schemas/payout.schema';
 import { InjectQueue } from '@nestjs/bullmq';
 import { Queue } from 'bullmq';
@@ -119,6 +117,7 @@ export class PaymentsService {
         };
     }
 
+
     async payoutTeachers() {
         const teachers = await this.teacherModel
             .find({ isVerified: true })
@@ -205,123 +204,3 @@ export class PaymentsService {
     }
 }
 
-// async payoutTeachers() {
-//     const teachers = await this.teacherModel
-//         .find({ isVerified: true })
-//         .select(`
-//             userId name lastName bankName
-//             recipientId bankAccountNumber bankAccountName
-//         `);
-
-//     for (const teacher of teachers) {
-//         const session = await this.connection.startSession();
-//         let payoutLog: any;
-//         let wallet: any
-
-//         try {
-//             await session.withTransaction(async () => {
-//                 wallet = await this.walletModel.findOneAndUpdate(
-//                     {
-//                         userId: teacher.userId,
-//                         availableBalance: { $gte: 500 },
-//                         lockedBalance: 0,
-//                     },
-//                     [
-//                         {
-//                             $set: {
-//                                 lockedBalance: "$availableBalance",
-//                                 availableBalance: 0,
-//                             },
-//                         },
-//                     ],
-//                     { new: true, session },
-//                 );
-
-//                 if (!wallet) return;
-
-//                 const totalAmount = wallet.lockedBalance;
-//                 const teacherAmount = Number((totalAmount * 0.78).toFixed(2));
-//                 const systemFee = Number((totalAmount * 0.22).toFixed(2));
-
-//                 [payoutLog] = await this.payoutLogModel.create(
-//                     [{
-//                         teacherId: teacher._id,
-//                         walletId: wallet._id,
-//                         amount: totalAmount,
-//                         teacherAmount: teacherAmount,
-//                         net: teacherAmount,
-//                         systemFee: systemFee,
-//                         status: 'pending',
-//                         description: `Preparing payout for ${teacher.name}`,
-//                     }],
-//                     { session },
-//                 );
-//             });
-
-//             if (!wallet || !payoutLog) continue;
-
-//             let recipientId = teacher.recipientId;
-//             if (!teacher.recipientId) {
-//                 const recipient = await this.omise.recipients.create({
-//                     name: `${teacher.name} ${teacher.lastName}`,
-//                     type: 'individual',
-//                     bank_account: {
-//                         brand: teacher.bankName.toLowerCase(),
-//                         number: teacher.bankAccountNumber,
-//                         name: teacher.bankAccountName,
-//                     },
-//                 });
-
-//                 teacher.recipientId = recipient.id;
-//                 recipientId = recipient.id;
-//                 await teacher.save();
-//             }
-
-//             const transfer = await this.omise.transfers.create({
-//                 recipient: recipientId,
-//                 amount: Math.floor(payoutLog.teacherAmount * 100),
-//                 description: `Payout for teacher ${teacher.name}`,
-//                 metadata: {
-//                     teacherId: teacher._id.toString(),
-//                     walletId: wallet._id.toString(),
-//                     payoutLogId: payoutLog._id.toString(),
-//                 },
-//             });
-
-//             await this.payoutLogModel.updateOne(
-//                 { _id: payoutLog._id },
-//                 {
-//                     $set: {
-//                         status: 'processing',
-//                         transferId: transfer.id,
-//                     },
-//                 },
-//             );
-
-//             console.log(`Created payout for ${teacher.name}, waiting Omise webhook...`);
-
-//         } catch (error) {
-//             console.error(`Payout failed for ${teacher.name}`, error);
-
-//             if (wallet) {
-//                 await this.walletModel.updateOne(
-//                     { _id: wallet._id },
-//                     {
-//                         $inc: { availableBalance: wallet.lockedBalance },
-//                         $set: { lockedBalance: 0 },
-//                     },
-//                 );
-//             }
-
-//             if (payoutLog?._id) {
-//                 await this.payoutLogModel.updateOne(
-//                     { _id: payoutLog._id },
-//                     { status: 'failed', errorMessage: error.message },
-//                 );
-//             }
-//         } finally {
-//             await session.endSession();
-//         }
-//     }
-//     return { success: true };
-// }

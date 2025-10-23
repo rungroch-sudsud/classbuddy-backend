@@ -21,6 +21,7 @@ import { PaymentsController } from './modules/payments/payments.controller';
 import { PaymentsModule } from './modules/payments/payments.module';
 import { NotificationsController } from './modules/notifications/notifications.controller';
 import { NotificationsModule } from './modules/notifications/notifications.module';
+import { AdminModule } from './modules/admin/admin.module';
 
 
 
@@ -39,6 +40,7 @@ import { NotificationsModule } from './modules/notifications/notifications.modul
     BookingModule,
     PaymentsModule,
     NotificationsModule,
+    AdminModule,
   ],
   controllers: [
     WebhookController,
