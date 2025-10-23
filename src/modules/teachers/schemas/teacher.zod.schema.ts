@@ -109,8 +109,6 @@ export const UpdateTeacherSchema = z.object({
 
   subjects: z
     .array(objectIdSchema)
-    .min(1, 'ต้องมีอย่างน้อย 1 วิชา')
-    .max(100, 'id วิชาต้องไม่เกิน 100 ตัวอักษร')
     .optional(),
 
   hourlyRate: z
