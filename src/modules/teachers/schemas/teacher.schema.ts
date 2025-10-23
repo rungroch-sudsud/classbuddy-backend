@@ -73,6 +73,9 @@ export class Teacher {
         institution: string;
     }[];
 
+    @Prop([String])
+    language?: string[];
+
     @Prop({ maxlength: 500 })
     videoLink?: string;
 

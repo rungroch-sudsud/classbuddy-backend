@@ -55,6 +55,11 @@ export const CreateTeacherProfileSchema = z.object({
     .max(80, 'ประสบการณ์ต้องไม่เกิน 80 ปี')
     .optional(),
 
+  language: z
+    .array(z.string())
+    .max(8, 'เลือกภาษาได้ไม่เกิน 8 ภาษา')
+    .optional(),
+
   videoLink: z
     .string()
     .url('กรุณากรอกลิงก์วิดีโอที่ถูกต้อง')
