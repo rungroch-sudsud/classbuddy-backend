@@ -33,24 +33,7 @@ export class TeachersController {
             data: teacher,
         };
     }
-
-
-    @Post('profile/id-card')
-    @ApiBody({ type: UploadFileDto })
-    @ApiConsumes('multipart/form-data')
-    @UseGuards(JwtGuard)
-    @UploadInterceptor('file', 1, 10)
-    async uploadIdCardImage(
-        @CurrentUser() userId: string,
-        @UploadedFile(new ZodFilePipe(ImageFileSchema)) file: Express.Multer.File,
-    ) {
-        const update = await this.teacherService.updateIdCardImage(userId, file);
-
-        return {
-            message: 'Update successfully',
-            data: update,
-        };
-    }
+    
 
     @Post('profile/id-card-with-person')
     @ApiBody({ type: UploadFileDto })

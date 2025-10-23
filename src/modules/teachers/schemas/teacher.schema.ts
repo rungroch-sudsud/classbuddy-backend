@@ -73,17 +73,11 @@ export class Teacher {
         institution: string;
     }[];
 
-    @Prop([String])
-    language?: string[];
-
     @Prop({ maxlength: 500 })
     videoLink?: string;
 
     @Prop({ type: [String], default: [] })
     certificate?: string[];
-
-    @Prop({ type: String, default: null })
-    idCard?: string | null;
 
     @Prop({ type: String, default: null })
     idCardWithPerson?: string | null;

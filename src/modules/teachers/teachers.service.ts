@@ -52,7 +52,6 @@ export class TeachersService {
 
     private checkIfVerificationComplete(teacher: Teacher): boolean {
         return (
-            !!teacher.idCard &&
             !!teacher.idCardWithPerson &&
             !!teacher.certificate &&
             teacher.certificate.length > 0
@@ -90,36 +89,6 @@ export class TeachersService {
 
         return createTeacher.save();
     }
-
-
-    async updateIdCardImage(
-        userId: string,
-        file: Express.Multer.File,
-    ): Promise<string> {
-        const teacher = await this.findTeacher(userId)
-        if (!teacher) throw new NotFoundException('ไม่พบครูในระบบ');
-
-        if (teacher.verifyStatus === 'verified') {
-            throw new BadRequestException('บัญชีได้รับการยืนยันแล้ว ไม่สามารถอัปโหลดบัตรประชาชนได้');
-        }
-
-        const filePath = `teacher/${userId}/id-card`;
-        const publicFileUrl = await this.s3Service.uploadPublicReadFile(
-            file,
-            filePath,
-        );
-
-        teacher.idCard = publicFileUrl;
-
-        if (this.checkIfVerificationComplete(teacher)) {
-            teacher.verifyStatus = 'pending';
-        }
-
-        await teacher.save();
-
-        return publicFileUrl;
-    }
-
 
     async updateIdCardWithPerson(
         userId: string,
@@ -201,7 +170,7 @@ export class TeachersService {
         page = 1,
         limit = 10,
     ): Promise<any> {
-        const query: any = {};
+        const query: any = { verifyStatus: 'verified' };
 
         if (search && search.trim() !== '') {
             query.$or = [

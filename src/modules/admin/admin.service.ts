@@ -79,7 +79,6 @@ export class AdminService {
             throw new BadRequestException('ครูคนนี้ได้รับการยืนยันแล้ว ไม่สามารถปฏิเสธได้');
         }
 
-        teacher.idCard = null;
         teacher.idCardWithPerson = null;
         teacher.certificate = [];
         teacher.verifyStatus = 'draft';
