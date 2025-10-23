@@ -1,7 +1,7 @@
-import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Booking } from './schemas/booking.schema';
-import { Model, Types } from 'mongoose';
+import { isValidObjectId, Model, Types } from 'mongoose';
 import { Slot } from '../slots/schemas/slot.schema';
 import { Notification } from '../notifications/schema/notification';
 import { CreateBookingDto } from './schemas/booking.zod.schema';
@@ -59,9 +59,56 @@ export class BookingService {
     async getMySlot(userId: string) {
         const bookings = await this.bookingModel
             .find({ studentId: new Types.ObjectId(userId) })
+            .populate('subject')
+            .populate('teacherId', 'name lastName profileImage')
+            .lean();
+
+        return bookings.map(({ teacherId, ...rest }) => ({
+            ...rest,
+            teacher: teacherId,
+        }));
+    }
+
+    async getBookingById(
+        bookingId: string,
+        userId: string
+    ) {
+        if (!isValidObjectId(bookingId)) {
+            throw new BadRequestException('Booking ID ไม่ถูกต้อง');
+        }
+
+        const booking = await this.bookingModel
+            .findById(bookingId)
+            .populate({
+                path: 'studentId',
+                select: 'name lastName subjects profileImage',
+                populate: {
+                    path: 'subjects',
+                    select: 'name',
+                },
+            })
+            .populate('teacherId', 'name lastName')
             .populate('subject');
 
-        return bookings;
+        if (!booking) {
+            throw new NotFoundException('ไม่พบข้อมูลการจอง');
+        }
+
+        const studentId = booking.studentId?._id?.toString();
+
+        if (userId !== studentId) {
+            throw new ForbiddenException('คุณไม่มีสิทธิ์เข้าถึงข้อมูลการจองนี้');
+        }
+
+        const bookingObj = booking.toObject() as any;
+
+        bookingObj.student = bookingObj.studentId;
+        bookingObj.teacher = bookingObj.teacherId;
+
+        delete bookingObj.studentId;
+        delete bookingObj.teacherId;
+
+        return bookingObj;
     }
 
 

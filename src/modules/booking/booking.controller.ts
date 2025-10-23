@@ -45,9 +45,22 @@ export class BookingController {
         };
     }
 
-
+    @Get(':bookingId')
     @UseGuards(JwtGuard)
+    async getBookingById(
+        @Param('bookingId') bookingId: string,
+        @CurrentUser() userId: string
+    ) {
+        const find = await this.bookingService.getBookingById(bookingId, userId);
+
+        return {
+            message: 'ดึงข้อมูลการจองสำเร็จ',
+            data: find,
+        };
+    }
+
     @Post(':teacherId')
+    @UseGuards(JwtGuard)
     async createBooking(
         @CurrentUser() userId: string,
         @Param('teacherId') teacherId: string,
