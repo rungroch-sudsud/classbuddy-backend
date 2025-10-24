@@ -13,7 +13,7 @@ export class Booking {
     @Prop({ type: Types.ObjectId, ref: Teacher.name, required: true })
     teacherId: Types.ObjectId;
 
-    @Prop({ type: String, required: true })
+    @Prop({ type: String })
     date: string;
 
     @Prop({ type: Date, required: true })
@@ -28,21 +28,18 @@ export class Booking {
     @Prop({ type: Types.ObjectId, ref: SubjectList.name, required: true })
     subject: Types.ObjectId;
 
-    // @Prop({ type: String })
-    // meetId?: string;
-
-    // @Prop({ type: String })
-    // notes?: string;
+    @Prop({ type: String, default: null })
+    meetId?: string;
 
     @Prop({ type: Object, default: {} })
     meta?: Record<string, any>;
-    
+
     @Prop({
         type: String,
-        enum: ['pending', 'wait_for_payment', 'paid', 'rejected'],
+        enum: ['pending', 'wait_for_payment', 'paid', 'studied', 'rejected'],
         default: 'pending'
     })
-    status: string;
+    status: 'pending' | 'wait_for_payment' | 'paid' | 'studied' | 'rejected';
 
     @Prop({ type: Date })
     paidAt?: Date;

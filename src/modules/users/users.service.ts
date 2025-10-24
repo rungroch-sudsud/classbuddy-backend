@@ -55,6 +55,7 @@ export class UsersService {
     ): Promise<string> {
         const user = await this.userModel.findById(userId);
         if (!user) throw new NotFoundException('ไม่พบผู้ใช้งาน');
+console.log('[Upload]', file?.originalname, file?.size, file?.mimetype);
 
         const filePath = `users/${userId}/profile-image`;
         const publicFileUrl = await this.s3Service.uploadPublicReadFile(

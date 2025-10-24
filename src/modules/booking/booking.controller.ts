@@ -37,11 +37,23 @@ export class BookingController {
     @Get('mine')
     @UseGuards(JwtGuard)
     async getMySlots(@CurrentUser() userId: string) {
-        const slot = await this.bookingService.getMySlot(userId);
+        const data = await this.bookingService.getMySlot(userId);
 
         return {
             message: 'ดึงตารางเรียนของฉันสำเร็จ',
-            data: slot,
+            data: data,
+        };
+    }
+
+
+    @Get('history')
+    @UseGuards(JwtGuard)
+    async getHistoryBookingMine(@CurrentUser() userId: string) {
+        const data = await this.bookingService.getHistoryBookingMine(userId);
+
+        return {
+            message: 'ดึงประวัติการจองสำเร็จ',
+            data,
         };
     }
 
@@ -51,11 +63,11 @@ export class BookingController {
         @Param('bookingId') bookingId: string,
         @CurrentUser() userId: string
     ) {
-        const find = await this.bookingService.getBookingById(bookingId, userId);
+        const data = await this.bookingService.getBookingById(bookingId, userId);
 
         return {
             message: 'ดึงข้อมูลการจองสำเร็จ',
-            data: find,
+            data: data,
         };
     }
 

@@ -25,7 +25,12 @@ export class User {
   @Prop()
   age?: number;
 
-  @Prop({ type: [{ type: Types.ObjectId, ref: SubjectList.name }] })
+  @Prop({
+    type: [{
+      type: Types.ObjectId,
+      ref: SubjectList.name
+    }]
+  })
   subjects?: Types.ObjectId[];
 
   @Prop()
@@ -34,8 +39,12 @@ export class User {
   // @Prop()
   // point?: string;
 
-  @Prop({ default: 'user' })
-  role: 'user' | 'teacher';
+  @Prop({
+    type: String,
+    enum: ['user', 'teacher', 'moderator', 'admin'],
+    default: 'user',
+  })
+  role: 'user' | 'teacher' | 'moderator' | 'admin';
 
   @Prop({ type: [String], default: [] })
   bookmarks: string[];

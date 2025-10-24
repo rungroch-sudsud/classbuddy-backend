@@ -7,6 +7,9 @@ import { Notification } from '../notifications/schema/notification';
 import { CreateBookingDto } from './schemas/booking.zod.schema';
 import { Teacher } from '../teachers/schemas/teacher.schema';
 import { SubjectList } from '../subjects/schema/subject.schema';
+import dayjs from 'dayjs';
+import 'dayjs/locale/th';
+
 
 @Injectable()
 export class BookingService {
@@ -58,59 +61,133 @@ export class BookingService {
 
     async getMySlot(userId: string) {
         const bookings = await this.bookingModel
-            .find({ studentId: new Types.ObjectId(userId) })
+            .find({
+                studentId: new Types.ObjectId(userId),
+                status: { $in: ['pending', 'wait_for_payment', 'paid'] },
+            })
             .populate('subject')
-            .populate('teacherId', 'name lastName profileImage')
+            .populate({
+                path: 'teacherId',
+                select: 'name lastName userId',
+                populate: {
+                    path: 'userId',
+                    select: 'profileImage',
+                },
+            })
+            .sort({ startTime: -1 })
             .lean();
 
-        return bookings.map(({ teacherId, ...rest }) => ({
-            ...rest,
-            teacher: teacherId,
-        }));
+        return bookings.map(({ teacherId, startTime, endTime, ...rest }) => {
+            const teacher: any = teacherId;
+
+            const dateDisplay = dayjs(startTime).locale('th').format('D MMMM YYYY');
+            const timeDisplay = `${dayjs(startTime).format('HH:mm')} - ${dayjs(endTime).format('HH:mm')}`;
+
+            return {
+                ...rest,
+                teacher: {
+                    _id: teacher?._id,
+                    name: teacher?.name,
+                    lastName: teacher?.lastName,
+                    profileImage: teacher?.userId?.profileImage ?? null,
+                },
+                display: {
+                    date: dateDisplay,
+                    time: timeDisplay,
+                },
+            };
+        });
     }
 
-    async getBookingById(
-        bookingId: string,
-        userId: string
-    ) {
+
+    async getBookingById(bookingId: string, userId: string) {
         if (!isValidObjectId(bookingId)) {
             throw new BadRequestException('Booking ID ไม่ถูกต้อง');
         }
 
         const booking = await this.bookingModel
             .findById(bookingId)
+            .populate('subject')
             .populate({
-                path: 'studentId',
-                select: 'name lastName subjects profileImage',
+                path: 'teacherId',
+                select: 'name lastName userId',
                 populate: {
-                    path: 'subjects',
-                    select: 'name',
+                    path: 'userId',
+                    select: 'profileImage',
                 },
             })
-            .populate('teacherId', 'name lastName')
-            .populate('subject');
+            .lean();
 
         if (!booking) {
             throw new NotFoundException('ไม่พบข้อมูลการจอง');
         }
 
-        const studentId = booking.studentId?._id?.toString();
-
-        if (userId !== studentId) {
+        if (userId !== booking.studentId.toString()) {
             throw new ForbiddenException('คุณไม่มีสิทธิ์เข้าถึงข้อมูลการจองนี้');
         }
 
-        const bookingObj = booking.toObject() as any;
+        const teacher: any = booking.teacherId;
 
-        bookingObj.student = bookingObj.studentId;
-        bookingObj.teacher = bookingObj.teacherId;
+        const dateDisplay = dayjs(booking.startTime).locale('th').format('D MMMM YYYY');
+        const timeDisplay = `${dayjs(booking.startTime).format('HH:mm')} - ${dayjs(booking.endTime).format('HH:mm')}`;
 
-        delete bookingObj.studentId;
-        delete bookingObj.teacherId;
+        const { teacherId, startTime, endTime, ...rest } = booking;
 
-        return bookingObj;
+        return {
+            ...rest,
+            teacher: {
+                _id: teacher?._id,
+                name: teacher?.name,
+                lastName: teacher?.lastName,
+                profileImage: teacher?.userId?.profileImage ?? null,
+            },
+            display: {
+                date: dateDisplay,
+                time: timeDisplay,
+            },
+        };
     }
 
+
+    async getHistoryBookingMine(userId: string): Promise<any> {
+        const bookings = await this.bookingModel
+            .find({
+                studentId: new Types.ObjectId(userId),
+                status: { $in: ['studied', 'rejected'] },
+            })
+            .populate('subject')
+            .populate({
+                path: 'teacherId',
+                select: 'name lastName userId',
+                populate: {
+                    path: 'userId',
+                    select: 'profileImage',
+                },
+            })
+            .sort({ startTime: -1 })
+            .lean();
+
+        return bookings.map(({ teacherId, startTime, endTime, ...rest }) => {
+            const teacher: any = teacherId;
+
+            const dateDisplay = dayjs(startTime).locale('th').format('D MMMM YYYY');
+            const timeDisplay = `${dayjs(startTime).format('HH:mm')} - ${dayjs(endTime).format('HH:mm')}`;
+
+            return {
+                ...rest,
+                teacher: {
+                    _id: teacher?._id,
+                    name: teacher?.name,
+                    lastName: teacher?.lastName,
+                    profileImage: teacher?.userId?.profileImage ?? null,
+                },
+                display: {
+                    date: dateDisplay,
+                    time: timeDisplay,
+                },
+            };
+        });
+    }
 
     async createBooking(
         userId: string,
@@ -123,24 +200,35 @@ export class BookingService {
         const subject = await this.subjectModel.findById(body.subject).lean();
         if (!subject) throw new NotFoundException('ไม่พบข้อมูลวิชา');
 
-        const start = new Date(`${body.date}T${body.startTime}:00`);
-        const end = new Date(`${body.date}T${body.endTime}:00`);
+        const start = dayjs(`${body.date}T${body.startTime}`).toDate();
+        const end = dayjs(`${body.date}T${body.endTime}`).toDate();
 
         if (end <= start) throw new BadRequestException('เวลาสิ้นสุดต้องมากกว่าเวลาเริ่มต้น');
 
-        const hours = (end.getTime() - start.getTime()) / (1000 * 60 * 60);
+        const overlap = await this.bookingModel.exists({
+            teacherId: new Types.ObjectId(teacherId),
+            startTime: { $lt: end },
+            endTime: { $gt: start },
+            status: { $in: ['pending', 'wait_for_payment', 'paid'] },
+        });
+
+        if (overlap) throw new BadRequestException('ช่วงเวลานี้ถูกจองแล้ว');
+
+        const hours = dayjs(end).diff(dayjs(start), 'hour', true);
         const price = teacher.hourlyRate * hours;
 
         const booking = await this.bookingModel.create({
             studentId: new Types.ObjectId(userId),
             teacherId: new Types.ObjectId(teacherId),
             subject: new Types.ObjectId(body.subject),
-            date: body.date,
             startTime: start,
             endTime: end,
             price,
             status: 'pending',
         });
+
+        const formattedDate = dayjs(start).locale('th').format('D MMMM YYYY');
+        const formattedTime = `${dayjs(start).format('HH:mm')} - ${dayjs(end).format('HH:mm')}`;
 
         const request = await this.notificationModel.create({
             senderId: new Types.ObjectId(userId),
