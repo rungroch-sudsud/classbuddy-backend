@@ -1,6 +1,6 @@
 import { Body, Controller, Get, Param, Patch, Post, Query, UploadedFile, UploadedFiles, UseGuards } from '@nestjs/common';
 import { ApiBearerAuth, ApiBody, ApiConsumes, ApiOperation, ApiQuery, ApiTags } from '@nestjs/swagger';
-import { JwtGuard } from '../auth/strategies/auth.guard';
+import { JwtGuard } from '../auth/guard/auth.guard';
 import { CurrentUser } from 'src/shared/utils/currentUser';
 
 import { UploadInterceptor } from 'src/shared/interceptors/upload.interceptor';
@@ -13,7 +13,9 @@ import { CreateBookingDto } from './schemas/booking.zod.schema';
 
 @ApiTags('Booking')
 @ApiBearerAuth()
+
 @Controller('booking')
+@UseGuards(JwtGuard)
 export class BookingController {
     constructor(
         private readonly bookingService: BookingService
@@ -35,7 +37,6 @@ export class BookingController {
     // }
 
     @Get('mine')
-    @UseGuards(JwtGuard)
     async getMySlots(@CurrentUser() userId: string) {
         const data = await this.bookingService.getMySlot(userId);
 
@@ -47,7 +48,6 @@ export class BookingController {
 
 
     @Get('history')
-    @UseGuards(JwtGuard)
     async getHistoryBookingMine(@CurrentUser() userId: string) {
         const data = await this.bookingService.getHistoryBookingMine(userId);
 
@@ -58,7 +58,6 @@ export class BookingController {
     }
 
     @Get(':bookingId')
-    @UseGuards(JwtGuard)
     async getBookingById(
         @Param('bookingId') bookingId: string,
         @CurrentUser() userId: string
@@ -72,7 +71,6 @@ export class BookingController {
     }
 
     @Post(':teacherId')
-    @UseGuards(JwtGuard)
     async createBooking(
         @CurrentUser() userId: string,
         @Param('teacherId') teacherId: string,
@@ -92,7 +90,6 @@ export class BookingController {
 
 
     @Patch('teacher/:bookingId/approve')
-    @UseGuards(JwtGuard)
     async approveBooking(
         @CurrentUser() teacherId: string,
         @Param('bookingId') bookingId: string,
@@ -109,7 +106,6 @@ export class BookingController {
     }
 
     @Patch('teacher/:bookingId/reject')
-    @UseGuards(JwtGuard)
     async rejectBooking(
         @Param('bookingId') bookingId: string,
         @CurrentUser() userId: string,

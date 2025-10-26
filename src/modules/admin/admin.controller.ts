@@ -1,13 +1,21 @@
 import { Controller, Get, Param, Patch, UseGuards } from '@nestjs/common';
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import { AdminService } from './admin.service';
-import { JwtGuard } from '../auth/strategies/auth.guard';
+import { JwtGuard } from '../auth/guard/auth.guard';
+import { RolesGuard } from '../auth/guard/roles.guard';
+import { Roles } from '../auth/decorators/roles.decorator';
+import { Role } from '../auth/role/role.enum';
 
 
 
 @ApiTags('Admin')
 @ApiBearerAuth()
+
 @Controller('admin')
+@UseGuards(JwtGuard)
+// @UseGuards(JwtGuard, RolesGuard)
+// @Roles(Role.Admin, Role.Moderator)
+
 export class AdminController {
     constructor(
         private readonly adminService: AdminService
@@ -15,7 +23,6 @@ export class AdminController {
 
 
     @Get('verify/pending')
-    @UseGuards(JwtGuard)
     async getPendingTeachers() {
         const find = await this.adminService.getPendingTeachers();
 
@@ -26,7 +33,6 @@ export class AdminController {
     }
 
     @Patch(':teacherId/verify')
-    @UseGuards(JwtGuard)
     async verifyTeacher(
         @Param('teacherId') teacherId: string) {
         const verify = await this.adminService.verifyTeacher(teacherId);
@@ -38,7 +44,6 @@ export class AdminController {
     }
 
     @Patch(':teacherId/reject')
-    @UseGuards(JwtGuard)
     async rejectTeacher(
         @Param('teacherId') teacherId: string) {
         const reject = await this.adminService.rejectTeacher(teacherId);

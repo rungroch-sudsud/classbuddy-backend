@@ -1,5 +1,6 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 import { Document, Types } from 'mongoose';
+import { SubjectList } from 'src/modules/subjects/schema/subject.schema';
 
 @Schema()
 export class Slot extends Document {
@@ -8,9 +9,6 @@ export class Slot extends Document {
 
   @Prop()
   bookingId: string;
-
-  @Prop({ type: String, required: true })
-  date: string;
 
   @Prop({ required: true })
   startTime: Date;
@@ -21,15 +19,18 @@ export class Slot extends Document {
   @Prop({ required: true })
   price: number;
 
+  @Prop({ type: Types.ObjectId, ref: SubjectList.name, required: true })
+  subject: Types.ObjectId;
+
   @Prop({ default: null })
   meetId: string;
 
   @Prop({
     type: String,
-    enum: [ 'wait_for_payment', 'paid', 'rejected', 'expired'],
-    default: 'wait_for_payment',
+    enum: ['pending', 'wait_for_payment', 'paid', 'studied', 'rejected'],
+    default: 'pending'
   })
-  status: string;
+  status: 'pending' | 'wait_for_payment' | 'paid' | 'studied' | 'rejected';
 
   @Prop({ type: Types.ObjectId, ref: 'User', default: null })
   bookedBy: Types.ObjectId

@@ -65,7 +65,7 @@ export class BookingService {
                 studentId: new Types.ObjectId(userId),
                 status: { $in: ['pending', 'wait_for_payment', 'paid'] },
             })
-            .populate('subject')
+            .populate('subject', '_id name')
             .populate({
                 path: 'teacherId',
                 select: 'name lastName userId',
@@ -74,14 +74,22 @@ export class BookingService {
                     select: 'profileImage',
                 },
             })
-            .sort({ startTime: -1 })
             .lean();
 
-        return bookings.map(({ teacherId, startTime, endTime, ...rest }) => {
-            const teacher: any = teacherId;
+        const sorted = bookings.sort((a, b) => {
+            const statusOrder = { paid: 0, wait_for_payment: 1, pending: 2 };
+            const statusA = statusOrder[a.status] ?? 99;
+            const statusB = statusOrder[b.status] ?? 99;
 
+            if (statusA !== statusB) return statusA - statusB;
+            return new Date(b.startTime).getTime() - new Date(a.startTime).getTime();
+        });
+
+        return sorted.map(({ teacherId, startTime, endTime, ...rest }) => {
+            const teacher: any = teacherId;
             const dateDisplay = dayjs(startTime).locale('th').format('D MMMM YYYY');
-            const timeDisplay = `${dayjs(startTime).format('HH:mm')} - ${dayjs(endTime).format('HH:mm')}`;
+            const start = `${dayjs(startTime).format('HH:mm')}`;
+            const end = `${dayjs(endTime).format('HH:mm')}`
 
             return {
                 ...rest,
@@ -91,9 +99,10 @@ export class BookingService {
                     lastName: teacher?.lastName,
                     profileImage: teacher?.userId?.profileImage ?? null,
                 },
-                display: {
+                displayDate: {
                     date: dateDisplay,
-                    time: timeDisplay,
+                    startTime: start,
+                    endTime: end
                 },
             };
         });
@@ -107,7 +116,7 @@ export class BookingService {
 
         const booking = await this.bookingModel
             .findById(bookingId)
-            .populate('subject')
+            .populate('subject', '_id name')
             .populate({
                 path: 'teacherId',
                 select: 'name lastName userId',
@@ -129,7 +138,8 @@ export class BookingService {
         const teacher: any = booking.teacherId;
 
         const dateDisplay = dayjs(booking.startTime).locale('th').format('D MMMM YYYY');
-        const timeDisplay = `${dayjs(booking.startTime).format('HH:mm')} - ${dayjs(booking.endTime).format('HH:mm')}`;
+        const start = `${dayjs(booking.startTime).format('HH:mm')}`;
+        const end = `${dayjs(booking.endTime).format('HH:mm')}`
 
         const { teacherId, startTime, endTime, ...rest } = booking;
 
@@ -141,9 +151,10 @@ export class BookingService {
                 lastName: teacher?.lastName,
                 profileImage: teacher?.userId?.profileImage ?? null,
             },
-            display: {
+            displayDate: {
                 date: dateDisplay,
-                time: timeDisplay,
+                startTime: start,
+                endTime: end
             },
         };
     }
@@ -155,7 +166,7 @@ export class BookingService {
                 studentId: new Types.ObjectId(userId),
                 status: { $in: ['studied', 'rejected'] },
             })
-            .populate('subject')
+            .populate('subject', '_id name')
             .populate({
                 path: 'teacherId',
                 select: 'name lastName userId',
@@ -171,7 +182,8 @@ export class BookingService {
             const teacher: any = teacherId;
 
             const dateDisplay = dayjs(startTime).locale('th').format('D MMMM YYYY');
-            const timeDisplay = `${dayjs(startTime).format('HH:mm')} - ${dayjs(endTime).format('HH:mm')}`;
+            const start = `${dayjs(startTime).format('HH:mm')}`;
+            const end = `${dayjs(endTime).format('HH:mm')}`;
 
             return {
                 ...rest,
@@ -181,13 +193,15 @@ export class BookingService {
                     lastName: teacher?.lastName,
                     profileImage: teacher?.userId?.profileImage ?? null,
                 },
-                display: {
+                displayDate: {
                     date: dateDisplay,
-                    time: timeDisplay,
+                    startTime: start,
+                    endTime: end
                 },
             };
         });
     }
+
 
     async createBooking(
         userId: string,
@@ -263,6 +277,7 @@ export class BookingService {
 
         const booking = await this.bookingModel.findById(bookingId);
         if (!booking) throw new NotFoundException('ไม่พบบุ๊คกิ้ง');
+
         if (!booking.teacherId.equals(teacher._id)) {
             throw new BadRequestException('ไม่มีสิทธิ์จัดการการจองนี้');
         }
@@ -272,12 +287,12 @@ export class BookingService {
         } else {
             booking.status = 'rejected';
         }
+
         await booking.save();
 
         if (status === 'approved') {
             const existingSlot = await this.slotModel.findOne({
                 teacherId: new Types.ObjectId(teacher._id),
-                date: booking.date,
                 startTime: booking.startTime,
                 endTime: booking.endTime,
             });
@@ -289,17 +304,18 @@ export class BookingService {
             await this.slotModel.create({
                 teacherId: teacher._id,
                 bookingId: booking._id,
-                date: booking.date,
                 startTime: booking.startTime,
                 endTime: booking.endTime,
                 price: booking.price,
-                status: 'wait_for_payment',
-                bookedBy: booking.studentId,
+                subject: booking.subject,
                 meetId: null,
+                status: 'wait_for_payment',
+                bookedBy: booking.studentId
             });
         }
 
         const studentId = booking.studentId;
+
         await this.notificationModel.create({
             senderId: new Types.ObjectId(teacher._id),
             senderType: 'Teacher',
@@ -308,11 +324,10 @@ export class BookingService {
             type: status === 'approved' ? 'booking_wait_payment' : 'booking_reject',
             message:
                 status === 'approved'
-                    ? `ครูได้อนุมัติการจองคลาสวันที่ ${booking.date}`
-                    : `ครูได้ปฏิเสธการจองคลาสวันที่ ${booking.date}`,
+                    ? `ครูได้อนุมัติการจองคลาสวันที่ ${booking.startTime}`
+                    : `ครูได้ปฏิเสธการจองคลาสวันที่ ${booking.startTime}`,
             meta: {
                 bookingId: booking._id,
-                date: booking.date,
                 startTime: booking.startTime,
                 endTime: booking.endTime,
                 price: booking.price,

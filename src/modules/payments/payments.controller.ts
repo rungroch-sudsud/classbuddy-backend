@@ -1,6 +1,6 @@
 import { Body, Controller, Get, Param, Patch, Post, Query, UploadedFile, UploadedFiles, UseGuards } from '@nestjs/common';
 import { ApiBearerAuth, ApiBody, ApiConsumes, ApiQuery, ApiTags } from '@nestjs/swagger';
-import { JwtGuard } from '../auth/strategies/auth.guard';
+import { JwtGuard } from '../auth/guard/auth.guard';
 import { CurrentUser } from 'src/shared/utils/currentUser';
 
 import { UploadInterceptor } from 'src/shared/interceptors/upload.interceptor';

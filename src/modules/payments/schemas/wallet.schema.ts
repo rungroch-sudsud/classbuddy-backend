@@ -1,5 +1,6 @@
 import { Schema, Prop, SchemaFactory } from "@nestjs/mongoose";
 import { Document, Types } from 'mongoose'
+import { Role } from "src/modules/auth/role/role.enum";
 import { User } from "src/modules/users/schemas/user.schema";
 
 
@@ -18,8 +19,12 @@ export class Wallet {
     @Prop({ required: true, default: 0 })
     lockedBalance: number;
 
-    @Prop({ default: 'user' })
-    role: 'user' | 'teacher';
+  @Prop({
+    type: String,
+    enum: Role,
+    default: Role.User,
+  })
+  role: Role;
 }
 
 export type WalletDocument = Wallet & Document;

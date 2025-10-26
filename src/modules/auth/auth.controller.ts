@@ -4,7 +4,7 @@ import { ZodValidationPipe } from 'src/shared/validators/zod.validation.pipe';
 import { ApiBearerAuth, ApiBody, ApiTags } from '@nestjs/swagger';
 import { ChangePasswordDto, forgotPasswordOtpDto, LoginDto, RegisterDto, ResendOtpDto, ResetPasswordDto, VerifyForgotPasswordDto, VerifyOtpDto, VerifyOtpSchema } from './schemas/auth.zod.schema';
 import { LoginSchema, RegisterSchema } from './schemas/auth.zod.schema';
-import { JwtGuard } from './strategies/auth.guard';
+import { JwtGuard } from './guard/auth.guard';
 import { CurrentUser } from 'src/shared/utils/currentUser';
 
 

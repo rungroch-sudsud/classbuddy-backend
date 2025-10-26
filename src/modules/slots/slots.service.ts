@@ -1,39 +1,44 @@
-import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, ConflictException, Injectable, NotFoundException } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Slot } from './schemas/slot.schema';
 import { Model, Types } from 'mongoose';
 import { Teacher } from '../teachers/schemas/teacher.schema';
+import { SubjectList } from '../subjects/schema/subject.schema';
+import dayjs from 'dayjs';
+import 'dayjs/locale/th';
+
 
 @Injectable()
 export class SlotsService {
     constructor(
         @InjectModel(Slot.name) private slotModel: Model<Slot>,
-        @InjectModel(Teacher.name) private readonly teacherModel: Model<Teacher>
+        @InjectModel(Teacher.name) private readonly teacherModel: Model<Teacher>,
+        @InjectModel(SubjectList.name) private readonly subjectlistModel: Model<SubjectList>
     ) { }
 
-    private combineDateAndTime(dateStr: string, timeStr: string): Date {
-        const [year, month, day] = dateStr.split('-').map(Number);
-        const [hours, minutes] = timeStr.split(':').map(Number);
+    // private combineDateAndTime(dateStr: string, timeStr: string): Date {
+    //     const [year, month, day] = dateStr.split('-').map(Number);
+    //     const [hours, minutes] = timeStr.split(':').map(Number);
 
-        if (isNaN(year) || isNaN(month) || isNaN(day)) {
-            throw new BadRequestException(`รูปแบบวันที่ไม่ถูกต้อง: ${dateStr}`);
-        }
-        if (isNaN(hours) || isNaN(minutes)) {
-            throw new BadRequestException(`รูปแบบเวลาไม่ถูกต้อง: ${timeStr}`);
-        }
+    //     if (isNaN(year) || isNaN(month) || isNaN(day)) {
+    //         throw new BadRequestException(`รูปแบบวันที่ไม่ถูกต้อง: ${dateStr}`);
+    //     }
+    //     if (isNaN(hours) || isNaN(minutes)) {
+    //         throw new BadRequestException(`รูปแบบเวลาไม่ถูกต้อง: ${timeStr}`);
+    //     }
 
-        return new Date(year, month - 1, day, hours, minutes);
-    }
+    //     return new Date(year, month - 1, day, hours, minutes);
+    // }
 
-    private toLocalTime(date: Date | string) {
-        if (!date) return null;
-        return new Date(date).toLocaleTimeString('th-TH', {
-            timeZone: 'Asia/Bangkok',
-            hour: '2-digit',
-            minute: '2-digit',
-            hour12: false,
-        });
-    }
+    // private toLocalTime(date: Date | string) {
+    //     if (!date) return null;
+    //     return new Date(date).toLocaleTimeString('th-TH', {
+    //         timeZone: 'Asia/Bangkok',
+    //         hour: '2-digit',
+    //         minute: '2-digit',
+    //         hour12: false,
+    //     });
+    // }
 
 
     // async createSlots(
@@ -163,37 +168,123 @@ export class SlotsService {
     async getMineSlot(userId: string): Promise<any> {
         const teacher = await this.teacherModel.findOne({
             userId: new Types.ObjectId(userId)
-        });
+        })
 
         if (!teacher) throw new NotFoundException('ไม่พบข้อมูลครู');
 
-        const slots = await this.slotModel.find({ teacherId: teacher._id }).lean();
+        const slots = await this.slotModel.find({
+            teacherId: teacher._id,
+            status: { $in: ['pending', 'wait_for_payment', 'paid'] }
+        })
+            .populate('subject', '_id name')
+            .populate('bookedBy', '_id name lastName profileImage')
+            .lean();
 
-        return slots.map(({ startTime, endTime, ...rest }) => ({
-            ...rest,
-            startTime: this.toLocalTime(startTime),
-            endTime: this.toLocalTime(endTime),
-        }));
+        const sorted = slots.sort((a, b) => {
+            const statusOrder = { paid: 0, wait_for_payment: 1, pending: 2 };
+            const statusA = statusOrder[a.status] ?? 99;
+            const statusB = statusOrder[b.status] ?? 99;
+
+            if (statusA !== statusB) return statusA - statusB;
+            return new Date(b.startTime).getTime() - new Date(a.startTime).getTime();
+        });
+
+        return sorted.map(({ startTime, endTime, ...rest }) => {
+            const dateDisplay = dayjs(startTime).locale('th').format('D MMMM YYYY');
+            const start = dayjs(startTime).format('HH:mm');
+            const end = dayjs(endTime).format('HH:mm');
+
+            return {
+                ...rest,
+                displayDate: {
+                    date: dateDisplay,
+                    startTime: start,
+                    endTime: end,
+                },
+            };
+        });
     }
 
 
     async getSlotById(
-        teacherId: string,
-        date?: string,
+        userId: string,
+        slotId: string,
     ): Promise<any> {
-        if (!Types.ObjectId.isValid(teacherId)) {
-            throw new BadRequestException('teacher id ไม่ถูกต้อง');
+        if (!Types.ObjectId.isValid(slotId)) {
+            throw new BadRequestException('slot id ไม่ถูกต้อง');
         }
 
-        const filter: any = { teacherId: new Types.ObjectId(teacherId) };
-        if (date) filter.date = date;
+        const teacher = await this.teacherModel.findOne({
+            userId: new Types.ObjectId(userId)
+        });
 
-        const slots = await this.slotModel
-            .find(filter)
-            .sort({ date: 1, time: 1 })
+        if (!teacher) throw new NotFoundException('ไม่พบข้อมูลครู');
+
+        const slot = await this.slotModel.findById(slotId)
+            .populate('bookedBy', '_id name lastName profileImage')
+            .populate('subject', '_id name')
+            .sort({ startTime: -1 })
             .lean();
 
-        return slots
+        if (!slot) throw new NotFoundException('ไม่พบ slot นี้');
+
+        if (slot.teacherId?.toString() !== teacher.toString()) {
+            throw new ConflictException('คุณไม่มีสิทธิ์เข้าถึง');
+        }
+
+        const { startTime, endTime, ...rest } = slot;
+
+        const dateDisplay = dayjs(startTime).locale('th').format('D MMMM YYYY');
+        const start = dayjs(startTime).format('HH:mm');
+        const end = dayjs(endTime).format('HH:mm');
+
+        return {
+            ...rest,
+            displayDate: {
+                date: dateDisplay,
+                startTime: start,
+                endTime: end
+            }
+        }
+    }
+
+
+    async getHistorySlotsMine(userId: string): Promise<any> {
+        const teacher = await this.teacherModel.findOne({
+            userId: new Types.ObjectId(userId),
+        });
+
+        if (!teacher) {
+            throw new NotFoundException('ไม่พบข้อมูลครูของผู้ใช้คนนี้');
+        }
+
+        const slots = await this.slotModel
+            .find({
+                teacherId: teacher._id,
+                status: { $in: ['studied', 'rejected'] },
+            })
+            .populate('subject', '_id name')
+            .populate({
+                path: 'bookedBy',
+                select: 'name lastName nickName profileImage'
+            })
+            .sort({ startTime: -1 })
+            .lean();
+
+        return slots.map(({ startTime, endTime, ...rest }) => {
+            const dateDisplay = dayjs(startTime).locale('th').format('D MMMM YYYY');
+            const start = `${dayjs(startTime).format('HH:mm')}`;
+            const end = `${dayjs(endTime).format('HH:mm')}`;
+
+            return {
+                ...rest,
+                displayDate: {
+                    date: dateDisplay,
+                    startTime: start,
+                    endTime: end
+                },
+            };
+        });
     }
 
 }

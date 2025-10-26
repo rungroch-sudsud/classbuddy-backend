@@ -1,6 +1,8 @@
 import { Schema, Prop, SchemaFactory } from "@nestjs/mongoose";
 import { Document, Types } from 'mongoose'
+import { Role } from "src/modules/auth/role/role.enum";
 import { SubjectList } from "src/modules/subjects/schema/subject.schema";
+
 
 @Schema({ timestamps: true })
 export class User {
@@ -41,10 +43,10 @@ export class User {
 
   @Prop({
     type: String,
-    enum: ['user', 'teacher', 'moderator', 'admin'],
-    default: 'user',
+    enum: Role,
+    default: Role.User,
   })
-  role: 'user' | 'teacher' | 'moderator' | 'admin';
+  role: Role;
 
   @Prop({ type: [String], default: [] })
   bookmarks: string[];

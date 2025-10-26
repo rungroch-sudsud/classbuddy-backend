@@ -29,7 +29,7 @@ import {
 } from '@nestjs/swagger';
 import { UsersService } from './users.service';
 import { CurrentUser } from 'src/shared/utils/currentUser';
-import { JwtGuard } from '../auth/strategies/auth.guard';
+import { JwtGuard } from '../auth/guard/auth.guard';
 import { UpdateProfileDto } from './schemas/user.zod.schema';
 import { ZodFilePipe } from 'src/shared/validators/zod.validation.pipe';
 import { UploadInterceptor } from 'src/shared/interceptors/upload.interceptor';

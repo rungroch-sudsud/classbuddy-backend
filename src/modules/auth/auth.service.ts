@@ -139,7 +139,11 @@ export class AuthService {
             throw new BadRequestException('Password wrong');
         }
 
-        const payload = { sub: user._id.toString() };
+        const payload = {
+            sub: user._id.toString(),
+            role: user.role,
+        };
+
         const accessToken = this.jwtService.sign(payload);
 
         return { accessToken };
@@ -315,9 +319,9 @@ export class AuthService {
 
 
     async changePassword(
-        userId: string, 
+        userId: string,
         body: ChangePasswordDto
-    ):Promise<any> {
+    ): Promise<any> {
         const user = await this.userModel.findById(userId);
         if (!user) {
             throw new BadRequestException('ไม่พบผู้ใช้');

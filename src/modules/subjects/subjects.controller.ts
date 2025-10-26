@@ -1,12 +1,14 @@
 import { Body, Controller, Get, Post, UploadedFile, UseGuards } from '@nestjs/common';
 import { SubjectsService } from './subjects.service';
 import { ApiBearerAuth, ApiBody, ApiConsumes, ApiTags } from '@nestjs/swagger';
-import { JwtGuard } from '../auth/strategies/auth.guard';
+import { JwtGuard } from '../auth/guard/auth.guard';
 import { UploadInterceptor } from 'src/shared/interceptors/upload.interceptor';
-import { ZodFile } from 'zod';
 import { ImageFileSchema } from 'src/shared/validators/zod.schema';
 import { ZodFilePipe } from 'src/shared/validators/zod.validation.pipe';
 import { CreateSubjectDocs } from './docs/docs.subject';
+import { RolesGuard } from '../auth/guard/roles.guard';
+import { Roles } from '../auth/decorators/roles.decorator';
+import { Role } from '../auth/role/role.enum';
 
 
 
@@ -22,7 +24,8 @@ export class SubjectsController {
     @Post('add')
     @ApiBody({ type: CreateSubjectDocs })
     @ApiConsumes('multipart/form-data')
-    @UseGuards(JwtGuard)
+    @UseGuards(JwtGuard, RolesGuard)
+    @Roles(Role.Admin, Role.Moderator)
     @UploadInterceptor('file', 1, 5)
     async createSubject(
         @Body('name') name: string,
@@ -35,7 +38,7 @@ export class SubjectsController {
             data: subject,
         };
     }
-
+    
 
     @Get('teacher')
     async getAllSubject() {

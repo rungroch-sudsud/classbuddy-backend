@@ -10,6 +10,7 @@ import { Teacher } from '../teachers/schemas/teacher.schema';
 import { Slot } from '../slots/schemas/slot.schema';
 import { PayoutLog } from './schemas/payout.schema';
 import { Notification } from '../notifications/schema/notification';
+import { Role } from '../auth/role/role.enum';
 
 const Omise = require('omise');
 
@@ -39,10 +40,10 @@ export class WebhookService {
             const recipient = evt?.data;
 
             if (!recipient?.id) return;
-            
+
             if (recipient.object !== 'recipient' || !recipient.verified) {
                 return console.log(`[Omise Webhook] Recipient ${recipient.id} ยังไม่ verified`);
-            } 
+            }
 
             const recipientId = recipient.id;
             const teacher = await this.teacherModel.findOne({ recipientId });
@@ -58,6 +59,12 @@ export class WebhookService {
             teacher.verifyStatus = 'verified';
             teacher.verifiedAt = new Date();
             await teacher.save();
+
+            const user = await this.userModel.findOne({ _id: teacher.userId });
+            if (!user) return console.warn(`[Omise Webhook] ไม่พบ User ที่มี ${teacher.userId}`);
+
+            user.role = Role.Teacher;
+            await user.save();
 
             await this.notificationModel.create({
                 senderType: 'System',
@@ -76,10 +83,152 @@ export class WebhookService {
     }
 
 
+    // private async handleChargeWebhook(evt: any) {
+    //     const chargeId = evt.data.id;
+    //     const charge = await this.omise.charges.retrieve(chargeId);
+    //     const status = charge.status as PaymentStatus
+    //     const { bookingId, userId } = charge.metadata ?? {};
+    //     const amountTHB = Math.round((charge.amount ?? 0)) / 100;
+
+    //     const bookingObjId = bookingId ? new Types.ObjectId(bookingId) : null;
+    //     const userObjId = userId ? new Types.ObjectId(userId) : null;
+
+    //     const session = await this.connection.startSession();
+    //     try {
+    //         await session.withTransaction(async () => {
+
+    //             const setNow: any = { status, raw: charge };
+    //             if (status === 'successful') setNow.paidAt = new Date();
+
+    //             const setOnInsert: any = {
+    //                 chargeId,
+    //                 sourceId: charge?.source?.id,
+    //                 bookingId: bookingObjId ?? undefined,
+    //                 userId: userObjId ?? undefined,
+    //                 amount: amountTHB,
+    //                 currency: charge?.currency ?? 'thb',
+    //                 createdAt: new Date(),
+    //             };
+
+    //             for (const key in setOnInsert) {
+    //                 if (setOnInsert[key] === undefined) delete setOnInsert[key];
+    //             }
+
+    //             await this.paymentModel.findOneAndUpdate(
+    //                 { chargeId },
+    //                 { $set: setNow, $setOnInsert: setOnInsert },
+    //                 { new: true, upsert: true, session },
+    //             );
+
+    //             // if (status !== PaymentStatus.SUCCESS) {
+    //             //     return;
+    //             // }
+
+    //             // เติม point ให้ user
+    //             await this.walletModel.updateOne(
+    //                 { userId: userObjId },
+    //                 { $inc: { availableBalance: amountTHB } },
+    //                 { upsert: true, session },
+    //             );
+
+    //             // ดึง booking และเช็กยอด
+    //             const booking = await this.bookingModel.findById(bookingObjId).session(session);
+    //             if (!booking) throw new Error('Booking not found');
+
+    //             if (booking.status === 'paid') return;
+    //             if (booking.status !== 'wait_for_payment') {
+    //                 throw new ConflictException('Booking is not awaiting payment');
+    //             }
+    //             if (booking.price !== amountTHB) {
+    //                 throw new Error(`Payment amount mismatch: expected ${booking.price}, got ${amountTHB}`);
+    //             }
+
+    //             // 5. หัก point ทันทีเพื่อจ่าย booking
+    //             const wallet = await this.walletModel.findOne({ userId: userObjId }).session(session);
+    //             if (!wallet || wallet.availableBalance < booking.price) {
+    //                 throw new Error('Insufficient balance after topup — this should not happen');
+    //             }
+
+    //             await this.walletModel.updateOne(
+    //                 { userId: userObjId, role: Role.User },
+    //                 { $inc: { availableBalance: -booking.price } },
+    //                 { session },
+    //             );
+    //             console.log(booking.price, wallet, amountTHB)
+
+    //             // เปลี่ยน booking เป็น paid
+    //             booking.status = 'paid';
+    //             booking.paidAt = new Date();
+    //             await booking.save({ session });
+
+    //             await this.slotModel.updateOne(
+    //                 { bookingId: booking._id },
+    //                 { $set: { status: 'paid' } },
+    //                 { session },
+    //             );
+
+    //             // เพิ่ม point ให้ pendingBalance ของ teacher
+    //             if (booking.teacherId) {
+    //                 await this.walletModel.updateOne(
+    //                     { userId: booking.teacherId, role: 'teacher' },
+    //                     { $inc: { pendingBalance: booking.price } },
+    //                     { upsert: true, session },
+    //                 );
+    //             }
+
+    //             const start = booking.startTime instanceof Date
+    //                 ? booking.startTime.toTimeString().slice(0, 5)
+    //                 : booking.startTime;
+
+    //             const end = booking.endTime instanceof Date
+    //                 ? booking.endTime.toTimeString().slice(0, 5)
+    //                 : booking.endTime;
+
+    //             await this.notificationModel.create([
+    //                 {
+    //                     senderType: 'System',
+    //                     recipientId: new Types.ObjectId(booking.studentId),
+    //                     recipientType: 'User',
+    //                     type: 'booking_paid',
+    //                     message: `ชำระเงินสำเร็จ! คุณสามารถรอเรียนกับครูได้ในวันที่ ${booking.date} เวลา ${start} - ${end}`,
+    //                     meta: {
+    //                         bookingId: booking._id,
+    //                         date: booking.date,
+    //                         startTime: booking.startTime,
+    //                         endTime: booking.endTime,
+    //                         price: booking.price,
+    //                     },
+    //                 },
+    //                 {
+    //                     senderType: 'System',
+    //                     recipientId: new Types.ObjectId(booking.teacherId),
+    //                     recipientType: 'Teacher',
+    //                     type: 'booking_paid',
+    //                     message: `นักเรียนได้ชำระเงินค่าเรียนเรียบร้อยแล้ว! นัดสอนวันที่ ${booking.date} เวลา ${start} - ${end}`,
+    //                     meta: {
+    //                         bookingId: booking._id,
+    //                         studentId: userObjId,
+    //                         date: booking.date,
+    //                         startTime: booking.startTime,
+    //                         endTime: booking.endTime,
+    //                         price: booking.price,
+    //                     },
+    //                 },
+    //             ],
+    //                 { session, ordered: true });
+    //         });
+    //     } catch (err) {
+    //         console.error('[OmiseWebhookError]', err);
+    //         throw err;
+    //     } finally {
+    //         await session.endSession();
+    //     }
+    // }
+
     private async handleChargeWebhook(evt: any) {
         const chargeId = evt.data.id;
         const charge = await this.omise.charges.retrieve(chargeId);
-        const status = charge.status as PaymentStatus
+        const status = charge.status as PaymentStatus;
         const { bookingId, userId } = charge.metadata ?? {};
         const amountTHB = Math.round((charge.amount ?? 0)) / 100;
 
@@ -89,7 +238,6 @@ export class WebhookService {
         const session = await this.connection.startSession();
         try {
             await session.withTransaction(async () => {
-
                 const setNow: any = { status, raw: charge };
                 if (status === 'successful') setNow.paidAt = new Date();
 
@@ -107,27 +255,35 @@ export class WebhookService {
                     if (setOnInsert[key] === undefined) delete setOnInsert[key];
                 }
 
+                // 1️⃣ บันทึกข้อมูลการชำระเงิน
                 await this.paymentModel.findOneAndUpdate(
                     { chargeId },
                     { $set: setNow, $setOnInsert: setOnInsert },
                     { new: true, upsert: true, session },
                 );
 
-                // if (status !== PaymentStatus.SUCCESS) {
-                //     return;
-                // }
+                if (status !== PaymentStatus.SUCCESS) {
+                    console.log(`[Omise Webhook] Payment ${chargeId} ยังไม่สำเร็จ (status=${status})`);
+                    return;
+                }
 
-                // เติม point ให้ user
+                // 2️⃣ เติมเงินเข้ากระเป๋า (top up)
                 await this.walletModel.updateOne(
-                    { userId: userObjId },
+                    { userId: userObjId, role: Role.User },
                     { $inc: { availableBalance: amountTHB } },
                     { upsert: true, session },
                 );
 
-                // ดึง booking และเช็กยอด
+                // ดึง wallet ที่เพิ่งเติมมาใช้ต่อทันทีใน transaction เดียวกัน
+                const wallet = await this.walletModel
+                    .findOne({ userId: userObjId, role: Role.User })
+                    .session(session);
+
+                if (!wallet) throw new Error(`[Wallet] Not found for user ${userObjId}`);
+
+                // 3️⃣ ตรวจ booking
                 const booking = await this.bookingModel.findById(bookingObjId).session(session);
                 if (!booking) throw new Error('Booking not found');
-
                 if (booking.status === 'paid') return;
                 if (booking.status !== 'wait_for_payment') {
                     throw new ConflictException('Booking is not awaiting payment');
@@ -136,42 +292,40 @@ export class WebhookService {
                     throw new Error(`Payment amount mismatch: expected ${booking.price}, got ${amountTHB}`);
                 }
 
-                // 5. หัก point ทันทีเพื่อจ่าย booking
-                const wallet = await this.walletModel.findOne({ userId: userObjId }).session(session);
-                if (!wallet || wallet.availableBalance < booking.price) {
-                    throw new Error('Insufficient balance after topup — this should not happen');
+                // 4️⃣ ตรวจยอดเงินคงเหลือ
+                if (wallet.availableBalance < booking.price) {
+                    throw new Error('Insufficient balance after top-up');
                 }
 
-                await this.walletModel.updateOne(
-                    { userId: userObjId, role: 'user' },
-                    { $inc: { availableBalance: -booking.price } },
-                    { session },
-                );
+                // 5️⃣ หักยอดจาก wallet (หักจากตัวแปร wallet ที่เพิ่ง query ได้)
+                wallet.availableBalance -= booking.price;
+                await wallet.save({ session });
 
-                // เปลี่ยน booking เป็น paid
+                // 6️⃣ เปลี่ยน booking เป็น paid
                 booking.status = 'paid';
                 booking.paidAt = new Date();
                 await booking.save({ session });
 
+                // 7️⃣ อัปเดต slot เป็น paid
                 await this.slotModel.updateOne(
                     { bookingId: booking._id },
                     { $set: { status: 'paid' } },
                     { session },
                 );
 
-                // เพิ่ม point ให้ pendingBalance ของ teacher
+                // 8️⃣ เพิ่ม point ให้ pendingBalance ของ teacher
                 if (booking.teacherId) {
                     await this.walletModel.updateOne(
-                        { userId: booking.teacherId, role: 'teacher' },
+                        { userId: booking.teacherId, role: Role.Teacher },
                         { $inc: { pendingBalance: booking.price } },
                         { upsert: true, session },
                     );
                 }
 
+                // 9️⃣ แจ้งเตือนทั้งนักเรียนและครู
                 const start = booking.startTime instanceof Date
                     ? booking.startTime.toTimeString().slice(0, 5)
                     : booking.startTime;
-
                 const end = booking.endTime instanceof Date
                     ? booking.endTime.toTimeString().slice(0, 5)
                     : booking.endTime;
@@ -206,8 +360,7 @@ export class WebhookService {
                             price: booking.price,
                         },
                     },
-                ],
-                    { session, ordered: true });
+                ], { session, ordered: true });
             });
         } catch (err) {
             console.error('[OmiseWebhookError]', err);

@@ -1,16 +1,25 @@
 import { Body, Controller, Get, Param, Post, UseGuards } from '@nestjs/common';
 import { SlotsService } from './slots.service';
 import { ApiBearerAuth, ApiBody, ApiExtraModels, ApiTags, getSchemaPath } from '@nestjs/swagger';
-import { JwtGuard } from '../auth/strategies/auth.guard';
+import { JwtGuard } from '../auth/guard/auth.guard';
 import { CurrentUser } from 'src/shared/utils/currentUser';
 import { CreateSlotDto, CreateWeeklySlotDto } from './schemas/slot.zod.schema';
+import { Roles } from '../auth/decorators/roles.decorator';
+import { RolesGuard } from '../auth/guard/roles.guard';
+import { Role } from '../auth/role/role.enum';
 
 @ApiExtraModels(CreateSlotDto, CreateWeeklySlotDto)
 @ApiTags('Slots')
 @ApiBearerAuth()
+
 @Controller('slots')
+@UseGuards(JwtGuard, RolesGuard)
+// @Roles(Role.Admin, Role.Moderator, Role.Teacher)
+
 export class SlotsController {
-    constructor(private readonly slotsService: SlotsService) { }
+    constructor(
+        private readonly slotsService: SlotsService
+    ) { }
 
     // @Post()
     // @ApiBody({
@@ -85,6 +94,7 @@ export class SlotsController {
 
 
     @Get('')
+    @Roles(Role.Admin, Role.Moderator)
     async getAllSubject() {
         const getAll = await this.slotsService.getAllSlots();
 
@@ -95,11 +105,8 @@ export class SlotsController {
     }
 
 
-    @UseGuards(JwtGuard)
     @Get('mine')
-    async getMySlots(
-        @CurrentUser() teacherId: string
-    ) {
+    async getMySlots(@CurrentUser() teacherId: string) {
         const slots = await this.slotsService.getMineSlot(teacherId);
 
         return {
@@ -109,19 +116,32 @@ export class SlotsController {
     }
 
 
-    // @UseGuards(JwtGuard)
-    // @Get(':teacherId')
-    // async getSlotById(
-    //     @Param('teacherId') teacherId: string,
-    //    date?: string
-    // ) {
-    //     const slots = await this.slotsService.getSlotById(teacherId, date);
+    @Get('history')
+    async getHistorySlotsMine(@CurrentUser() userId: string) {
+        const data = await this.slotsService.getHistorySlotsMine(userId);
 
-    //     return {
-    //         message: 'ดึง slot ของฉันสำเร็จ',
-    //         data: slots,
-    //     };
-    // }
+        return {
+            message: 'ดึงประวัติการจองสำเร็จ',
+            data,
+        };
+    }
+
+
+    @Get(':slotId')
+    async getSlotById(
+        @CurrentUser() userId: string,
+        @Param('slotId') slotId: string
+    ) {
+        const slots = await this.slotsService.getSlotById(userId, slotId);
+
+        return {
+            message: 'ดึง slot สำเร็จ',
+            data: slots,
+        };
+    }
+
+
+
 
 
 
