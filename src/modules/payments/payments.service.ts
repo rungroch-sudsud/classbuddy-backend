@@ -37,18 +37,18 @@ export class PaymentsService {
         bookingId: string
     ): Promise<any> {
         const booking = await this.bookingModel.findById(bookingId);
-        if (!booking) throw new NotFoundException('Booking not found');
+        if (!booking) throw new NotFoundException('ไม่เจอเลข booking');
 
         if (booking.studentId.toString() !== userId) {
-            throw new BadRequestException('You are not the owner of this booking');
+            throw new BadRequestException('คุณไม่มีสิทธิ์ชำระเงิน');
         }
 
         if (booking.status !== 'wait_for_payment') {
-            throw new BadRequestException('This booking has already been paid or cancelled');
+            throw new BadRequestException('คุณไม่สามารถชำระเงินได้เนื่องจากครูยังไม่ได้ยืนยันหรือ booking ถูกยกเลิก');
         }
 
         const user = await this.userModel.findById(userId);
-        if (!user) throw new NotFoundException('User not found');
+        if (!user) throw new NotFoundException('ไม่พบผู้ใช้');
 
         const existingPayment = await this.paymentModel.findOne({
             bookingId: new Types.ObjectId(bookingId),
