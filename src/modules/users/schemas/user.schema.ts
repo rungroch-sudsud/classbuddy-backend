@@ -1,7 +1,7 @@
 import { Schema, Prop, SchemaFactory } from "@nestjs/mongoose";
 import { Document, Types } from 'mongoose'
 import { Role } from "src/modules/auth/role/role.enum";
-import { SubjectList } from "src/modules/subjects/schema/subject.schema";
+import { SubjectList } from "src/modules/subjects/schemas/subject.schema";
 
 
 @Schema({ timestamps: true })

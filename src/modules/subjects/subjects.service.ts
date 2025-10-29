@@ -1,6 +1,6 @@
 import { ConflictException, Injectable } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
-import { SubjectList, SubjectListDocument } from './schema/subject.schema';
+import { SubjectList, SubjectListDocument } from './schemas/subject.schema';
 import { Model } from 'mongoose';
 import { S3Service } from 'src/infra/s3/s3.service';
 

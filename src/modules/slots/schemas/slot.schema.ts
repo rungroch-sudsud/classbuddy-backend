@@ -1,6 +1,6 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 import { Document, Types } from 'mongoose';
-import { SubjectList } from 'src/modules/subjects/schema/subject.schema';
+import { SubjectList } from 'src/modules/subjects/schemas/subject.schema';
 
 @Schema()
 export class Slot extends Document {

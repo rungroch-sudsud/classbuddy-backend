@@ -4,7 +4,7 @@ import { Slot, SlotSchema } from './schemas/slot.schema';
 import { SlotsService } from './slots.service';
 import { SlotsController } from './slots.controller';
 import { TeachersModule } from '../teachers/teachers.module';
-import { SubjectList, SubjectSchema } from '../subjects/schema/subject.schema';
+import { SubjectList, SubjectSchema } from '../subjects/schemas/subject.schema';
 
 @Module({
   imports: [

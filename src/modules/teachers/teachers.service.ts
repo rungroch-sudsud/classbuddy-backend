@@ -6,15 +6,19 @@ import { S3Service } from 'src/infra/s3/s3.service';
 import { reviewTeacherDto, UpdateTeacherDto } from './schemas/teacher.zod.schema';
 import { Slot, SlotDocument } from '../slots/schemas/slot.schema';
 import { Notification } from '../notifications/schema/notification';
+import { StreamChatService } from '../chat/stream-chat.service';
+import { User } from '../users/schemas/user.schema';
 
 
 @Injectable()
 export class TeachersService {
     constructor(
-        private readonly s3Service: S3Service,
         @InjectModel(Teacher.name) private teacherModel: Model<TeacherDocument>,
+        @InjectModel(User.name) private userModel: Model<User>,
         @InjectModel(Slot.name) private slotModel: Model<SlotDocument>,
-        @InjectModel(Notification.name) private notificationModel: Model<Notification>
+        @InjectModel(Notification.name) private notificationModel: Model<Notification>,
+        private readonly s3Service: S3Service,
+        private readonly streamChatService: StreamChatService
     ) { }
 
     private async findTeacher(userId: string): Promise<TeacherDocument | null> {
@@ -307,6 +311,23 @@ export class TeachersService {
             )
 
         if (!updated) throw new NotFoundException('ไม่พบข้อมูลครู');
+
+        if (updated.verifyStatus === 'verified') {
+            try {
+                const user = await this.userModel.findById(userId).lean();
+                const image = user?.profileImage ?? undefined;
+
+                await this.streamChatService.upsertUser({
+                    id: `teacher_${userId}`,
+                    name: `${updated.name ?? ''} ${updated.lastName ?? ''}`.trim(),
+                    image,
+                });
+
+                // console.log(`[getStream] upsert verified teacher_${userId} successful`);
+            } catch (err) {
+                console.warn('[getStream] Failed to upsert teacher:', err.message);
+            }
+        }
 
         return updated;
     }

@@ -6,19 +6,23 @@ import { Slot } from '../slots/schemas/slot.schema';
 import { Notification } from '../notifications/schema/notification';
 import { CreateBookingDto } from './schemas/booking.zod.schema';
 import { Teacher } from '../teachers/schemas/teacher.schema';
-import { SubjectList } from '../subjects/schema/subject.schema';
+import { SubjectList } from '../subjects/schemas/subject.schema';
 import dayjs from 'dayjs';
 import 'dayjs/locale/th';
+import { User } from '../users/schemas/user.schema';
+import { StreamChatService } from '../chat/stream-chat.service';
 
 
 @Injectable()
 export class BookingService {
     constructor(
         @InjectModel(Booking.name) private bookingModel: Model<Booking>,
+        @InjectModel(User.name) private userModel: Model<User>,
         @InjectModel(Teacher.name) private teacherModel: Model<Teacher>,
         @InjectModel(Slot.name) private slotModel: Model<Slot>,
         @InjectModel(SubjectList.name) private subjectModel: Model<SubjectList>,
-        @InjectModel(Notification.name) private notificationModel: Model<Notification>
+        @InjectModel(Notification.name) private notificationModel: Model<Notification>,
+        private readonly streamChatService: StreamChatService
     ) { }
 
 
@@ -313,9 +317,9 @@ export class BookingService {
                 bookedBy: booking.studentId
             });
         }
+        
 
         const studentId = booking.studentId;
-
         await this.notificationModel.create({
             senderId: new Types.ObjectId(teacher._id),
             senderType: 'Teacher',

@@ -22,6 +22,7 @@ import { PaymentsModule } from './modules/payments/payments.module';
 import { NotificationsController } from './modules/notifications/notifications.controller';
 import { NotificationsModule } from './modules/notifications/notifications.module';
 import { AdminModule } from './modules/admin/admin.module';
+import { ChatModule } from './modules/chat/chat.module';
 
 
 
@@ -41,6 +42,7 @@ import { AdminModule } from './modules/admin/admin.module';
     PaymentsModule,
     NotificationsModule,
     AdminModule,
+    ChatModule,
   ],
   controllers: [
     WebhookController,

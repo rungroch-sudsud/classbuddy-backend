@@ -2,7 +2,7 @@ import { Module } from '@nestjs/common';
 import { SubjectsService } from './subjects.service';
 import { SubjectsController } from './subjects.controller';
 import { MongooseModule } from '@nestjs/mongoose';
-import { SubjectList, SubjectSchema } from './schema/subject.schema';
+import { SubjectList, SubjectSchema } from './schemas/subject.schema';
 import { S3Module } from 'src/infra/s3/s3.module';
 
 @Module({

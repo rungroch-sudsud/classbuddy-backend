@@ -24,8 +24,8 @@ export class SubjectsController {
     @Post('add')
     @ApiBody({ type: CreateSubjectDocs })
     @ApiConsumes('multipart/form-data')
-    @UseGuards(JwtGuard, RolesGuard)
-    @Roles(Role.Admin, Role.Moderator)
+    @UseGuards(JwtGuard)
+    // @Roles(Role.Admin, Role.Moderator)
     @UploadInterceptor('file', 1, 5)
     async createSubject(
         @Body('name') name: string,

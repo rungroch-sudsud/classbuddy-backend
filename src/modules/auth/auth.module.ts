@@ -7,6 +7,7 @@ import { SmsModule } from '../../infra/sms/sms.module';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { PassportModule } from '@nestjs/passport';
 import { JwtStrategy } from './strategies/jwt.strategy';
+import { ChatModule } from '../chat/chat.module';
 
 
 @Module({
@@ -22,6 +23,7 @@ import { JwtStrategy } from './strategies/jwt.strategy';
         signOptions: { expiresIn: config.get<string>('JWT_EXPIRES') || '1h' },
       }),
     }),
+    ChatModule
   ],
 
   providers: [AuthService, JwtStrategy ],

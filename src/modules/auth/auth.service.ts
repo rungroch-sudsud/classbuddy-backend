@@ -9,6 +9,8 @@ import { ChangePasswordDto, RegisterDto } from './schemas/auth.zod.schema';
 import { InjectModel } from '@nestjs/mongoose';
 import { User, UserDocument } from '../users/schemas/user.schema';
 import { Model } from 'mongoose';
+import { ChatService } from '../chat/chat.service';
+import { StreamChatService } from '../chat/stream-chat.service';
 
 
 
@@ -18,6 +20,7 @@ export class AuthService {
         private readonly userService: UsersService,
         private readonly jwtService: JwtService,
         private readonly smsService: SmsService,
+        private readonly streamChatService: StreamChatService,
         @Inject('REDIS_CLIENT') private readonly redis: Redis,
         @InjectModel(User.name) private readonly userModel: Model<UserDocument>,
     ) { }
@@ -111,10 +114,16 @@ export class AuthService {
 
         if (storedOtp !== otp) throw new BadRequestException('Invalid OTP');
 
-        const user = await this.userService.createProfile(
-            phone,
-            hashed
-        );
+        const user = await this.userService.createProfile(phone, hashed);
+
+        try {
+            await this.streamChatService.upsertUser({
+                id: `user_${user._id}`
+            });
+            
+        } catch (err) {
+            console.warn('[getStream] Failed to upsert Stream user:', err.message);
+        }
 
         await this.redis.del(sessionKey);
         await this.redis.del(attemptKey);

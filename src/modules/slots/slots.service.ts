@@ -3,7 +3,7 @@ import { InjectModel } from '@nestjs/mongoose';
 import { Slot } from './schemas/slot.schema';
 import { Model, Types } from 'mongoose';
 import { Teacher } from '../teachers/schemas/teacher.schema';
-import { SubjectList } from '../subjects/schema/subject.schema';
+import { SubjectList } from '../subjects/schemas/subject.schema';
 import dayjs from 'dayjs';
 import 'dayjs/locale/th';
 

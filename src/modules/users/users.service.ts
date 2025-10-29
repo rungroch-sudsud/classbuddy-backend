@@ -5,6 +5,7 @@ import { User, UserDocument } from './schemas/user.schema';
 import { UpdateProfileDto } from './schemas/user.zod.schema';
 import { S3Service } from 'src/infra/s3/s3.service';
 import { Teacher, TeacherDocument } from '../teachers/schemas/teacher.schema';
+import { StreamChatService } from '../chat/stream-chat.service';
 
 
 @Injectable()
@@ -12,7 +13,8 @@ export class UsersService {
     constructor(
         @InjectModel(User.name) private userModel: Model<UserDocument>,
         @InjectModel(Teacher.name) private teacherModel: Model<TeacherDocument>,
-        private readonly s3Service: S3Service
+        private readonly s3Service: S3Service,
+        private readonly streamChatService: StreamChatService
     ) { }
 
 
@@ -45,6 +47,16 @@ export class UsersService {
 
         if (!update) throw new NotFoundException('User not found');
 
+        try {
+            await this.streamChatService.upsertUser({
+                id: `user_${userId}`,
+                name: `${update.name ?? ''} ${update.lastName ?? ''}`.trim(),
+                image: update.profileImage ?? undefined
+            });
+
+        } catch (err) {
+            console.warn('[getStream] Failed to upsert Stream user:', err.message);
+        }
         return update;
     }
 
@@ -55,7 +67,6 @@ export class UsersService {
     ): Promise<string> {
         const user = await this.userModel.findById(userId);
         if (!user) throw new NotFoundException('ไม่พบผู้ใช้งาน');
-console.log('[Upload]', file?.originalname, file?.size, file?.mimetype);
 
         const filePath = `users/${userId}/profile-image`;
         const publicFileUrl = await this.s3Service.uploadPublicReadFile(
@@ -66,16 +77,25 @@ console.log('[Upload]', file?.originalname, file?.size, file?.mimetype);
         user.profileImage = publicFileUrl;
         await user.save();
 
-        // if (user.role === 'teacher') {
-        //     const teacher = await this.teacherModel.findOne({ 
-        //         userId: new Types.ObjectId(userId)
-        //      });
+        try {
+            await this.streamChatService.upsertUser({
+                id: `user_${userId}`,
+                image: publicFileUrl,
+            });
 
-        //     if (teacher) {
-        //         teacher.profileImage = publicFileUrl;
-        //         await teacher.save();
-        //     }
-        // }
+            const teacher = await this.teacherModel.findOne({
+                userId, verifyStatus: 'verified'
+            }).lean();
+            if (teacher) {
+                await this.streamChatService.upsertUser({
+                    id: `teacher_${userId}`,
+                    image: publicFileUrl,
+                });
+            }
+            // console.log(`[getStream] upsert profile image for ${userId} successful`);
+        } catch (err) {
+            console.warn('[getStream] Failed to upsert image:', err.message);
+        }
 
         return publicFileUrl;
     }

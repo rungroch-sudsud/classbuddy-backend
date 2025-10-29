@@ -11,6 +11,8 @@ import { Slot } from '../slots/schemas/slot.schema';
 import { PayoutLog } from './schemas/payout.schema';
 import { Notification } from '../notifications/schema/notification';
 import { Role } from '../auth/role/role.enum';
+import { StreamChatService } from '../chat/stream-chat.service';
+import { ChatService } from '../chat/chat.service';
 
 const Omise = require('omise');
 
@@ -27,7 +29,9 @@ export class WebhookService {
         @InjectModel(Teacher.name) private teacherModel: Model<any>,
         @InjectModel(Slot.name) private slotModel: Model<any>,
         @InjectModel(PayoutLog.name) private payoutLogModel: Model<any>,
-        @InjectModel(Notification.name) private notificationModel: Model<any>
+        @InjectModel(Notification.name) private notificationModel: Model<any>,
+        private readonly streamChatService: StreamChatService,
+        private readonly chatService: ChatService
     ) {
         const secretKey = process.env.OMISE_SECRET_KEY;
         const publicKey = process.env.OMISE_PUBLIC_KEY;
@@ -65,6 +69,18 @@ export class WebhookService {
 
             user.role = Role.Teacher;
             await user.save();
+
+            try {
+                const teacherStreamId = `teacher_${user._id}`;
+                await this.streamChatService.upsertUser({
+                    id: teacherStreamId,
+                    name: `${teacher.name ?? ''} ${teacher.lastName ?? ''}`.trim(),
+                    image: user.profileImage ?? null,
+                });
+                // console.log(`[getStream] upsert teacher ${teacherStreamId} successful`);
+            } catch (err) {
+                console.warn('[getStream] Failed to upsert teacher:', err.message);
+            }
 
             await this.notificationModel.create({
                 senderType: 'System',
@@ -320,6 +336,18 @@ export class WebhookService {
                         { $inc: { pendingBalance: booking.price } },
                         { upsert: true, session },
                     );
+                }
+
+                try {
+                    await this.chatService.createStudentTeacherChannel(
+                        booking.studentId.toString(),
+                        booking.teacherId.toString(),
+                    );
+                    console.log(
+                        `[getStream] Created chat channel for booking ${booking._id}`
+                    );
+                } catch (err) {
+                    console.warn('[getStream] Failed to create chat channel:', err.message);
                 }
 
                 // 9️⃣ แจ้งเตือนทั้งนักเรียนและครู

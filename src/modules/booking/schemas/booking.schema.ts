@@ -1,6 +1,6 @@
 import { Schema, Prop, SchemaFactory } from "@nestjs/mongoose";
 import mongoose, { HydratedDocument, Types } from "mongoose";
-import { SubjectList } from "src/modules/subjects/schema/subject.schema";
+import { SubjectList } from "src/modules/subjects/schemas/subject.schema";
 import { Teacher } from "src/modules/teachers/schemas/teacher.schema";
 import { User } from "src/modules/users/schemas/user.schema";
 
