@@ -120,7 +120,7 @@ export class PaymentsService {
 
     async payoutTeachers() {
         const teachers = await this.teacherModel
-            .find({ isVerified: true })
+            .find({ verifyStatus: 'verified' })
             .select(`
                 userId name lastName bankName recipientId 
                 bankAccountNumber bankAccountName
@@ -135,20 +135,24 @@ export class PaymentsService {
             let payoutLog: any;
 
             try {
-                await session.withTransaction(async () => {
-                    wallet = await this.walletModel.findOneAndUpdate(
-                        {
-                            userId: teacher.userId,
-                            availableBalance: { $gte: 500 },
-                            lockedBalance: 0,
-                        },
-                        [
-                            { $set: { lockedBalance: '$availableBalance', availableBalance: 0 } },
-                        ],
-                        { new: true, session },
-                    );
+                wallet = await this.walletModel.findOneAndUpdate(
+                    {
+                        userId: teacher._id,
+                        availableBalance: { $gte: 500 },
+                        lockedBalance: 0,
+                    },
+                    [
+                        { $set: { lockedBalance: '$availableBalance', availableBalance: 0 } },
+                    ],
+                    { new: true },
+                );
 
-                    if (!wallet) return;
+                if (!wallet) {
+                    console.warn(`[PayOut] Skipping ${teacher.name}`);
+                    continue;
+                }
+
+                await session.withTransaction(async () => {
 
                     const totalAmount = wallet.lockedBalance;
                     const systemFee = Number((totalAmount * 0.22).toFixed(2));

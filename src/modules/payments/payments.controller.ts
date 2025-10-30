@@ -41,7 +41,9 @@ export class PaymentsController {
     @Post('payout')
     @UseGuards(JwtGuard)
     async payoutTeachers() {
-        return this.paymentsService.payoutTeachers();
+        const result = await this.paymentsService.payoutTeachers();
+
+        return result
     }
 
 

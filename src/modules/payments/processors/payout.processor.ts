@@ -1,4 +1,4 @@
-import { Processor, WorkerHost, OnWorkerEvent } from '@nestjs/bullmq';
+import { Processor, WorkerHost } from '@nestjs/bullmq';
 import { Job } from 'bullmq';
 import { InjectConnection, InjectModel } from '@nestjs/mongoose';
 import { Connection, Model } from 'mongoose';
@@ -34,53 +34,34 @@ export class PayoutProcessor extends WorkerHost {
         this.paymentsService = this.moduleRef.get(PaymentsService, { strict: false });
     }
 
-
     async process(job: Job) {
         if (job.name === 'weekly-payout') {
-            console.log('Running weekly payout job...');
             const result = await this.paymentsService.payoutTeachers();
             return { success: true, queued: result.queued };
         }
 
         if (job.name === 'payout-job') {
             const data = job.data;
-            console.log(`🎯 Processing payout for ${data.name} ${data.lastName}`);
             const session = await this.connection.startSession();
+            console.log(`Processing payout for teacher ${data.name} ${data.lastName}`);
+
             try {
                 await session.withTransaction(async () => {
-                    let recipientId = data.recipientId;
-
-                    // if (!recipientId) {
-                    //     console.log(`🧾 Creating Omise recipient for ${data.name}`);
-                    //     const recipient = await this.omise.recipients.create({
-                    //         name: `${data.name} ${data.lastName}`,
-                    //         type: 'individual',
-                    //         bank_account: {
-                    //             brand: data.bankName.toLowerCase(),
-                    //             number: data.bankAccountNumber,
-                    //             name: data.bankAccountName,
-                    //         },
-                    //     });
-
-                    //     // recipientId = recipient.id;
-                    // }
-
-                    await this.teacherModel.updateOne(
-                        { _id: data.teacherId },
-                        { $set: { recipientId } },
-                        { session },
-                    );
 
                     const transfer = await this.omise.transfers.create({
-                        recipient: recipientId,
+                        recipient: data.recipientId,
                         amount: Math.floor(data.teacherNet * 100),
                         description: `Payout for ${data.name}`,
                         metadata: {
                             teacherId: data.teacherId,
                             walletId: data.walletId,
                             payoutLogId: data.payoutLogId,
-                        },
-                    });
+                        }
+                    },
+                        {
+                            headers: { 'Idempotency-Key': data.payoutLogId }
+                        }
+                    );
 
                     await this.payoutLogModel.updateOne(
                         { _id: data.payoutLogId },
@@ -92,36 +73,42 @@ export class PayoutProcessor extends WorkerHost {
                         },
                         { session },
                     );
-
                     console.log(`Created payout transfer for ${data.name}, waiting Omise webhook...`);
                 });
 
                 return { success: true };
 
-            } catch (error) {
-                console.error(`Payout failed for ${data.name}:`, error.message);
+            } catch (err) {
+                // await this.walletModel.updateOne(
+                //     { _id: data.walletId },
+                //     {
+                //         $inc: { availableBalance: data.totalAmount },
+                //         $set: { lockedBalance: 0 },
+                //     },
+                // );
 
-                await this.walletModel.updateOne(
-                    { _id: data.walletId },
-                    {
-                        $inc: { availableBalance: data.totalAmount },
-                        $set: { lockedBalance: 0 },
-                    },
-                );
+                // await this.payoutLogModel.updateOne(
+                //     { _id: data.payoutLogId },
+                //     {
+                //         $set: {
+                //             status: 'failed',
+                //             errorMessage: err.message,
+                //         },
+                //     },
+                // );
 
+                console.error(`Payout failed for ${data.name}:`, err.message);
                 await this.payoutLogModel.updateOne(
                     { _id: data.payoutLogId },
-                    {
-                        $set: {
-                            status: 'failed',
-                            errorMessage: error.message,
-                        },
-                    },
+                    { $set: { status: 'wait_for_confirm', errorMessage: err.message } },
                 );
-                throw error;
+
+                throw err;
+
             } finally {
                 await session.endSession();
             }
         }
     }
+
 }

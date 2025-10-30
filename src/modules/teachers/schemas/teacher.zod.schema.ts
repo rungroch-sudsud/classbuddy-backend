@@ -40,6 +40,11 @@ export const CreateTeacherProfileSchema = z.object({
     .min(1, 'ต้องมีอย่างน้อย 1 วิชา')
     .max(100, 'id วิชาต้องไม่เกิน 100 ตัวอักษร'),
 
+  customSubjects: z
+    .string().min(2).max(50)
+    .optional()
+    .nullable(),
+
   hourlyRate: z
     .number()
     .min(200, 'ค่าต่อชั่วโมงต้องไม่ต่ำกว่า 200 บาท')
@@ -109,6 +114,11 @@ export const UpdateTeacherSchema = z.object({
   subjects: z
     .array(objectIdSchema)
     .optional(),
+
+  customSubjects: z
+    .string().min(2).max(50)
+    .optional()
+    .nullable(),
 
   hourlyRate: z
     .number()

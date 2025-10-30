@@ -1,11 +1,12 @@
-import { BadRequestException, ConflictException, Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, ConflictException, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Slot } from './schemas/slot.schema';
-import { Model, Types } from 'mongoose';
+import { Model, startSession, Types } from 'mongoose';
 import { Teacher } from '../teachers/schemas/teacher.schema';
-import { SubjectList } from '../subjects/schemas/subject.schema';
 import dayjs from 'dayjs';
 import 'dayjs/locale/th';
+import { Wallet } from '../payments/schemas/wallet.schema';
+import { Booking } from '../booking/schemas/booking.schema';
 
 
 @Injectable()
@@ -13,7 +14,8 @@ export class SlotsService {
     constructor(
         @InjectModel(Slot.name) private slotModel: Model<Slot>,
         @InjectModel(Teacher.name) private readonly teacherModel: Model<Teacher>,
-        @InjectModel(SubjectList.name) private readonly subjectlistModel: Model<SubjectList>
+        @InjectModel(Wallet.name) private readonly walletModel: Model<Wallet>,
+        @InjectModel(Booking.name) private readonly bookingModel: Model<Booking>,
     ) { }
 
     // private combineDateAndTime(dateStr: string, timeStr: string): Date {
@@ -286,6 +288,73 @@ export class SlotsService {
             };
         });
     }
+
+
+    async finishSlotByTeacher(
+        userId: string,
+        slotId: string
+    ): Promise<Wallet> {
+        if (!Types.ObjectId.isValid(slotId)) {
+            throw new BadRequestException('slot id ไม่ถูกต้อง');
+        }
+
+        const session = await startSession();
+        session.startTransaction();
+
+        try {
+            const teacher = await this.teacherModel.findOne({
+                userId: new Types.ObjectId(userId)
+            })
+                .session(session);
+
+            if (!teacher) throw new NotFoundException('ไม่พบข้อมูลครู');
+
+            const slot = await this.slotModel.findById(slotId).session(session);
+            if (!slot) throw new NotFoundException('ไม่พบ slot นี้');
+
+            if (slot.teacherId.toString() !== teacher._id.toString()) {
+                throw new ForbiddenException('คุณไม่มีสิทธิ์ใน slot นี้');
+            }
+
+            if (slot.status !== 'paid') {
+                throw new BadRequestException('สามารถจบคลาสได้เฉพาะ slot ที่อยู่ในสถานะ "paid" เท่านั้น');
+            }
+
+            slot.status = 'studied';
+            await slot.save({ session });
+
+            await this.bookingModel.updateOne(
+                { _id: slot.bookingId },
+                { $set: { status: 'studied' } },
+                { session }
+            );
+
+            const wallet = await this.walletModel.findOne({
+                userId: teacher._id
+            })
+                .session(session);
+
+            if (!wallet) throw new NotFoundException('ไม่พบกระเป๋าเงินของครู');
+
+            if (wallet.pendingBalance < slot.price) {
+                throw new BadRequestException('ยอดเงินในกระเป๋าไม่ถูกต้อง');
+            }
+
+            wallet.pendingBalance -= slot.price;
+            wallet.availableBalance += slot.price;
+            await wallet.save({ session });
+
+            await session.commitTransaction();
+            return wallet
+
+        } catch (err) {
+            await session.abortTransaction();
+            throw err;
+        } finally {
+            session.endSession();
+        }
+    }
+
 
 }
 

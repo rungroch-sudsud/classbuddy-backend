@@ -4,6 +4,7 @@ import { envConfig } from './configs/env.config';
 import { setupSwagger } from './infra/docs/swagger.config';
 import { ZodValidationPipe } from './shared/validators/zod.validation.pipe';
 import { json, urlencoded } from 'express';
+import { Logger, LogLevel } from '@nestjs/common';
 
 async function bootstrap() {
   try {
@@ -22,10 +23,10 @@ async function bootstrap() {
     app.useGlobalPipes(new ZodValidationPipe());
 
     await app.listen(envConfig.port ?? 3000);
-    console.log('server is running on port', envConfig.port)
+    console.log('[System] Server is running on port', envConfig.port)
 
   } catch (err: any) {
-    console.error(`[ERROR] : Failed to start the server ${err.message}`);
+    console.error(`[Error] Failed to start the server ${err.message}`);
   }
 }
 

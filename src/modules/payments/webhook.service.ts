@@ -90,7 +90,7 @@ export class WebhookService {
                 meta: { recipientId, verifiedAt: teacher.verifiedAt },
             });
 
-            console.log(`[Omise Webhook] ${teacher.name} ${teacher.lastname} ${teacher._id} ถูกยืนยันสำเร็จจาก Omise`);
+            console.log(`[Omise Webhook] ${teacher.name} ${teacher.lastName} ${teacher._id} ถูกยืนยันสำเร็จจาก Omise`);
 
         } catch (error) {
             console.error('[OmiseWebhookError', error);
@@ -339,13 +339,18 @@ export class WebhookService {
                 }
 
                 try {
+                    const teacher = await this.teacherModel
+                        .findById(booking.teacherId)
+                        .lean<Teacher & { userId: Types.ObjectId }>();
+
+                    if (!teacher) throw new Error(`Teacher not found for ${booking.teacherId}`);
+
                     await this.chatService.createStudentTeacherChannel(
                         booking.studentId.toString(),
-                        booking.teacherId.toString(),
+                        teacher.userId.toString(),
                     );
-                    console.log(
-                        `[getStream] Created chat channel for booking ${booking._id}`
-                    );
+
+                    console.log(`[getStream] Created chat channel for booking ${booking._id}`);
                 } catch (err) {
                     console.warn('[getStream] Failed to create chat channel:', err.message);
                 }

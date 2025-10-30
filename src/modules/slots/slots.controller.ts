@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Param, Post, UseGuards } from '@nestjs/common';
+import { Body, Controller, Get, Param, Patch, Post, UseGuards } from '@nestjs/common';
 import { SlotsService } from './slots.service';
 import { ApiBearerAuth, ApiBody, ApiExtraModels, ApiTags, getSchemaPath } from '@nestjs/swagger';
 import { JwtGuard } from '../auth/guard/auth.guard';
@@ -141,7 +141,21 @@ export class SlotsController {
     }
 
 
-
+    @Patch(':slotId/finish')
+    async finishSlot(
+        @Param('slotId') slotId: string,
+        @CurrentUser() userId: string
+    ) {
+        const slot = await this.slotsService.finishSlotByTeacher(
+            userId,
+            slotId
+        );
+        
+        return {
+            message: 'ได้จบคลาสนี้เรียบร้อย',
+            data: slot,
+        };
+    }
 
 
 

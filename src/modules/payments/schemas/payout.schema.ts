@@ -30,7 +30,13 @@ export class PayoutLog extends Document {
   gatewayFee?: number;
 
   @Prop({ default: 'pending' })
-  status: 'pending' | 'processing' | 'paid' | 'failed' | 'reversed';
+  status:
+    | 'pending'
+    | 'processing'
+    | 'wait_for_confirm'
+    | 'paid'
+    | 'failed'
+    | 'reversed';
 
   @Prop()
   description?: string;

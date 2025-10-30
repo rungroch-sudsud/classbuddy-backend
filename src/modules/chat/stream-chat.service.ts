@@ -13,10 +13,10 @@ export class StreamChatService {
         this.client = StreamChat.getInstance(apiKey, apiSecret);
     }
 
-  getClient() {
-    return this.client;
-  }
-  
+    getClient() {
+        return this.client;
+    }
+
     async upsertUser(
         user: { id: string; name?: string; image?: string }
     ) {

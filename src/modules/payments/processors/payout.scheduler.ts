@@ -5,7 +5,7 @@ import { Queue } from 'bullmq';
 
 @Injectable()
 export class PayoutScheduler implements OnModuleInit {
-  constructor(@InjectQueue('payout') private readonly payoutQueue: Queue) {}
+  constructor(@InjectQueue('payout') private readonly payoutQueue: Queue) { }
 
   async onModuleInit() {
     try {
@@ -16,7 +16,7 @@ export class PayoutScheduler implements OnModuleInit {
         }
       }
     } catch (e) {
- 
+      console.warn('[PayoutScheduler] Failed to clear existing jobs:', e.message);
     }
 
     await this.payoutQueue.add(
@@ -24,7 +24,7 @@ export class PayoutScheduler implements OnModuleInit {
       {},
       {
         repeat: {
-          pattern: '32 11 15 10 *',
+          pattern: '1 0 * * 2',
           tz: 'Asia/Bangkok',
         },
         jobId: 'weekly-payout',
@@ -32,7 +32,6 @@ export class PayoutScheduler implements OnModuleInit {
         removeOnFail: false,
       },
     );
-
-    console.log('Weekly payout scheduled: every Wednesday 09:00 (Asia/Bangkok)');
+    console.log('[PayoutScheduler] Weekly payout every Tuesday 00:01 (Asia/Bangkok)');
   }
 }

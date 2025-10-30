@@ -40,6 +40,9 @@ export class Teacher {
     })
     subjects?: Types.ObjectId[];
 
+    @Prop({ default: null })
+    customSubjects?: string;
+
     @Prop({
         min: 200,
         max: 3000,

@@ -4,7 +4,7 @@ import { isValidObjectId, Model, Types } from 'mongoose';
 import { Teacher, TeacherDocument } from './schemas/teacher.schema';
 import { S3Service } from 'src/infra/s3/s3.service';
 import { reviewTeacherDto, UpdateTeacherDto } from './schemas/teacher.zod.schema';
-import { Slot, SlotDocument } from '../slots/schemas/slot.schema';
+import { Slot } from '../slots/schemas/slot.schema';
 import { Notification } from '../notifications/schema/notification';
 import { StreamChatService } from '../chat/stream-chat.service';
 import { User } from '../users/schemas/user.schema';
@@ -13,9 +13,9 @@ import { User } from '../users/schemas/user.schema';
 @Injectable()
 export class TeachersService {
     constructor(
-        @InjectModel(Teacher.name) private teacherModel: Model<TeacherDocument>,
+        @InjectModel(Teacher.name) private teacherModel: Model<Teacher>,
         @InjectModel(User.name) private userModel: Model<User>,
-        @InjectModel(Slot.name) private slotModel: Model<SlotDocument>,
+        @InjectModel(Slot.name) private slotModel: Model<Slot>,
         @InjectModel(Notification.name) private notificationModel: Model<Notification>,
         private readonly s3Service: S3Service,
         private readonly streamChatService: StreamChatService
@@ -303,10 +303,16 @@ export class TeachersService {
         userId: string,
         body: UpdateTeacherDto,
     ): Promise<Teacher> {
+        const { customSubjects, ...updateData } = body;
+
+        if (customSubjects && customSubjects.trim() !== '') {
+            updateData['customSubjects'] = customSubjects.trim();
+        }
+
         const updated = await this.teacherModel
             .findOneAndUpdate(
                 { userId: new Types.ObjectId(userId) },
-                { $set: body },
+                { $set: updateData },
                 { new: true }
             )
 
@@ -322,8 +328,7 @@ export class TeachersService {
                     name: `${updated.name ?? ''} ${updated.lastName ?? ''}`.trim(),
                     image,
                 });
-
-                // console.log(`[getStream] upsert verified teacher_${userId} successful`);
+                console.log(`[getStream] upsert verified teacher_${userId} successful`);
             } catch (err) {
                 console.warn('[getStream] Failed to upsert teacher:', err.message);
             }
