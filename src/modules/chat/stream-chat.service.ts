@@ -23,6 +23,10 @@ export class StreamChatService {
         await this.client.upsertUser(user);
     }
 
+    async partialUpdateUser(updateData: any) {
+        return this.client.partialUpdateUser(updateData);
+    }
+
     createUserToken(userId: string) {
         return this.client.createToken(userId);
     }

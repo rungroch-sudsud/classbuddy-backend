@@ -3,9 +3,8 @@ import { InjectModel } from '@nestjs/mongoose';
 import { isValidObjectId, Model, Types } from 'mongoose';
 import { Teacher, TeacherDocument } from './schemas/teacher.schema';
 import { S3Service } from 'src/infra/s3/s3.service';
-import { reviewTeacherDto, UpdateTeacherDto } from './schemas/teacher.zod.schema';
+import { CreateTeacherProfileDto, reviewTeacherDto, UpdateTeacherDto } from './schemas/teacher.zod.schema';
 import { Slot } from '../slots/schemas/slot.schema';
-import { Notification } from '../notifications/schema/notification';
 import { StreamChatService } from '../chat/stream-chat.service';
 import { User } from '../users/schemas/user.schema';
 
@@ -16,7 +15,6 @@ export class TeachersService {
         @InjectModel(Teacher.name) private teacherModel: Model<Teacher>,
         @InjectModel(User.name) private userModel: Model<User>,
         @InjectModel(Slot.name) private slotModel: Model<Slot>,
-        @InjectModel(Notification.name) private notificationModel: Model<Notification>,
         private readonly s3Service: S3Service,
         private readonly streamChatService: StreamChatService
     ) { }
@@ -65,14 +63,19 @@ export class TeachersService {
 
     async createTeacherProfile(
         userId: string,
-        body: any
+        body: CreateTeacherProfileDto
     ): Promise<TeacherDocument> {
         const exist = await this.findTeacher(userId);
         if (exist) throw new ConflictException('มีครูคนนี้อยู่ในระบบอยู่แล้ว');
 
+        const user = await this.userModel.findById(userId);
+        if (!user) throw new NotFoundException('ไม่พบผู้ใช้งาน');
+
         const createTeacher = new this.teacherModel({
             ...body,
-            userId: new Types.ObjectId(userId)
+            userId: new Types.ObjectId(userId),
+            name: user.name,
+            lastName: user.lastName,
         });
 
         return createTeacher.save();

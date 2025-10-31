@@ -5,7 +5,6 @@ import { TeachersController } from './teachers.controller';
 import { TeachersService } from './teachers.service';
 import { S3Module } from 'src/infra/s3/s3.module';
 import { Slot, SlotSchema } from '../slots/schemas/slot.schema';
-import { Notification, NotificationSchema } from '../notifications/schema/notification';
 import { ChatModule } from '../chat/chat.module';
 import { User, UserSchema } from '../users/schemas/user.schema';
 
@@ -15,7 +14,6 @@ import { User, UserSchema } from '../users/schemas/user.schema';
             { name: Teacher.name, schema: TeacherSchema },
             { name: User.name, schema: UserSchema },
             { name: Slot.name, schema: SlotSchema },
-            { name: Notification.name, schema: NotificationSchema }
         ]),
         S3Module,
         ChatModule

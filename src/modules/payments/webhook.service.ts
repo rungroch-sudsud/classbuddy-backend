@@ -1,8 +1,8 @@
-import { BadRequestException, ConflictException, Injectable, InternalServerErrorException, Logger, NotFoundException } from '@nestjs/common';
+import { BadRequestException, ConflictException, Injectable, InternalServerErrorException } from '@nestjs/common';
 import { InjectModel, InjectConnection } from '@nestjs/mongoose';
 
 import { Payment, PaymentStatus, PaymentType } from './schemas/payment.schema';
-import mongoose, { Model, Types, Connection } from 'mongoose';
+import { Model, Types, Connection } from 'mongoose';
 import { Wallet } from './schemas/wallet.schema';
 import { Booking } from '../booking/schemas/booking.schema';
 import { User } from '../users/schemas/user.schema';
@@ -46,18 +46,18 @@ export class WebhookService {
             if (!recipient?.id) return;
 
             if (recipient.object !== 'recipient' || !recipient.verified) {
-                return console.log(`[Omise Webhook] Recipient ${recipient.id} ยังไม่ verified`);
+                return console.warn(`[OMISE WEBHOOK] Recipient ${recipient.id} ยังไม่ verified`);
             }
 
             const recipientId = recipient.id;
             const teacher = await this.teacherModel.findOne({ recipientId });
 
             if (!teacher) {
-                return console.warn(`[Omise Webhook] ไม่พบ Teacher ที่มี recipientId: ${recipientId}`);
+                return console.warn(`[OMISE WEBHOOK] ไม่พบ Teacher ที่มี recipientId: ${recipientId}`);
             }
 
             if (teacher.verifyStatus === 'verified') {
-                return console.log(`[Omise Webhook] Teacher ${teacher.name} verified ไปเรียบร้อยแล้ว`);
+                return console.log(`[OMISE WEBHOOK] Teacher ${teacher.name} verified ไปเรียบร้อยแล้ว`);
             }
 
             teacher.verifyStatus = 'verified';
@@ -65,21 +65,21 @@ export class WebhookService {
             await teacher.save();
 
             const user = await this.userModel.findOne({ _id: teacher.userId });
-            if (!user) return console.warn(`[Omise Webhook] ไม่พบ User ที่มี ${teacher.userId}`);
+            if (!user) return console.warn(`[OMISE WEBHOOK] ไม่พบ User ที่มี ${teacher.userId}`);
 
             user.role = Role.Teacher;
             await user.save();
 
             try {
-                const teacherStreamId = `teacher_${user._id}`;
+                const teacherStreamId = `${user._id}`;
                 await this.streamChatService.upsertUser({
                     id: teacherStreamId,
                     name: `${teacher.name ?? ''} ${teacher.lastName ?? ''}`.trim(),
                     image: user.profileImage ?? null,
                 });
-                // console.log(`[getStream] upsert teacher ${teacherStreamId} successful`);
+                console.log(`[GETSTREAM] upsert teacher ${teacherStreamId} successful`);
             } catch (err) {
-                console.warn('[getStream] Failed to upsert teacher:', err.message);
+                console.warn('[GETSTREAM] Failed to upsert teacher:', err.message);
             }
 
             await this.notificationModel.create({
@@ -90,11 +90,11 @@ export class WebhookService {
                 meta: { recipientId, verifiedAt: teacher.verifiedAt },
             });
 
-            console.log(`[Omise Webhook] ${teacher.name} ${teacher.lastName} ${teacher._id} ถูกยืนยันสำเร็จจาก Omise`);
+            console.log(`[OMISE WEBHOOK] ${teacher.name} ${teacher.lastName} ${teacher._id} ถูกยืนยันสำเร็จจาก Omise`);
 
-        } catch (error) {
-            console.error('[OmiseWebhookError', error);
-            throw new InternalServerErrorException('เกิดข้อผิดพลาดในการประมวลผล recipient webhook');
+        } catch (err) {
+            console.error('[OMISE WEBHOOK] :', err);
+            throw err;
         }
     }
 
@@ -279,7 +279,7 @@ export class WebhookService {
                 );
 
                 if (status !== PaymentStatus.SUCCESS) {
-                    console.log(`[Omise Webhook] Payment ${chargeId} ยังไม่สำเร็จ (status=${status})`);
+                    console.log(`[OMISE WEBHOOK] Payment ${chargeId} ยังไม่สำเร็จ status: ${status}`);
                     return;
                 }
 
@@ -295,22 +295,22 @@ export class WebhookService {
                     .findOne({ userId: userObjId, role: Role.User })
                     .session(session);
 
-                if (!wallet) throw new Error(`[Wallet] Not found for user ${userObjId}`);
+                if (!wallet) throw new Error(`ไม่พบกระเป๋าเงินของ ${userObjId}`);
 
                 // 3️⃣ ตรวจ booking
                 const booking = await this.bookingModel.findById(bookingObjId).session(session);
-                if (!booking) throw new Error('Booking not found');
+                if (!booking) throw new Error('Booking id ไม่ถูกต้อง');
                 if (booking.status === 'paid') return;
                 if (booking.status !== 'wait_for_payment') {
                     throw new ConflictException('Booking is not awaiting payment');
                 }
                 if (booking.price !== amountTHB) {
-                    throw new Error(`Payment amount mismatch: expected ${booking.price}, got ${amountTHB}`);
+                    throw new Error(`ยอดเงินไม่ถูกต้องไม่ควรเกิดขึ้น ${booking.price} ได้รับ ${amountTHB}`);
                 }
 
                 // 4️⃣ ตรวจยอดเงินคงเหลือ
                 if (wallet.availableBalance < booking.price) {
-                    throw new Error('Insufficient balance after top-up');
+                    throw new Error('ยอดเงินไม่ถูกต้องไม่ควรเกิดขึ้น');
                 }
 
                 // 5️⃣ หักยอดจาก wallet (หักจากตัวแปร wallet ที่เพิ่ง query ได้)
@@ -343,16 +343,16 @@ export class WebhookService {
                         .findById(booking.teacherId)
                         .lean<Teacher & { userId: Types.ObjectId }>();
 
-                    if (!teacher) throw new Error(`Teacher not found for ${booking.teacherId}`);
+                    if (!teacher) throw new Error(`[WEBHOOK] Teacher not found for ${booking.teacherId}`);
 
-                    await this.chatService.createStudentTeacherChannel(
+                    await this.chatService.createOrGetChannel(
                         booking.studentId.toString(),
                         teacher.userId.toString(),
                     );
 
-                    console.log(`[getStream] Created chat channel for booking ${booking._id}`);
+                    console.log(`[GETSTREAM] Created chat channel for booking ${booking._id}`);
                 } catch (err) {
-                    console.warn('[getStream] Failed to create chat channel:', err.message);
+                    console.warn('[GETSTREAM] Failed to create chat channel:', err.message);
                 }
 
                 // 9️⃣ แจ้งเตือนทั้งนักเรียนและครู
@@ -396,7 +396,7 @@ export class WebhookService {
                 ], { session, ordered: true });
             });
         } catch (err) {
-            console.error('[OmiseWebhookError]', err);
+            console.error('[OMISE WEBHOOK]', err);
             throw err;
         } finally {
             await session.endSession();
@@ -453,9 +453,13 @@ export class WebhookService {
         try {
             const objectType = evt?.data.object;
             const objectId = evt?.data.id;
-            console.log(`[Omise Webhook] ${evt.key} → ${objectType} (${objectId})`);
+            console.log(`[OMISE WEBHOOK] ${evt.key} → ${objectType} (${objectId})`);
 
-            if (!objectType || !objectId) return;
+            if (!objectType || !objectId) {
+                console.warn('[OMISE WEBHOOK] Missing object info:', evt);
+                return;
+            }
+
             switch (objectType) {
 
                 case 'charge':
@@ -467,14 +471,13 @@ export class WebhookService {
                 case 'recipient':
                     await this.handleRecipientWebhook(evt);
                     break;
-
                 default:
-                    console.log('[Webhook] Recipient event received:', evt.data);
+                    console.log('[OMISE WEBHOOK] Recipient event received:', evt.data);
                     break;
             }
 
-        } catch (error) {
-            console.error('Error processing Omise Webhook:', error);
+        } catch (err) {
+            console.error('[OMISE WEBHOOK] Error processing :', err);
             throw new InternalServerErrorException('Webhook processing error');
         }
     }

@@ -18,44 +18,39 @@ export class ChatService {
         const user = await this.userModel.findById(userId).lean();
         if (!user) throw new NotFoundException('ไม่พบผู้ใช้งาน');
 
-        const userStreamId = `user_${userId}`;
+        const userStreamId = `${userId}`;
         const userToken = this.streamChatService.createUserToken(userStreamId);
 
-        let teacherToken: string | null = null;
-
-        if (user.role === 'teacher') {
-            const teacherStreamId = `teacher_${userId}`;
-            teacherToken = this.streamChatService.createUserToken(teacherStreamId);
-        }
-
-        return { userToken, teacherToken };
+        return userToken
     }
 
+    async createOrGetChannel(studentId: string, teacherId: string) {
+        const client = this.streamChatService.getClient();
+        const [a, b] = [studentId, teacherId]
+        const channelId = `stud_${a}_teac_${b}`;
 
-    async createStudentTeacherChannel(studentId: string, teacherId: string) {
-        const studentStreamId = `user_${studentId}`;
-        const teacherStreamId = `teacher_${teacherId}`;
-        const channelId = `stu_${studentId}_teac_${teacherId}`;
+        let channel = client.channel('messaging', channelId);
 
         try {
-            const client = this.streamChatService.getClient();
-
-            const channel = client.channel('messaging', channelId, {
-                members: [studentStreamId, teacherStreamId],
-                created_by_id: teacherStreamId,
-            });
-
-            await channel.create();
-            console.log(`[getStream] created channel ${channelId}`);
-
-            return { channelId, studentStreamId, teacherStreamId };
+            const state = await channel.query({});
+            if (state?.channel?.id) {
+                console.log(`[GETSTREAM] Found existing chat channel: ${channelId}`);
+                return channel;
+            }
         } catch (err) {
-            console.error('[getStream] Failed to create channel:', err.message);
-            throw new InternalServerErrorException('ไม่สามารถสร้างห้องแชทได้');
+            console.log(`[GETSTREAM] Channel not found → creating new one: ${channelId}`);
         }
+
+        channel = client.channel('messaging', channelId, {
+            members: [studentId, teacherId],
+            created_by_id: studentId
+        });
+
+        console.log(`[GETSTREAM] Created new chat channel: ${channelId}`);
+        await channel.create();
+
+        return channel;
     }
-
-
 
 
 }

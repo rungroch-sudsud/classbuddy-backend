@@ -15,7 +15,7 @@ export class PayoutLog extends Document {
   walletId: Types.ObjectId;
 
   @Prop({ required: true })
-  amount: number; // บาท
+  amount: number;
 
   @Prop()
   teacherAmount: number;
@@ -33,7 +33,6 @@ export class PayoutLog extends Document {
   status:
     | 'pending'
     | 'processing'
-    | 'wait_for_confirm'
     | 'paid'
     | 'failed'
     | 'reversed';

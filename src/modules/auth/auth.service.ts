@@ -2,15 +2,14 @@ import { Injectable, BadRequestException, Inject } from '@nestjs/common';
 import { UsersService } from '../users/users.service';
 import { JwtService } from '@nestjs/jwt';
 import { SmsService } from 'src/infra/sms/sms.service';
-import * as bcrypt from 'bcrypt';
-import Redis from 'ioredis';
-import { v4 as uuidv4 } from 'uuid';
 import { ChangePasswordDto, RegisterDto } from './schemas/auth.zod.schema';
 import { InjectModel } from '@nestjs/mongoose';
 import { User, UserDocument } from '../users/schemas/user.schema';
 import { Model } from 'mongoose';
-import { ChatService } from '../chat/chat.service';
 import { StreamChatService } from '../chat/stream-chat.service';
+import { v4 as uuidv4 } from 'uuid';
+import Redis from 'ioredis';
+import * as bcrypt from 'bcrypt';
 
 
 
@@ -118,11 +117,11 @@ export class AuthService {
 
         try {
             await this.streamChatService.upsertUser({
-                id: `user_${user._id}`
+                id: `${user._id}`
             });
-            
+
         } catch (err) {
-            console.warn('[getStream] Failed to upsert Stream user:', err.message);
+            console.warn('[GETSTREAM] Failed to upsert Stream user:', err.message);
         }
 
         await this.redis.del(sessionKey);

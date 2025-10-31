@@ -20,16 +20,6 @@ const EducationSchema = z.object({
 
 
 export const CreateTeacherProfileSchema = z.object({
-  name: z
-    .string()
-    .min(2, 'ชื่อต้องมีอย่างน้อย 2 ตัวอักษร')
-    .max(20, 'ชื่อต้องไม่เกิน 20 ตัวอักษร'),
-
-  lastName: z
-    .string()
-    .min(2, 'นามสกุลต้องมีอย่างน้อย 2 ตัวอักษร')
-    .max(20, 'นามสกุลต้องไม่เกิน 20 ตัวอักษร'),
-
   bio: z
     .string()
     .min(150, 'bio ขั้นต่ำ 150 ตัวอักษร')
@@ -94,18 +84,6 @@ export class CreateTeacherProfileDto extends createZodDto(CreateTeacherProfileSc
 
 
 export const UpdateTeacherSchema = z.object({
-  name: z
-    .string()
-    .min(2, 'ชื่อต้องมีอย่างน้อย 2 ตัวอักษร')
-    .max(20, 'ชื่อต้องไม่เกิน 20 ตัวอักษร')
-    .optional(),
-
-  lastName: z
-    .string()
-    .min(2, 'นามสกุลต้องมีอย่างน้อย 2 ตัวอักษร')
-    .max(20, 'นามสกุลต้องไม่เกิน 20 ตัวอักษร')
-    .optional(),
-
   bio: z
     .string()
     .max(150, 'bio ต้องไม่เกิน 150 ตัวอักษร')

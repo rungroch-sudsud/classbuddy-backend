@@ -24,7 +24,7 @@ export class AuthController {
         const register = await this.authService.register(body);
 
         return {
-            message: 'Send opt successfully',
+            message: 'OTP ได้ส่งเรียบร้อยแล้ว',
             data: register,
         };
     }
@@ -38,7 +38,7 @@ export class AuthController {
         const verify = await this.authService.verifyRegisterOtp(body);
 
         return {
-            message: 'Register successfully',
+            message: 'ยืนยัน OTP สำเร็จ',
             data: verify,
         };
     }
@@ -52,7 +52,7 @@ export class AuthController {
         const login = await this.authService.login(body);
 
         return {
-            message: 'Login successfully',
+            message: 'ล็อคอินสำเร็จ',
             data: login,
         };
     }
@@ -66,7 +66,7 @@ export class AuthController {
         const resend = await this.authService.resendOtp(sessionId);
 
         return {
-            message: 'Resend opt successfully',
+            message: 'OTP ถูกส่งสำเร็จ',
             data: resend,
         };
     }
@@ -78,7 +78,7 @@ export class AuthController {
         const forgot = await this.authService.forgotPassword(body.phone);
 
         return {
-            message: 'Send OTP successfully',
+            message: 'OTP ถูกส่งสำเร็จ',
             data: forgot,
         };
     }
@@ -121,7 +121,7 @@ export class AuthController {
         const resend = await this.authService.resendForgotPasswordOtp(sessionId);
 
         return {
-            message: 'Resend OTP successfully',
+            message: 'ส่งรหัส OTP เรียบร้อย',
             data: resend,
         };
     }
@@ -137,7 +137,7 @@ export class AuthController {
         const change = await this.authService.changePassword(userId, body);
 
         return {
-            message: 'Change password successfully',
+            message: 'เปลี่ยนรหัสผ่านสำเร็จ',
             data: change,
         };
     }

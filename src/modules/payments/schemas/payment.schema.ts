@@ -6,8 +6,8 @@ export enum PaymentType {
     TOPUP = 'TOPUP',
     BOOKING_PAYMENT = 'BOOKING_PAYMENT',
     REFUND = 'REFUND',
-    TRANSFER_TO_TEACHER = 'TRANSFER_TO_TEACHER',
-    PAYOUT = 'PAYOUT',
+    // TRANSFER_TO_TEACHER = 'TRANSFER_TO_TEACHER',
+    // PAYOUT = 'PAYOUT',
 }
 
 export enum PaymentStatus {

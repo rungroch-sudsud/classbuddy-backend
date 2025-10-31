@@ -22,7 +22,6 @@ export class PayoutProcessor extends WorkerHost {
         @InjectModel(Teacher.name) private teacherModel: Model<Teacher>,
         @InjectModel(PayoutLog.name) private payoutLogModel: Model<PayoutLog>,
         private moduleRef: ModuleRef,
-
     ) {
         super();
         const secretKey = process.env.OMISE_SECRET_KEY;
@@ -30,10 +29,12 @@ export class PayoutProcessor extends WorkerHost {
         this.omise = Omise({ secretKey, publicKey });
     }
 
+
     async onModuleInit() {
         this.paymentsService = this.moduleRef.get(PaymentsService, { strict: false });
     }
 
+    
     async process(job: Job) {
         if (job.name === 'weekly-payout') {
             const result = await this.paymentsService.payoutTeachers();
@@ -43,26 +44,23 @@ export class PayoutProcessor extends WorkerHost {
         if (job.name === 'payout-job') {
             const data = job.data;
             const session = await this.connection.startSession();
-            console.log(`Processing payout for teacher ${data.name} ${data.lastName}`);
+            console.log(`[PAYOUT] Processing payout for teacher ${data.name} ${data.lastName}`);
 
             try {
+                const transfer = await this.omise.transfers.create({
+                    recipient: data.recipientId,
+                    amount: Math.floor(data.teacherNet * 100),
+                    description: `Payout for ${data.name}`,
+                    metadata: {
+                        teacherId: data.teacherId,
+                        walletId: data.walletId,
+                        payoutLogId: data.payoutLogId,
+                    }
+                },
+                    { headers: { 'Idempotency-Key': data.payoutLogId } }
+                );
+
                 await session.withTransaction(async () => {
-
-                    const transfer = await this.omise.transfers.create({
-                        recipient: data.recipientId,
-                        amount: Math.floor(data.teacherNet * 100),
-                        description: `Payout for ${data.name}`,
-                        metadata: {
-                            teacherId: data.teacherId,
-                            walletId: data.walletId,
-                            payoutLogId: data.payoutLogId,
-                        }
-                    },
-                        {
-                            headers: { 'Idempotency-Key': data.payoutLogId }
-                        }
-                    );
-
                     await this.payoutLogModel.updateOne(
                         { _id: data.payoutLogId },
                         {
@@ -73,37 +71,32 @@ export class PayoutProcessor extends WorkerHost {
                         },
                         { session },
                     );
-                    console.log(`Created payout transfer for ${data.name}, waiting Omise webhook...`);
                 });
 
+                console.log(`[PAYOUT] Created transfer for ${data.name}, waiting Omise webhook...`);
                 return { success: true };
 
             } catch (err) {
-                // await this.walletModel.updateOne(
-                //     { _id: data.walletId },
-                //     {
-                //         $inc: { availableBalance: data.totalAmount },
-                //         $set: { lockedBalance: 0 },
-                //     },
-                // );
-
-                // await this.payoutLogModel.updateOne(
-                //     { _id: data.payoutLogId },
-                //     {
-                //         $set: {
-                //             status: 'failed',
-                //             errorMessage: err.message,
-                //         },
-                //     },
-                // );
-
-                console.error(`Payout failed for ${data.name}:`, err.message);
-                await this.payoutLogModel.updateOne(
-                    { _id: data.payoutLogId },
-                    { $set: { status: 'wait_for_confirm', errorMessage: err.message } },
+                await this.walletModel.updateOne(
+                    { _id: data.walletId },
+                    {
+                        $inc: { availableBalance: data.totalAmount },
+                        $set: { lockedBalance: 0 },
+                    },
                 );
 
-                throw err;
+                await this.payoutLogModel.updateOne(
+                    { _id: data.payoutLogId },
+                    {
+                        $set: {
+                            status: 'failed',
+                            errorMessage: err.message ?? 'unknow error',
+                        },
+                    },
+                );
+
+                console.error(`[PAYOUT] Payout failed for ${data.name}:`, err.message ?? 'unknow error');
+                return { success: false, error: err.message ?? 'unknow error' };
 
             } finally {
                 await session.endSession();

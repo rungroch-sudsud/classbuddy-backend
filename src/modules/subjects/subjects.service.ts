@@ -34,12 +34,9 @@ export class SubjectsService {
         return subject.save();
     }
 
-
     async getAllSubject():Promise<SubjectListDocument[]> {
         return this.subjectModel.find()
 
     }
-
-
 
 }

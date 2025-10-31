@@ -355,6 +355,5 @@ export class SlotsService {
         }
     }
 
-
 }
 

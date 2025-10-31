@@ -49,13 +49,13 @@ export class UsersService {
 
         try {
             await this.streamChatService.upsertUser({
-                id: `user_${userId}`,
+                id: `${userId}`,
                 name: `${update.name ?? ''} ${update.lastName ?? ''}`.trim(),
                 image: update.profileImage ?? undefined
             });
 
         } catch (err) {
-            console.warn('[getStream] Failed to upsert Stream user:', err.message);
+            console.warn('[GETSTREAM] Failed to upsert Stream user:', err.message);
         }
         return update;
     }
@@ -78,23 +78,12 @@ export class UsersService {
         await user.save();
 
         try {
-            await this.streamChatService.upsertUser({
-                id: `user_${userId}`,
-                image: publicFileUrl,
+            await this.streamChatService.partialUpdateUser({
+                id: `${userId}`,
+                set: { image: publicFileUrl },
             });
-
-            const teacher = await this.teacherModel.findOne({
-                userId, verifyStatus: 'verified'
-            }).lean();
-            if (teacher) {
-                await this.streamChatService.upsertUser({
-                    id: `teacher_${userId}`,
-                    image: publicFileUrl,
-                });
-            }
-            // console.log(`[getStream] upsert profile image for ${userId} successful`);
         } catch (err) {
-            console.warn('[getStream] Failed to upsert image:', err.message);
+            console.warn('[GETSTREAM] Failed to upsert image:', err.message);
         }
 
         return publicFileUrl;
