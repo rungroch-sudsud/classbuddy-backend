@@ -57,7 +57,7 @@ export class Teacher {
     reviewCount?: number;
 
     @Prop({ min: 0, default: 0 })
-    teachCount?: number;
+    totalTeachingHours?: number;
 
     @Prop({ min: 0, default: 0 })
     classCount?: number;

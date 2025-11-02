@@ -38,9 +38,6 @@ export class Payment {
     @Prop({ required: true })
     amount: number;
 
-    @Prop({ required: true, enum: PaymentType })
-    type: PaymentType;
-
     @Prop({
         required: true,
         enum: PaymentStatus,

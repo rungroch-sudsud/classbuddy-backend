@@ -1,17 +1,31 @@
 import { Schema, Prop, SchemaFactory } from "@nestjs/mongoose";
-import mongoose, { HydratedDocument, Types } from "mongoose";
+import { HydratedDocument, Types } from "mongoose";
+import { Slot } from "src/modules/slots/schemas/slot.schema";
 import { SubjectList } from "src/modules/subjects/schemas/subject.schema";
 import { Teacher } from "src/modules/teachers/schemas/teacher.schema";
 import { User } from "src/modules/users/schemas/user.schema";
+import { BookingStatusList } from "src/shared/enums/booking.status.enum";
+import type { BookingStatus } from 'src/shared/enums/booking.status.enum';
 
 
 @Schema({ timestamps: true })
 export class Booking {
-    @Prop({ type: Types.ObjectId, ref: User.name, required: true })
+    @Prop({
+        type: Types.ObjectId,
+        ref: User.name,
+        required: true
+    })
     studentId: Types.ObjectId;
 
-    @Prop({ type: Types.ObjectId, ref: Teacher.name, required: true })
+    @Prop({
+        type: Types.ObjectId,
+        ref: Teacher.name,
+        required: true
+    })
     teacherId: Types.ObjectId;
+
+    @Prop({ type: String, required: true})
+    slotId: string;
 
     @Prop({ type: String })
     date: string;
@@ -25,21 +39,21 @@ export class Booking {
     @Prop({ type: Number, required: true })
     price: number;
 
-    @Prop({ type: Types.ObjectId, ref: SubjectList.name, required: true })
+    @Prop({
+        type: Types.ObjectId,
+        ref: SubjectList.name,
+    })
     subject: Types.ObjectId;
 
-    @Prop({ type: String, default: null })
-    meetId?: string;
-
-    @Prop({ type: Object, default: {} })
-    meta?: Record<string, any>;
+    // @Prop({ type: Object, default: {} })
+    // meta?: Record<string, any>;
 
     @Prop({
         type: String,
-        enum: ['pending', 'wait_for_payment', 'paid', 'studied', 'rejected'],
+        enum: BookingStatusList,
         default: 'pending'
     })
-    status: 'pending' | 'wait_for_payment' | 'paid' | 'studied' | 'rejected';
+    status: BookingStatus;
 
     @Prop({ type: Date })
     paidAt?: Date;

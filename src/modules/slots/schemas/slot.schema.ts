@@ -1,38 +1,53 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 import { Document, Types } from 'mongoose';
 import { SubjectList } from 'src/modules/subjects/schemas/subject.schema';
+import { BookingStatusList } from "src/shared/enums/booking.status.enum";
+import type { BookingStatus } from 'src/shared/enums/booking.status.enum';
+
 
 @Schema()
 export class Slot extends Document {
-  @Prop({ type: Types.ObjectId, ref: 'Teacher', required: true })
+  @Prop({
+    type: Types.ObjectId,
+    ref: 'Teacher',
+    required: true
+  })
   teacherId: string;
 
-  @Prop()
+  @Prop({ type: String, default: null })
   bookingId: string;
 
-  @Prop({ required: true })
+  @Prop({ type: String, required: true })
+  date: string;
+
+  @Prop({ type: Date, required: true })
   startTime: Date;
 
-  @Prop({ required: true })
+  @Prop({ type: Date, required: true })
   endTime: Date;
 
-  @Prop({ required: true })
+  @Prop({ type: Number, required: true })
   price: number;
 
-  @Prop({ type: Types.ObjectId, ref: SubjectList.name, required: true })
+  @Prop({
+    type: Types.ObjectId,
+    ref: SubjectList.name,
+    default: null
+  })
   subject: Types.ObjectId;
-
-  @Prop({ default: null })
-  meetId: string;
 
   @Prop({
     type: String,
-    enum: ['pending', 'wait_for_payment', 'paid', 'studied', 'rejected'],
-    default: 'pending'
+    enum: BookingStatusList,
+    default: 'available'
   })
-  status: 'pending' | 'wait_for_payment' | 'paid' | 'studied' | 'rejected';
+  status: BookingStatus;
 
-  @Prop({ type: Types.ObjectId, ref: 'User', default: null })
+  @Prop({
+    type: Types.ObjectId,
+    ref: 'User',
+    default: null
+  })
   bookedBy: Types.ObjectId
 }
 

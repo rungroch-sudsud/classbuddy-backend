@@ -9,11 +9,14 @@ import { Teacher, TeacherSchema } from '../teachers/schemas/teacher.schema';
 import { SubjectList, SubjectSchema } from '../subjects/schemas/subject.schema';
 import { User, UserSchema } from '../users/schemas/user.schema';
 import { ChatModule } from '../chat/chat.module';
+import { Slot, SlotSchema } from '../slots/schemas/slot.schema';
+import { BookingCronService } from './booking.cron';
 
 @Module({
     imports: [
         MongooseModule.forFeature([
             { name: Booking.name, schema: BookingSchema },
+            { name: Slot.name, schema: SlotSchema },
             { name: User.name, schema: UserSchema },
             { name: Teacher.name, schema: TeacherSchema },
             { name: SubjectList.name, schema: SubjectSchema },
@@ -22,7 +25,7 @@ import { ChatModule } from '../chat/chat.module';
         SlotsModule,
         ChatModule
     ],
-    providers: [BookingService],
+    providers: [BookingService, BookingCronService],
     controllers: [BookingController],
     exports: [BookingService],
 })

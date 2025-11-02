@@ -1,5 +1,5 @@
 import { Controller, Get, Param, Patch, UseGuards } from '@nestjs/common';
-import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
+import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { AdminService } from './admin.service';
 import { JwtGuard } from '../auth/guard/auth.guard';
 import { RolesGuard } from '../auth/guard/roles.guard';
@@ -22,6 +22,7 @@ export class AdminController {
     ) { }
 
 
+    @ApiOperation({ summary: 'ดึงครูที่รอการ verify' })
     @Get('verify/pending')
     async getPendingTeachers() {
         const find = await this.adminService.getPendingTeachers();
@@ -32,6 +33,8 @@ export class AdminController {
         };
     }
 
+
+    @ApiOperation({ summary: 'ยืนยันการตัวตนของครู' })
     @Patch(':teacherId/verify')
     async verifyTeacher(
         @Param('teacherId') teacherId: string) {
@@ -43,6 +46,7 @@ export class AdminController {
         };
     }
 
+    @ApiOperation({ summary: 'ปฎิเสฑเอกสารของครู' })
     @Patch(':teacherId/reject')
     async rejectTeacher(
         @Param('teacherId') teacherId: string) {

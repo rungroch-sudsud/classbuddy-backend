@@ -24,15 +24,15 @@ export class PaymentsController {
     @Post('booking/:bookingId')
     @UseGuards(JwtGuard)
     async createPayCharge(
+        @Param('bookingId') bookingId: string,
         @CurrentUser() userId: string,
-        @Param('bookingId') bookingId: string
     ) {
         const create = await this.paymentsService.createPromptPayCharge(
-            userId, bookingId
+            bookingId, userId
         )
 
         return {
-            message: 'Create payment successfully',
+            message: 'ชำระเงินสำเร็จแล้ว',
             data: create,
         };
     }

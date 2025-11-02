@@ -298,12 +298,17 @@ export class WebhookService {
                 if (!wallet) throw new Error(`ไม่พบกระเป๋าเงินของ ${userObjId}`);
 
                 // 3️⃣ ตรวจ booking
-                const booking = await this.bookingModel.findById(bookingObjId).session(session);
+                const booking = await this.bookingModel
+                    .findById(bookingObjId)
+                    .session(session);
+
                 if (!booking) throw new Error('Booking id ไม่ถูกต้อง');
                 if (booking.status === 'paid') return;
-                if (booking.status !== 'wait_for_payment') {
+
+                if (booking.status !== 'pending') {
                     throw new ConflictException('Booking is not awaiting payment');
                 }
+
                 if (booking.price !== amountTHB) {
                     throw new Error(`ยอดเงินไม่ถูกต้องไม่ควรเกิดขึ้น ${booking.price} ได้รับ ${amountTHB}`);
                 }

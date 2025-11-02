@@ -1,12 +1,19 @@
 import { BadRequestException, ConflictException, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
-import { InjectModel } from '@nestjs/mongoose';
+import { InjectModel, InjectConnection } from '@nestjs/mongoose';
 import { Slot } from './schemas/slot.schema';
-import { Model, startSession, Types } from 'mongoose';
+import { Model, Types } from 'mongoose';
 import { Teacher } from '../teachers/schemas/teacher.schema';
-import dayjs from 'dayjs';
-import 'dayjs/locale/th';
 import { Wallet } from '../payments/schemas/wallet.schema';
 import { Booking } from '../booking/schemas/booking.schema';
+import { Connection } from 'mongoose';
+import dayjs from 'dayjs';
+import utc from 'dayjs/plugin/utc';
+import timezone from 'dayjs/plugin/timezone';
+import 'dayjs/locale/th';
+
+
+dayjs.extend(utc);
+dayjs.extend(timezone);
 
 
 @Injectable()
@@ -16,150 +23,198 @@ export class SlotsService {
         @InjectModel(Teacher.name) private readonly teacherModel: Model<Teacher>,
         @InjectModel(Wallet.name) private readonly walletModel: Model<Wallet>,
         @InjectModel(Booking.name) private readonly bookingModel: Model<Booking>,
+        @InjectConnection() private readonly connection: Connection,
     ) { }
 
-    // private combineDateAndTime(dateStr: string, timeStr: string): Date {
-    //     const [year, month, day] = dateStr.split('-').map(Number);
-    //     const [hours, minutes] = timeStr.split(':').map(Number);
+    private combineDateAndTime(dateStr: string, timeStr: string): Date {
+        const [year, month, day] = dateStr.split('-').map(Number);
+        const [hours, minutes] = timeStr.split(':').map(Number);
 
-    //     if (isNaN(year) || isNaN(month) || isNaN(day)) {
-    //         throw new BadRequestException(`รูปแบบวันที่ไม่ถูกต้อง: ${dateStr}`);
-    //     }
-    //     if (isNaN(hours) || isNaN(minutes)) {
-    //         throw new BadRequestException(`รูปแบบเวลาไม่ถูกต้อง: ${timeStr}`);
-    //     }
+        if (isNaN(year) || isNaN(month) || isNaN(day)) {
+            throw new BadRequestException(`รูปแบบวันที่ไม่ถูกต้อง: ${dateStr}`);
+        }
+        if (isNaN(hours) || isNaN(minutes)) {
+            throw new BadRequestException(`รูปแบบเวลาไม่ถูกต้อง: ${timeStr}`);
+        }
 
-    //     return new Date(year, month - 1, day, hours, minutes);
-    // }
+        return new Date(year, month - 1, day, hours, minutes);
+    }
 
-    // private toLocalTime(date: Date | string) {
-    //     if (!date) return null;
-    //     return new Date(date).toLocaleTimeString('th-TH', {
-    //         timeZone: 'Asia/Bangkok',
-    //         hour: '2-digit',
-    //         minute: '2-digit',
-    //         hour12: false,
-    //     });
-    // }
+    private toLocalTime(date: Date | string) {
+        if (!date) return null;
+        return new Date(date).toLocaleTimeString('th-TH', {
+            timeZone: 'Asia/Bangkok',
+            hour: '2-digit',
+            minute: '2-digit',
+            hour12: false,
+        });
+    }
 
 
-    // async createSlots(
-    //     teacherId: string,
-    //     body: any
-    // ) {
-    //     const teacher = await this.teacherModel.findOne({ userId: new Types.ObjectId(teacherId) });
-    //     if (!teacher) throw new NotFoundException('ไม่พบข้อมูลครู');
-    //     const teacherObjId = teacher._id;
-    //     const docs: any[] = [];
+    async createSlots(
+        teacherId: string,
+        body: any
+    ) {
+        const teacher = await this.teacherModel.findOne({
+            userId: new Types.ObjectId(teacherId)
+        });
 
-    //     const hasCustom = !!(body.date && body.startTime && body.endTime);
-    //     const hasWeekly = !!(body.from && body.to && body.weeklySlots);
+        if (!teacher) throw new NotFoundException('ไม่พบข้อมูลครู');
 
-    //     if (hasCustom && hasWeekly) {
-    //         throw new BadRequestException('เลือกได้แค่ slotsByDate หรือ recurring rule อย่างใดอย่างหนึ่ง');
-    //     }
+        const teacherObjId = teacher._id;
+        const docs: any[] = [];
 
-    //     if (hasCustom) {
-    //         const startTime = this.combineDateAndTime(body.date, body.startTime);
-    //         const endTime = this.combineDateAndTime(body.date, body.endTime);
+        const hasDailyRecurring = !!body.repeatDailyForDays;
+        const hasCustom = !hasDailyRecurring && !!(body.startTime && body.endTime);
 
-    //         if (startTime >= endTime) {
-    //             throw new BadRequestException('startTime ต้องน้อยกว่า endTime');
-    //         }
+        // const hasWeekly = !!(body.from && body.to && body.weeklySlots);
 
-    //         const overlap = await this.slotModel.exists({
-    //             teacherId: teacherObjId,
-    //             date: body.date,
-    //             $or: [
-    //                 {
-    //                     startTime: { $lt: endTime },
-    //                     endTime: { $gt: startTime },
-    //                 },
-    //             ],
-    //         });
+        if (hasCustom && hasDailyRecurring) {
+            throw new BadRequestException('เลือกได้แค่ slotsByDate หรือ recurring rule อย่างใดอย่างหนึ่ง');
+        }
 
-    //         if (overlap) throw new BadRequestException('ไม่สามารถสร้างเวลาซ้ำได้');
+        if (hasCustom) {
+            const startTime = dayjs(`${body.date}T${body.startTime}`).toDate();
+            const endTime = dayjs(`${body.date}T${body.endTime}`).toDate();
 
-    //         const durationHours = (endTime.getTime() - startTime.getTime()) / (1000 * 60 * 60);
-    //         const price = teacher.hourlyRate * durationHours;
+            if (startTime >= endTime) {
+                throw new BadRequestException('startTime ต้องน้อยกว่า endTime');
+            }
 
-    //         docs.push({
-    //             insertOne: {
-    //                 document: {
-    //                     teacherId: teacherObjId,
-    //                     date: new Date(body.date),
-    //                     startTime,
-    //                     endTime,
-    //                     price,
-    //                     status: 'available',
-    //                     bookedBy: null,
-    //                 },
-    //             },
-    //         });
-    //     }
+            const overlap = await this.slotModel.exists({
+                teacherId: teacherObjId,
+                date: body.date,
+                $or: [{
+                    startTime: { $lt: endTime },
+                    endTime: { $gt: startTime },
+                }]
+            });
 
-    //     if (hasWeekly) {
-    //         const startDate = new Date(body.from);
-    //         const endDate = new Date(body.to);
+            if (overlap) throw new BadRequestException('ไม่สามารถสร้างเวลาซ้ำได้');
 
-    //         for (let d = new Date(startDate); d <= endDate; d.setDate(d.getDate() + 1)) {
-    //             const dayOfWeek = d.getDay();
-    //             const dayKey = dayOfWeek === 0 ? '7' : String(dayOfWeek);
+            const durationHours = (endTime.getTime() - startTime.getTime()) / (1000 * 60 * 60);
+            const price = teacher.hourlyRate * durationHours;
 
-    //             const daySlots = body.weeklySlots[dayKey];
-    //             if (!daySlots || daySlots.length === 0) continue;
+            docs.push({
+                insertOne: {
+                    document: {
+                        teacherId: teacherObjId,
+                        date: body.date,
+                        startTime,
+                        endTime,
+                        price,
+                        status: 'available',
+                        bookedBy: null,
+                    },
+                },
+            });
+        }
 
-    //             const baseDate = new Date(d);
-    //             baseDate.setHours(0, 0, 0, 0);
+        if (hasDailyRecurring) {
+            const baseDate = dayjs(body.date);
+            const repeatDays = Number(body.repeatDailyForDays ?? 7);
 
-    //             for (const t of daySlots) {
-    //                 const [sh, sm] = t.startTime.split(':').map(Number);
-    //                 const [eh, em] = t.endTime.split(':').map(Number);
+            for (let i = 0; i < repeatDays; i++) {
+                const currentDate = baseDate.add(i, 'day');
+                const startTime = dayjs(`${currentDate.format('YYYY-MM-DD')}T${body.startTime}`).toDate();
+                const endTime = dayjs(`${currentDate.format('YYYY-MM-DD')}T${body.endTime}`).toDate();
 
-    //                 const startTime = this.combineDateAndTime(
-    //                     baseDate.toISOString().split('T')[0],
-    //                     t.startTime
-    //                 );
-    //                 const endTime = this.combineDateAndTime(
-    //                     baseDate.toISOString().split('T')[0],
-    //                     t.endTime
-    //                 );
+                if (startTime >= endTime) {
+                    throw new BadRequestException('startTime ต้องน้อยกว่า endTime');
+                }
 
-    //                 if (startTime >= endTime) {
-    //                     throw new BadRequestException(
-    //                         `ช่วงเวลาไม่ถูกต้อง ${baseDate.toISOString()}: ${t.startTime} - ${t.endTime}`
-    //                     );
-    //                 }
-    //                 const durationHours = (endTime.getTime() - startTime.getTime()) / (1000 * 60 * 60);
-    //                 // const price = teacher.hourlyRate * durationHours;
+                const overlap = await this.slotModel.exists({
+                    teacherId: teacherObjId,
+                    date: currentDate.format('YYYY-MM-DD'),
+                    $or: [{
+                        startTime: { $lt: endTime },
+                        endTime: { $gt: startTime },
+                    }]
+                });
 
-    //                 docs.push({
-    //                     updateOne: {
-    //                         filter: { teacherId: teacherObjId, startTime, endTime },
-    //                         update: {
-    //                             $setOnInsert: {
-    //                                 teacherId: teacherObjId,
-    //                                 date: baseDate,
-    //                                 startTime,
-    //                                 endTime,
-    //                                 // price,
-    //                                 status: 'available',
-    //                                 bookedBy: null,
-    //                             },
-    //                         },
-    //                         upsert: true,
-    //                     },
-    //                 });
-    //             }
-    //         }
-    //     }
+                if (overlap) continue;
 
-    //     if (docs.length === 0) return [];
+                const durationHours = (endTime.getTime() - startTime.getTime()) / (1000 * 60 * 60);
+                const price = teacher.hourlyRate * durationHours;
 
-    //     const newSlots = await this.slotModel.bulkWrite(docs, { ordered: false });
+                docs.push({
+                    insertOne: {
+                        document: {
+                            teacherId: teacherObjId,
+                            date: currentDate.format('YYYY-MM-DD'),
+                            startTime,
+                            endTime,
+                            price,
+                            status: 'available',
+                            bookedBy: null,
+                        },
+                    },
+                });
+            }
+        }
 
-    //     return { success: true, count: newSlots.upsertedCount, data: newSlots };
-    // }
+        // if (hasWeekly) {
+        //     const startDate = new Date(body.from);
+        //     const endDate = new Date(body.to);
+
+        //     for (let d = new Date(startDate); d <= endDate; d.setDate(d.getDate() + 1)) {
+        //         const dayOfWeek = d.getDay();
+        //         const dayKey = dayOfWeek === 0 ? '7' : String(dayOfWeek);
+
+        //         const daySlots = body.weeklySlots[dayKey];
+        //         if (!daySlots || daySlots.length === 0) continue;
+
+        //         const baseDate = new Date(d);
+        //         baseDate.setHours(0, 0, 0, 0);
+
+        //         for (const t of daySlots) {
+        //             const [sh, sm] = t.startTime.split(':').map(Number);
+        //             const [eh, em] = t.endTime.split(':').map(Number);
+
+        //             const startTime = this.combineDateAndTime(
+        //                 baseDate.toISOString().split('T')[0],
+        //                 t.startTime
+        //             );
+        //             const endTime = this.combineDateAndTime(
+        //                 baseDate.toISOString().split('T')[0],
+        //                 t.endTime
+        //             );
+
+        //             if (startTime >= endTime) {
+        //                 throw new BadRequestException(
+        //                     `ช่วงเวลาไม่ถูกต้อง ${baseDate.toISOString()}: ${t.startTime} - ${t.endTime}`
+        //                 );
+        //             }
+        //             const durationHours = (endTime.getTime() - startTime.getTime()) / (1000 * 60 * 60);
+        //             // const price = teacher.hourlyRate * durationHours;
+
+        //             docs.push({
+        //                 updateOne: {
+        //                     filter: { teacherId: teacherObjId, startTime, endTime },
+        //                     update: {
+        //                         $setOnInsert: {
+        //                             teacherId: teacherObjId,
+        //                             date: baseDate,
+        //                             startTime,
+        //                             endTime,
+        //                             // price,
+        //                             status: 'available',
+        //                             bookedBy: null,
+        //                         },
+        //                     },
+        //                     upsert: true,
+        //                 },
+        //             });
+        //         }
+        //     }
+        // }
+
+        if (docs.length === 0) return [];
+
+        const newSlots = await this.slotModel.bulkWrite(docs, { ordered: false });
+
+        return { success: true, count: newSlots.upsertedCount, data: newSlots };
+    }
 
 
     async getAllSlots(): Promise<any[]> {
@@ -176,14 +231,14 @@ export class SlotsService {
 
         const slots = await this.slotModel.find({
             teacherId: teacher._id,
-            status: { $in: ['pending', 'wait_for_payment', 'paid'] }
+            status: { $in: ['pending', 'paid'] }
         })
             .populate('subject', '_id name')
             .populate('bookedBy', '_id name lastName profileImage')
             .lean();
 
         const sorted = slots.sort((a, b) => {
-            const statusOrder = { paid: 0, wait_for_payment: 1, pending: 2 };
+            const statusOrder = { paid: 1, pending: 2 };
             const statusA = statusOrder[a.status] ?? 99;
             const statusB = statusOrder[b.status] ?? 99;
 
@@ -191,18 +246,16 @@ export class SlotsService {
             return new Date(b.startTime).getTime() - new Date(a.startTime).getTime();
         });
 
-        return sorted.map(({ startTime, endTime, ...rest }) => {
+        return sorted.map(({ startTime, endTime, date, ...rest }) => {
             const dateDisplay = dayjs(startTime).locale('th').format('D MMMM YYYY');
             const start = dayjs(startTime).format('HH:mm');
             const end = dayjs(endTime).format('HH:mm');
 
             return {
+                date: dateDisplay,
+                startTime: start,
+                endTime: end,
                 ...rest,
-                displayDate: {
-                    date: dateDisplay,
-                    startTime: start,
-                    endTime: end,
-                },
             };
         });
     }
@@ -234,20 +287,51 @@ export class SlotsService {
             throw new ConflictException('คุณไม่มีสิทธิ์เข้าถึง');
         }
 
-        const { startTime, endTime, ...rest } = slot;
+        const { startTime, endTime, date, ...rest } = slot;
 
         const dateDisplay = dayjs(startTime).locale('th').format('D MMMM YYYY');
         const start = dayjs(startTime).format('HH:mm');
         const end = dayjs(endTime).format('HH:mm');
 
         return {
-            ...rest,
-            displayDate: {
+            date: dateDisplay,
+            startTime: start,
+            endTime: end,
+            ...rest
+        }
+    }
+
+    async getAllSlotByTeacherId(
+        teacherId: string,
+    ): Promise<any> {
+        if (!Types.ObjectId.isValid(teacherId)) {
+            throw new BadRequestException('teacher Id ไม่ถูกต้อง');
+        }
+
+        const teacher = await this.teacherModel.findById(teacherId)
+        if (!teacher) throw new NotFoundException('ไม่พบข้อมูลครู');
+
+        const slots = await this.slotModel
+            .find({ teacherId: teacher._id })
+            .sort({ startTime: 1 })
+            .lean();
+
+
+        return slots.map(({ teacherId, startTime, endTime, date, ...rest }) => {
+            const startLocal = dayjs(startTime).tz('Asia/Bangkok');
+            const endLocal = dayjs(endTime).tz('Asia/Bangkok');
+
+            const dateDisplay = startLocal.locale('th').format('D MMMM YYYY');
+            const start = startLocal.format('HH:mm');
+            const end = endLocal.format('HH:mm');
+
+            return {
                 date: dateDisplay,
                 startTime: start,
-                endTime: end
-            }
-        }
+                endTime: end,
+                ...rest,
+            };
+        });
     }
 
 
@@ -273,32 +357,31 @@ export class SlotsService {
             .sort({ startTime: -1 })
             .lean();
 
-        return slots.map(({ startTime, endTime, ...rest }) => {
+        return slots.map(({ startTime, endTime, date, ...rest }) => {
             const dateDisplay = dayjs(startTime).locale('th').format('D MMMM YYYY');
             const start = `${dayjs(startTime).format('HH:mm')}`;
             const end = `${dayjs(endTime).format('HH:mm')}`;
 
             return {
+                date: dateDisplay,
+                startTime: start,
+                endTime: end,
                 ...rest,
-                displayDate: {
-                    date: dateDisplay,
-                    startTime: start,
-                    endTime: end
-                },
+
             };
         });
     }
 
 
     async finishSlotByTeacher(
-        userId: string,
-        slotId: string
+        slotId: string,
+        userId: string
     ): Promise<Wallet> {
         if (!Types.ObjectId.isValid(slotId)) {
             throw new BadRequestException('slot id ไม่ถูกต้อง');
         }
 
-        const session = await startSession();
+        const session = await this.connection.startSession();
         session.startTransaction();
 
         try {
@@ -329,9 +412,8 @@ export class SlotsService {
                 { session }
             );
 
-            const wallet = await this.walletModel.findOne({
-                userId: teacher._id
-            })
+            const wallet = await this.walletModel
+                .findOne({ userId: teacher._id })
                 .session(session);
 
             if (!wallet) throw new NotFoundException('ไม่พบกระเป๋าเงินของครู');
@@ -343,6 +425,16 @@ export class SlotsService {
             wallet.pendingBalance -= slot.price;
             wallet.availableBalance += slot.price;
             await wallet.save({ session });
+
+            const durationHours =
+                (slot.endTime.getTime() - slot.startTime.getTime()) /
+                (1000 * 60 * 60);
+
+            await this.teacherModel.updateOne(
+                { _id: teacher._id },
+                { $inc: { totalTeachingHours: durationHours } },
+                { session }
+            );
 
             await session.commitTransaction();
             return wallet

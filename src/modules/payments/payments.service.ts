@@ -33,9 +33,12 @@ export class PaymentsService {
 
 
     async createPromptPayCharge(
-        userId: string,
-        bookingId: string
+        bookingId: string,
+        userId: string
     ): Promise<any> {
+        const bookingObjId = new Types.ObjectId(bookingId);
+        const userObjId = new Types.ObjectId(userId);
+
         const booking = await this.bookingModel.findById(bookingId);
         if (!booking) throw new NotFoundException('ไม่เจอเลข booking');
 
@@ -43,16 +46,16 @@ export class PaymentsService {
             throw new BadRequestException('คุณไม่มีสิทธิ์ชำระเงิน');
         }
 
-        if (booking.status !== 'wait_for_payment') {
-            throw new BadRequestException('คุณไม่สามารถชำระเงินได้เนื่องจากครูยังไม่ได้ยืนยันหรือ booking ถูกยกเลิก');
+        if (booking.status !== 'pending') {
+            throw new BadRequestException('คุณไม่สามารถชำระเงินได้เนื่องสถานะไม่ถูกต้อง');
         }
 
-        const user = await this.userModel.findById(userId);
+        const user = await this.userModel.findById(userObjId);
         if (!user) throw new NotFoundException('ไม่พบผู้ใช้');
 
         const existingPayment = await this.paymentModel.findOne({
-            bookingId: new Types.ObjectId(bookingId),
-            type: PaymentType.BOOKING_PAYMENT,
+            bookingId: bookingObjId,
+            status: PaymentStatus.PENDING,
         });
 
         if (existingPayment) {

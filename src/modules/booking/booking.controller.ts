@@ -1,14 +1,10 @@
 import { Body, Controller, Get, Param, Patch, Post, Query, UploadedFile, UploadedFiles, UseGuards } from '@nestjs/common';
-import { ApiBearerAuth, ApiBody, ApiConsumes, ApiOperation, ApiQuery, ApiTags } from '@nestjs/swagger';
+import { ApiBearerAuth, ApiBody, ApiConsumes, ApiOperation, ApiQuery, ApiTags, ApiParam } from '@nestjs/swagger';
 import { JwtGuard } from '../auth/guard/auth.guard';
 import { CurrentUser } from 'src/shared/utils/currentUser';
 
-import { UploadInterceptor } from 'src/shared/interceptors/upload.interceptor';
-import { ZodFilePipe, ZodFilesPipe } from 'src/shared/validators/zod.validation.pipe';
-import { UploadFileDto, UploadFilesDto } from 'src/shared/docs/upload.file.docs';
-import { FilesSchema, ImageFileSchema } from 'src/shared/validators/zod.schema';
 import { BookingService } from './booking.service';
-import { CreateBookingDto } from './schemas/booking.zod.schema';
+
 
 
 @ApiTags('Booking')
@@ -22,20 +18,25 @@ export class BookingController {
     ) { }
 
 
-    // @Post(':slotId')
-    // @UseGuards(JwtGuard)
-    // async book(
-    //     @Param('slotId') slotId: string,
-    //     @CurrentUser() studentId: string,
-    // ) {
-    //     const booking = await this.bookingService.bookSlot(slotId, studentId,);
+    @ApiParam({
+        name: 'slotId',
+        description: 'slot id ที่ต้องการจอง',
+    })
+    @Post(':slotId')
+    @UseGuards(JwtGuard)
+    async CreatebookingSlot(
+        @Param('slotId') slotId: string,
+        @CurrentUser() studentId: string,
+    ) {
+        const booking = await this.bookingService.CreatebookingSlot(slotId, studentId,);
 
-    //     return {
-    //         message: 'Booking successfully',
-    //         data: booking,
-    //     };
-    // }
+        return {
+            message: 'จองตารางเรียนสำเร็จ',
+            data: booking,
+        };
+    }
 
+    @ApiOperation({ summary: 'ดึงตารางเรียนของฉัน' })
     @Get('mine')
     async getMySlots(@CurrentUser() userId: string) {
         const data = await this.bookingService.getMySlot(userId);
@@ -46,7 +47,7 @@ export class BookingController {
         };
     }
 
-
+    @ApiOperation({ summary: 'ดึงตารางเรียนของฉันที่ผ่านมา' })
     @Get('history')
     async getHistoryBookingMine(@CurrentUser() userId: string) {
         const data = await this.bookingService.getHistoryBookingMine(userId);
@@ -70,56 +71,56 @@ export class BookingController {
         };
     }
 
-    @Post(':teacherId')
-    async createBooking(
-        @CurrentUser() userId: string,
-        @Param('teacherId') teacherId: string,
-        @Body() body: CreateBookingDto
-    ) {
-        const create = await this.bookingService.createBooking(
-            userId,
-            teacherId,
-            body
-        );
+    // @Post(':teacherId')
+    // async createBooking(
+    //     @CurrentUser() userId: string,
+    //     @Param('teacherId') teacherId: string,
+    //     @Body() body: CreateBookingDto
+    // ) {
+    //     const create = await this.bookingService.createBooking(
+    //         userId,
+    //         teacherId,
+    //         body
+    //     );
 
-        return {
-            message: 'ส่งคำขอสำเร็จ',
-            data: create,
-        };
-    }
+    //     return {
+    //         message: 'ส่งคำขอสำเร็จ',
+    //         data: create,
+    //     };
+    // }
 
 
-    @Patch('teacher/:bookingId/approve')
-    async approveBooking(
-        @CurrentUser() teacherId: string,
-        @Param('bookingId') bookingId: string,
-    ) {
-        const result = await this.bookingService.updateBookingStatus(
-            teacherId,
-            bookingId,
-            'approved',
-        );
-        return {
-            message: 'อนุมัติการจองสำเร็จ',
-            data: result,
-        };
-    }
+    // @Patch('teacher/:bookingId/approve')
+    // async approveBooking(
+    //     @CurrentUser() teacherId: string,
+    //     @Param('bookingId') bookingId: string,
+    // ) {
+    //     const result = await this.bookingService.updateBookingStatus(
+    //         teacherId,
+    //         bookingId,
+    //         'approved',
+    //     );
+    //     return {
+    //         message: 'อนุมัติการจองสำเร็จ',
+    //         data: result,
+    //     };
+    // }
 
-    @Patch('teacher/:bookingId/reject')
-    async rejectBooking(
-        @Param('bookingId') bookingId: string,
-        @CurrentUser() userId: string,
-    ) {
-        const result = await this.bookingService.updateBookingStatus(
-            userId,
-            bookingId,
-            'rejected',
-        );
-        return {
-            message: 'ปฏิเสธการจองสำเร็จ',
-            data: result,
-        };
-    }
+    // @Patch('teacher/:bookingId/reject')
+    // async rejectBooking(
+    //     @Param('bookingId') bookingId: string,
+    //     @CurrentUser() userId: string,
+    // ) {
+    //     const result = await this.bookingService.updateBookingStatus(
+    //         userId,
+    //         bookingId,
+    //         'rejected',
+    //     );
+    //     return {
+    //         message: 'ปฏิเสธการจองสำเร็จ',
+    //         data: result,
+    //     };
+    // }
 
 
 }
