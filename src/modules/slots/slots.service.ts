@@ -61,7 +61,11 @@ export class SlotsService {
         });
 
         if (!teacher) throw new NotFoundException('ไม่พบข้อมูลครู');
-
+        console.log('Server timezone check -----------------------');
+        console.log('Server local time:', new Date().toString());
+        console.log('Server UTC time:', new Date().toISOString());
+        console.log('Bangkok time (dayjs):', dayjs().tz('Asia/Bangkok').format());
+        console.log('------------------------------------------------');
         const teacherObjId = teacher._id;
         const docs: any[] = [];
 
@@ -258,9 +262,12 @@ export class SlotsService {
         });
 
         return sorted.map(({ startTime, endTime, date, ...rest }) => {
-            const dateDisplay = dayjs(startTime).locale('th').format('D MMMM YYYY');
-            const start = dayjs(startTime).format('HH:mm');
-            const end = dayjs(endTime).format('HH:mm');
+            const startLocal = dayjs(startTime).tz('Asia/Bangkok');
+            const endLocal = dayjs(endTime).tz('Asia/Bangkok');
+
+            const dateDisplay = startLocal.locale('th').format('D MMMM YYYY');
+            const start = startLocal.format('HH:mm');
+            const end = endLocal.format('HH:mm');
 
             return {
                 date: dateDisplay,
@@ -300,9 +307,13 @@ export class SlotsService {
 
         const { startTime, endTime, date, ...rest } = slot;
 
-        const dateDisplay = dayjs(startTime).locale('th').format('D MMMM YYYY');
-        const start = dayjs(startTime).format('HH:mm');
-        const end = dayjs(endTime).format('HH:mm');
+        const startLocal = dayjs(slot.startTime).tz('Asia/Bangkok');
+        const endLocal = dayjs(slot.endTime).tz('Asia/Bangkok');
+
+        const dateDisplay = startLocal.locale('th').format('D MMMM YYYY');
+        const start = startLocal.format('HH:mm');
+        const end = endLocal.format('HH:mm');
+
 
         return {
             date: dateDisplay,
@@ -335,7 +346,6 @@ export class SlotsService {
             const dateDisplay = startLocal.locale('th').format('D MMMM YYYY');
             const start = startLocal.format('HH:mm');
             const end = endLocal.format('HH:mm');
-
             return {
                 date: dateDisplay,
                 startTime: start,
@@ -369,9 +379,12 @@ export class SlotsService {
             .lean();
 
         return slots.map(({ startTime, endTime, date, ...rest }) => {
-            const dateDisplay = dayjs(startTime).locale('th').format('D MMMM YYYY');
-            const start = `${dayjs(startTime).format('HH:mm')}`;
-            const end = `${dayjs(endTime).format('HH:mm')}`;
+            const startLocal = dayjs(startTime).tz('Asia/Bangkok');
+            const endLocal = dayjs(endTime).tz('Asia/Bangkok');
+
+            const dateDisplay = startLocal.locale('th').format('D MMMM YYYY');
+            const start = startLocal.format('HH:mm');
+            const end = endLocal.format('HH:mm');
 
             return {
                 date: dateDisplay,
