@@ -62,6 +62,12 @@ export class SlotsService {
 
         if (!teacher) throw new NotFoundException('ไม่พบข้อมูลครู');
 
+        console.log('Server timezone check -----------------------');
+        console.log('Server local time:', new Date().toString());
+        console.log('Server UTC time:', new Date().toISOString());
+        console.log('Bangkok time (dayjs):', dayjs().tz('Asia/Bangkok').format());
+        console.log('------------------------------------------------');
+
         const teacherObjId = teacher._id;
         const docs: any[] = [];
 
@@ -121,8 +127,8 @@ export class SlotsService {
                 throw new BadRequestException('repeatDailyForDays ต้องเป็นตัวเลขที่มากกว่า 0');
             }
 
-            if (repeatDays > 30) {
-                throw new BadRequestException('ไม่สามารถสร้างซ้ำเกิน 30 วันได้');
+            if (repeatDays > 365) {
+                throw new BadRequestException('ไม่สามารถสร้างซ้ำเกิน 365 วันได้');
             }
 
             for (let i = 0; i < repeatDays; i++) {
@@ -175,7 +181,7 @@ export class SlotsService {
             if (isNaN(repeatWeeks) || repeatWeeks <= 0) {
                 throw new BadRequestException('repeatWeeklyForWeeks ต้องเป็นตัวเลขที่มากกว่า 0');
             }
-            if (repeatWeeks > 30) {
+            if (repeatWeeks > 52) {
                 throw new BadRequestException('ไม่สามารถสร้างซ้ำเกิน 30 สัปดาห์ได้');
             }
 
@@ -512,7 +518,7 @@ export class SlotsService {
                 throw new BadRequestException('repeatDailyForDays ต้องเป็นตัวเลขที่มากกว่า 0');
             }
 
-            if (repeatDays > 30) {
+            if (repeatDays > 365) {
                 throw new BadRequestException('ไม่สามารถลบซ้ำเกิน 30 วันได้');
             }
 
@@ -541,7 +547,7 @@ export class SlotsService {
                 throw new BadRequestException('repeatWeeklyForWeeks ต้องเป็นตัวเลขที่มากกว่า 0');
             }
 
-            if (repeatWeeks > 30) {
+            if (repeatWeeks > 52) {
                 throw new BadRequestException('ไม่สามารถลบซ้ำเกิน 30 สัปดาห์ได้');
             }
 
