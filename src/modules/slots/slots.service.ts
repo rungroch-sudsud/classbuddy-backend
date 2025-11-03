@@ -61,11 +61,7 @@ export class SlotsService {
         });
 
         if (!teacher) throw new NotFoundException('ไม่พบข้อมูลครู');
-        console.log('Server timezone check -----------------------');
-        console.log('Server local time:', new Date().toString());
-        console.log('Server UTC time:', new Date().toISOString());
-        console.log('Bangkok time (dayjs):', dayjs().tz('Asia/Bangkok').format());
-        console.log('------------------------------------------------');
+
         const teacherObjId = teacher._id;
         const docs: any[] = [];
 
@@ -471,60 +467,109 @@ export class SlotsService {
         }
     }
 
+
+    async deleteSlots(teacherId: string, body: any) {
+        const teacher = await this.teacherModel.findOne({
+            userId: new Types.ObjectId(teacherId),
+        });
+
+        if (!teacher) throw new NotFoundException('ไม่พบข้อมูลครู');
+
+        const teacherObjId = teacher._id;
+        const hasDailyRecurring = !!body.repeatDailyForDays;
+        const hasWeeklyRecurring = !!body.repeatWeeklyForWeeks;
+        const hasSingle =
+            !hasDailyRecurring && !hasWeeklyRecurring && !!(body.startTime && body.endTime);
+
+        if ([hasSingle, hasDailyRecurring, hasWeeklyRecurring].filter(Boolean).length > 1) {
+            throw new BadRequestException('เลือกได้แค่ slotsByDate หรือ recurring rule อย่างใดอย่างหนึ่ง');
+        }
+
+        let deletedCount = 0;
+
+        // ✳️ ลบ slot เดี่ยว
+        if (hasSingle) {
+            const startTime = dayjs.tz(`${body.date}T${body.startTime}`, 'Asia/Bangkok').toDate();
+            const endTime = dayjs.tz(`${body.date}T${body.endTime}`, 'Asia/Bangkok').toDate();
+
+            const result = await this.slotModel.deleteOne({
+                teacherId: teacherObjId,
+                date: body.date,
+                startTime,
+                endTime,
+                status: 'available',
+            });
+
+            deletedCount = result.deletedCount ?? 0;
+        }
+
+        // 🔁 ลบ slot แบบรายวัน
+        if (hasDailyRecurring) {
+            const baseDate = dayjs(body.date);
+            const repeatDays = Number(body.repeatDailyForDays ?? 7);
+
+            if (isNaN(repeatDays) || repeatDays <= 0) {
+                throw new BadRequestException('repeatDailyForDays ต้องเป็นตัวเลขที่มากกว่า 0');
+            }
+
+            if (repeatDays > 30) {
+                throw new BadRequestException('ไม่สามารถลบซ้ำเกิน 30 วันได้');
+            }
+
+            for (let i = 0; i < repeatDays; i++) {
+                const currentDate = baseDate.add(i, 'day');
+                const startTime = dayjs.tz(`${currentDate.format('YYYY-MM-DD')}T${body.startTime}`, 'Asia/Bangkok').toDate();
+                const endTime = dayjs.tz(`${currentDate.format('YYYY-MM-DD')}T${body.endTime}`, 'Asia/Bangkok').toDate();
+
+                const result = await this.slotModel.deleteOne({
+                    teacherId: teacherObjId,
+                    date: currentDate.format('YYYY-MM-DD'),
+                    startTime,
+                    endTime,
+                    status: 'available',
+                });
+
+                deletedCount += result.deletedCount ?? 0;
+            }
+        }
+
+        // 📅 ลบ slot แบบรายสัปดาห์
+        if (hasWeeklyRecurring) {
+            const repeatWeeks = Number(body.repeatWeeklyForWeeks ?? 4);
+
+            if (isNaN(repeatWeeks) || repeatWeeks <= 0) {
+                throw new BadRequestException('repeatWeeklyForWeeks ต้องเป็นตัวเลขที่มากกว่า 0');
+            }
+
+            if (repeatWeeks > 30) {
+                throw new BadRequestException('ไม่สามารถลบซ้ำเกิน 30 สัปดาห์ได้');
+            }
+
+            const baseDate = dayjs(body.date).tz('Asia/Bangkok');
+
+            for (let i = 0; i < repeatWeeks; i++) {
+                const currentDate = baseDate.add(i, 'week');
+                const startTime = dayjs.tz(`${currentDate.format('YYYY-MM-DD')}T${body.startTime}`, 'Asia/Bangkok').toDate();
+                const endTime = dayjs.tz(`${currentDate.format('YYYY-MM-DD')}T${body.endTime}`, 'Asia/Bangkok').toDate();
+
+                const result = await this.slotModel.deleteOne({
+                    teacherId: teacherObjId,
+                    date: currentDate.format('YYYY-MM-DD'),
+                    startTime,
+                    endTime,
+                    status: 'available',
+                });
+
+                deletedCount += result.deletedCount ?? 0;
+            }
+        }
+
+        return {
+            deletedCount,
+            // deletedSlots,
+        };
+    }
+
+
+
 }
-
-// if (hasWeekly) {
-//     const startDate = new Date(body.from);
-//     const endDate = new Date(body.to);
-
-//     for (let d = new Date(startDate); d <= endDate; d.setDate(d.getDate() + 1)) {
-//         const dayOfWeek = d.getDay();
-//         const dayKey = dayOfWeek === 0 ? '7' : String(dayOfWeek);
-
-//         const daySlots = body.weeklySlots[dayKey];
-//         if (!daySlots || daySlots.length === 0) continue;
-
-//         const baseDate = new Date(d);
-//         baseDate.setHours(0, 0, 0, 0);
-
-//         for (const t of daySlots) {
-//             const [sh, sm] = t.startTime.split(':').map(Number);
-//             const [eh, em] = t.endTime.split(':').map(Number);
-
-//             const startTime = this.combineDateAndTime(
-//                 baseDate.toISOString().split('T')[0],
-//                 t.startTime
-//             );
-//             const endTime = this.combineDateAndTime(
-//                 baseDate.toISOString().split('T')[0],
-//                 t.endTime
-//             );
-
-//             if (startTime >= endTime) {
-//                 throw new BadRequestException(
-//                     `ช่วงเวลาไม่ถูกต้อง ${baseDate.toISOString()}: ${t.startTime} - ${t.endTime}`
-//                 );
-//             }
-//             const durationHours = (endTime.getTime() - startTime.getTime()) / (1000 * 60 * 60);
-//             // const price = teacher.hourlyRate * durationHours;
-
-//             docs.push({
-//                 updateOne: {
-//                     filter: { teacherId: teacherObjId, startTime, endTime },
-//                     update: {
-//                         $setOnInsert: {
-//                             teacherId: teacherObjId,
-//                             date: baseDate,
-//                             startTime,
-//                             endTime,
-//                             // price,
-//                             status: 'available',
-//                             bookedBy: null,
-//                         },
-//                     },
-//                     upsert: true,
-//                 },
-//             });
-//         }
-//     }
-// }

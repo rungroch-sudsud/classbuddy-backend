@@ -159,4 +159,55 @@ export class SlotsController {
         };
     }
 
+    @Post('cancel')
+    @ApiBody({
+        schema: {
+            oneOf: [
+                { $ref: getSchemaPath(CreateSlotDto) },
+                { $ref: getSchemaPath(CreateWeeklySlotDto) },
+            ],
+        },
+        examples: {
+            singleSlot: {
+                summary: 'Delete Single Slot (ลบ slot แบบระบุวันเดียว)',
+                value: {
+                    date: '2026-10-09',
+                    startTime: '12:00',
+                    endTime: '13:00',
+                },
+            },
+            hasDailyRecurring: {
+                summary: 'Delete Daily Slot (ลบ slot แบบรายวัน x7 วัน)',
+                value: {
+                    date: '2026-11-10',
+                    startTime: '12:00',
+                    endTime: '13:00',
+                    repeatDailyForDays: 7,
+                },
+            },
+            hasWeeklyRecurring: {
+                summary: 'Delete Weekly Slot (ลบ slot ทุกวันที่เลือก)',
+                value: {
+                    date: '2026-11-10',
+                    startTime: '12:00',
+                    endTime: '13:00',
+                    hasWeeklyRecurring: 4,
+                },
+            },
+        },
+    })
+    @UseGuards(JwtGuard)
+    async cancelSingleSlot(
+        @CurrentUser() userId: string,
+        @Body() body: any
+    ) {
+        const slot = await this.slotsService.deleteSlots(userId, body);
+
+        return {
+            message: 'คุณได้ลบ slot นี้เรียบร้อยแล้ว',
+            data: slot,
+        };
+    }
+
+
 }
