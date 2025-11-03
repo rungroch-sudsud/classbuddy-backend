@@ -49,6 +49,9 @@ export class Slot extends Document {
     default: null
   })
   bookedBy: Types.ObjectId
+
+  @Prop({ type: Date, default: null })
+  paidAt?: Date;
 }
 
 export type SlotDocument = Slot & Document;

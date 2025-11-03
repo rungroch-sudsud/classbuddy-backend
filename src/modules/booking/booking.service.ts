@@ -70,7 +70,7 @@ export class BookingService {
         const bookings = await this.bookingModel
             .find({
                 studentId: new Types.ObjectId(userId),
-                status: { $in: ['pending', 'wait_for_payment', 'paid'] },
+                status: { $in: ['pending', 'paid'] },
             })
             .populate('subject', '_id name')
             .populate({
@@ -92,24 +92,25 @@ export class BookingService {
             return new Date(b.startTime).getTime() - new Date(a.startTime).getTime();
         });
 
-        return sorted.map(({ teacherId, startTime, endTime, ...rest }) => {
+        return sorted.map(({ teacherId, startTime, endTime, date, paidAt, ...rest }) => {
             const teacher: any = teacherId;
+
             const dateDisplay = dayjs(startTime).locale('th').format('D MMMM YYYY');
             const start = `${dayjs(startTime).format('HH:mm')}`;
             const end = `${dayjs(endTime).format('HH:mm')}`
+            const paidAtDisplay = paidAt ? dayjs(paidAt).locale('th').format('D MMMM YYYY') : null;
 
             return {
                 ...rest,
+                date: dateDisplay,
+                startTime: start,
+                endTime: end,
+                paidAt: paidAtDisplay,
                 teacher: {
                     _id: teacher?._id,
                     name: teacher?.name,
                     lastName: teacher?.lastName,
                     profileImage: teacher?.userId?.profileImage ?? null,
-                },
-                displayDate: {
-                    date: dateDisplay,
-                    startTime: start,
-                    endTime: end
                 },
             };
         });
@@ -148,20 +149,23 @@ export class BookingService {
         const start = `${dayjs(booking.startTime).format('HH:mm')}`;
         const end = `${dayjs(booking.endTime).format('HH:mm')}`
 
-        const { teacherId, startTime, endTime, ...rest } = booking;
+        const { teacherId, startTime, endTime, paidAt, ...rest } = booking;
+
+        const paidAtDisplay = paidAt
+            ? dayjs(paidAt).locale('th').format('D MMMM YYYY')
+            : null;
 
         return {
             ...rest,
+            date: dateDisplay,
+            startTime: start,
+            endTime: end,
+            paidAt: paidAtDisplay,
             teacher: {
                 _id: teacher?._id,
                 name: teacher?.name,
                 lastName: teacher?.lastName,
                 profileImage: teacher?.userId?.profileImage ?? null,
-            },
-            displayDate: {
-                date: dateDisplay,
-                startTime: start,
-                endTime: end
             },
         };
     }
@@ -171,7 +175,7 @@ export class BookingService {
         const bookings = await this.bookingModel
             .find({
                 studentId: new Types.ObjectId(userId),
-                status: { $in: ['studied', 'rejected'] },
+                status: { $in: ['studied', 'expired', 'rejected'] },
             })
             .populate('subject', '_id name')
             .populate({
@@ -185,25 +189,25 @@ export class BookingService {
             .sort({ startTime: -1 })
             .lean();
 
-        return bookings.map(({ teacherId, startTime, endTime, ...rest }) => {
+        return bookings.map(({ teacherId, startTime, endTime, date, paidAt, ...rest }) => {
             const teacher: any = teacherId;
 
             const dateDisplay = dayjs(startTime).locale('th').format('D MMMM YYYY');
             const start = `${dayjs(startTime).format('HH:mm')}`;
             const end = `${dayjs(endTime).format('HH:mm')}`;
+            const paidAtDisplay = paidAt ? dayjs(paidAt).locale('th').format('D MMMM YYYY') : null;
 
             return {
                 ...rest,
+                date: dateDisplay,
+                startTime: start,
+                endTime: end,
+                paidAt: paidAtDisplay,
                 teacher: {
                     _id: teacher?._id,
                     name: teacher?.name,
                     lastName: teacher?.lastName,
                     profileImage: teacher?.userId?.profileImage ?? null,
-                },
-                displayDate: {
-                    date: dateDisplay,
-                    startTime: start,
-                    endTime: end
                 },
             };
         });

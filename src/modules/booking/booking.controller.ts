@@ -36,7 +36,7 @@ export class BookingController {
         };
     }
 
-    @ApiOperation({ summary: 'ดึงตารางเรียนของฉัน' })
+    
     @Get('mine')
     async getMySlots(@CurrentUser() userId: string) {
         const data = await this.bookingService.getMySlot(userId);

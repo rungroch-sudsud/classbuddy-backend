@@ -32,7 +32,7 @@ export class SlotsController {
             ],
         },
         examples: {
-            customSlot: {
+            singleSlot: {
                 summary: 'Single Slot (ระบุวันเดียว)',
                 description: 'ใช้สำหรับสร้าง slot แบบครั้งเดียว',
                 value: {
@@ -49,6 +49,16 @@ export class SlotsController {
                     startTime: '12:00',
                     endTime: '13:00',
                     repeatDailyForDays: 7,
+                },
+            },
+            hasWeeklyRecurring: {
+                summary: 'Weekly Slot (สร้าง slot ทุกวันที่เลือก)',
+                description: 'สร้าง slot อาทิตย์ละครั้งของวันที่เลือก',
+                value: {
+                    date: '2026-11-10',
+                    startTime: '12:00',
+                    endTime: '13:00',
+                    hasWeeklyRecurring: 4,
                 },
             },
         },

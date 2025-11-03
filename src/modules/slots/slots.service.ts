@@ -14,6 +14,7 @@ import 'dayjs/locale/th';
 
 dayjs.extend(utc);
 dayjs.extend(timezone);
+dayjs.tz.setDefault('Asia/Bangkok');
 
 
 @Injectable()
@@ -65,15 +66,17 @@ export class SlotsService {
         const docs: any[] = [];
 
         const hasDailyRecurring = !!body.repeatDailyForDays;
-        const hasCustom = !hasDailyRecurring && !!(body.startTime && body.endTime);
+        const hasWeeklyRecurring = !!body.repeatWeeklyForWeeks;
 
-        // const hasWeekly = !!(body.from && body.to && body.weeklySlots);
+        const hasSingle = !hasDailyRecurring && !hasWeeklyRecurring && !!(
+            body.startTime && body.endTime
+        );
 
-        if (hasCustom && hasDailyRecurring) {
+        if ([hasSingle, hasDailyRecurring, hasWeeklyRecurring].filter(Boolean).length > 1) {
             throw new BadRequestException('เลือกได้แค่ slotsByDate หรือ recurring rule อย่างใดอย่างหนึ่ง');
         }
 
-        if (hasCustom) {
+        if (hasSingle) {
             const startTime = dayjs(`${body.date}T${body.startTime}`).toDate();
             const endTime = dayjs(`${body.date}T${body.endTime}`).toDate();
 
@@ -114,10 +117,23 @@ export class SlotsService {
             const baseDate = dayjs(body.date);
             const repeatDays = Number(body.repeatDailyForDays ?? 7);
 
+            if (isNaN(repeatDays) || repeatDays <= 0) {
+                throw new BadRequestException('repeatDailyForDays ต้องเป็นตัวเลขที่มากกว่า 0');
+            }
+
+            if (repeatDays > 30) {
+                throw new BadRequestException('ไม่สามารถสร้างซ้ำเกิน 30 วันได้');
+            }
+
             for (let i = 0; i < repeatDays; i++) {
                 const currentDate = baseDate.add(i, 'day');
-                const startTime = dayjs(`${currentDate.format('YYYY-MM-DD')}T${body.startTime}`).toDate();
-                const endTime = dayjs(`${currentDate.format('YYYY-MM-DD')}T${body.endTime}`).toDate();
+
+                const startTime = dayjs.tz(`${currentDate
+                    .format('YYYY-MM-DD')}T${body.startTime}`, 'Asia/Bangkok').toDate();
+                const endTime = dayjs
+                    .tz(`${currentDate
+                        .format('YYYY-MM-DD')}T${body.endTime}`, 'Asia/Bangkok').toDate();
+
 
                 if (startTime >= endTime) {
                     throw new BadRequestException('startTime ต้องน้อยกว่า endTime');
@@ -153,61 +169,56 @@ export class SlotsService {
             }
         }
 
-        // if (hasWeekly) {
-        //     const startDate = new Date(body.from);
-        //     const endDate = new Date(body.to);
+        if (hasWeeklyRecurring) {
+            const repeatWeeks = Number(body.repeatWeeklyForWeeks ?? 4);
 
-        //     for (let d = new Date(startDate); d <= endDate; d.setDate(d.getDate() + 1)) {
-        //         const dayOfWeek = d.getDay();
-        //         const dayKey = dayOfWeek === 0 ? '7' : String(dayOfWeek);
+            if (isNaN(repeatWeeks) || repeatWeeks <= 0) {
+                throw new BadRequestException('repeatWeeklyForWeeks ต้องเป็นตัวเลขที่มากกว่า 0');
+            }
+            if (repeatWeeks > 30) {
+                throw new BadRequestException('ไม่สามารถสร้างซ้ำเกิน 30 สัปดาห์ได้');
+            }
 
-        //         const daySlots = body.weeklySlots[dayKey];
-        //         if (!daySlots || daySlots.length === 0) continue;
+            const baseDate = dayjs(body.date).tz('Asia/Bangkok');
 
-        //         const baseDate = new Date(d);
-        //         baseDate.setHours(0, 0, 0, 0);
+            for (let i = 0; i < repeatWeeks; i++) {
+                const currentDate = baseDate.add(i, 'week');
 
-        //         for (const t of daySlots) {
-        //             const [sh, sm] = t.startTime.split(':').map(Number);
-        //             const [eh, em] = t.endTime.split(':').map(Number);
+                const startTime = dayjs
+                    .tz(`${currentDate.format('YYYY-MM-DD')}T${body.startTime}`, 'Asia/Bangkok').toDate();
+                const endTime = dayjs
+                    .tz(`${currentDate.format('YYYY-MM-DD')}T${body.endTime}`, 'Asia/Bangkok').toDate();
 
-        //             const startTime = this.combineDateAndTime(
-        //                 baseDate.toISOString().split('T')[0],
-        //                 t.startTime
-        //             );
-        //             const endTime = this.combineDateAndTime(
-        //                 baseDate.toISOString().split('T')[0],
-        //                 t.endTime
-        //             );
+                if (startTime >= endTime) throw new BadRequestException('startTime ต้องน้อยกว่า endTime');
 
-        //             if (startTime >= endTime) {
-        //                 throw new BadRequestException(
-        //                     `ช่วงเวลาไม่ถูกต้อง ${baseDate.toISOString()}: ${t.startTime} - ${t.endTime}`
-        //                 );
-        //             }
-        //             const durationHours = (endTime.getTime() - startTime.getTime()) / (1000 * 60 * 60);
-        //             // const price = teacher.hourlyRate * durationHours;
+                const overlap = await this.slotModel.exists({
+                    teacherId: teacherObjId,
+                    date: currentDate.format('YYYY-MM-DD'),
+                    $and: [
+                        { startTime: { $lt: endTime } },
+                        { endTime: { $gt: startTime } },
+                    ],
+                });
+                if (overlap) continue;
 
-        //             docs.push({
-        //                 updateOne: {
-        //                     filter: { teacherId: teacherObjId, startTime, endTime },
-        //                     update: {
-        //                         $setOnInsert: {
-        //                             teacherId: teacherObjId,
-        //                             date: baseDate,
-        //                             startTime,
-        //                             endTime,
-        //                             // price,
-        //                             status: 'available',
-        //                             bookedBy: null,
-        //                         },
-        //                     },
-        //                     upsert: true,
-        //                 },
-        //             });
-        //         }
-        //     }
-        // }
+                const durationHours = (endTime.getTime() - startTime.getTime()) / (1000 * 60 * 60);
+                const price = teacher.hourlyRate * durationHours;
+
+                docs.push({
+                    insertOne: {
+                        document: {
+                            teacherId: teacherObjId,
+                            date: currentDate.format('YYYY-MM-DD'),
+                            startTime,
+                            endTime,
+                            price,
+                            status: 'available',
+                            bookedBy: null,
+                        },
+                    },
+                });
+            }
+        }
 
         if (docs.length === 0) return [];
 
@@ -449,3 +460,58 @@ export class SlotsService {
 
 }
 
+// if (hasWeekly) {
+//     const startDate = new Date(body.from);
+//     const endDate = new Date(body.to);
+
+//     for (let d = new Date(startDate); d <= endDate; d.setDate(d.getDate() + 1)) {
+//         const dayOfWeek = d.getDay();
+//         const dayKey = dayOfWeek === 0 ? '7' : String(dayOfWeek);
+
+//         const daySlots = body.weeklySlots[dayKey];
+//         if (!daySlots || daySlots.length === 0) continue;
+
+//         const baseDate = new Date(d);
+//         baseDate.setHours(0, 0, 0, 0);
+
+//         for (const t of daySlots) {
+//             const [sh, sm] = t.startTime.split(':').map(Number);
+//             const [eh, em] = t.endTime.split(':').map(Number);
+
+//             const startTime = this.combineDateAndTime(
+//                 baseDate.toISOString().split('T')[0],
+//                 t.startTime
+//             );
+//             const endTime = this.combineDateAndTime(
+//                 baseDate.toISOString().split('T')[0],
+//                 t.endTime
+//             );
+
+//             if (startTime >= endTime) {
+//                 throw new BadRequestException(
+//                     `ช่วงเวลาไม่ถูกต้อง ${baseDate.toISOString()}: ${t.startTime} - ${t.endTime}`
+//                 );
+//             }
+//             const durationHours = (endTime.getTime() - startTime.getTime()) / (1000 * 60 * 60);
+//             // const price = teacher.hourlyRate * durationHours;
+
+//             docs.push({
+//                 updateOne: {
+//                     filter: { teacherId: teacherObjId, startTime, endTime },
+//                     update: {
+//                         $setOnInsert: {
+//                             teacherId: teacherObjId,
+//                             date: baseDate,
+//                             startTime,
+//                             endTime,
+//                             // price,
+//                             status: 'available',
+//                             bookedBy: null,
+//                         },
+//                     },
+//                     upsert: true,
+//                 },
+//             });
+//         }
+//     }
+// }

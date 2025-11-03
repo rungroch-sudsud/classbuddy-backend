@@ -55,7 +55,7 @@ export class Booking {
     })
     status: BookingStatus;
 
-    @Prop({ type: Date })
+    @Prop({ type: Date, default: null })
     paidAt?: Date;
 }
 

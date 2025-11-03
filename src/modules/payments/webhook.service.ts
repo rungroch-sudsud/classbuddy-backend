@@ -245,12 +245,12 @@ export class WebhookService {
         const chargeId = evt.data.id;
         const charge = await this.omise.charges.retrieve(chargeId);
         const status = charge.status as PaymentStatus;
-        const { bookingId, userId } = charge.metadata ?? {};
+        const { bookingId, slotId, userId } = charge.metadata ?? {};
         const amountTHB = Math.round((charge.amount ?? 0)) / 100;
 
         const bookingObjId = bookingId ? new Types.ObjectId(bookingId) : null;
         const userObjId = userId ? new Types.ObjectId(userId) : null;
-
+        console.log(slotId)
         const session = await this.connection.startSession();
         try {
             await session.withTransaction(async () => {

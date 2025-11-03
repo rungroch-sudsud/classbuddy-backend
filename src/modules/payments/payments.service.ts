@@ -9,6 +9,7 @@ import { Teacher } from '../teachers/schemas/teacher.schema';
 import { PayoutLog } from './schemas/payout.schema';
 import { InjectQueue } from '@nestjs/bullmq';
 import { Queue } from 'bullmq';
+import { Slot } from '../slots/schemas/slot.schema';
 
 const Omise = require('omise');
 
@@ -20,9 +21,10 @@ export class PaymentsService {
         @InjectConnection() private readonly connection: Connection,
         @InjectModel(Payment.name) private paymentModel: Model<any>,
         @InjectModel(Wallet.name) private walletModel: Model<any>,
-        @InjectModel(Booking.name) private bookingModel: Model<any>,
         @InjectModel(User.name) private userModel: Model<any>,
         @InjectModel(Teacher.name) private teacherModel: Model<any>,
+        @InjectModel(Booking.name) private bookingModel: Model<any>,
+        @InjectModel(Slot.name) private slotModel: Model<any>,
         @InjectModel(PayoutLog.name) private payoutLogModel: Model<any>,
         @InjectQueue('payout') private PayoutQueue: Queue,
     ) {
@@ -36,8 +38,8 @@ export class PaymentsService {
         bookingId: string,
         userId: string
     ): Promise<any> {
-        const bookingObjId = new Types.ObjectId(bookingId);
         const userObjId = new Types.ObjectId(userId);
+        const bookingObjId = new Types.ObjectId(bookingId);
 
         const booking = await this.bookingModel.findById(bookingId);
         if (!booking) throw new NotFoundException('ไม่เจอเลข booking');
@@ -96,8 +98,9 @@ export class PaymentsService {
         });
 
         const payment = await this.paymentModel.create({
-            bookingId: new Types.ObjectId(bookingId),
-            userId: new Types.ObjectId(userId),
+            bookingId: bookingObjId,
+            userId: userObjId,
+            slotId: booking.slotId,
             amount: amountTHB,
             chargeId: charge.id,
             sourceId: source.id,
