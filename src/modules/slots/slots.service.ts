@@ -83,25 +83,33 @@ export class SlotsService {
         }
 
         if (hasSingle) {
-            const startTime = dayjs(`${body.date}T${body.startTime}`).toDate();
-            const endTime = dayjs(`${body.date}T${body.endTime}`).toDate();
+            let startTime = dayjs.tz(`${body.date}T${body.startTime}`, 'Asia/Bangkok');
+            let endTime = dayjs.tz(`${body.date}T${body.endTime}`, 'Asia/Bangkok');
 
-            if (startTime >= endTime) {
-                throw new BadRequestException('startTime ต้องน้อยกว่า endTime');
+            if (endTime.isSame(startTime)) {
+                throw new BadRequestException('เวลาเริ่มและเวลาสิ้นสุดต้องไม่เท่ากัน');
             }
+
+            if (endTime.isBefore(startTime)) {
+                // ถ้าสิ้นสุดน้อยกว่าเริ่ม แสดงว่าข้ามเที่ยงคืน → auto +1 วัน
+                endTime = endTime.add(1, 'day');
+            }
+
+            const startDateObj = startTime.toDate();
+            const endDateObj = endTime.toDate();
 
             const overlap = await this.slotModel.exists({
                 teacherId: teacherObjId,
                 date: body.date,
                 $or: [{
-                    startTime: { $lt: endTime },
-                    endTime: { $gt: startTime },
+                    startTime: { $lt: endDateObj },
+                    endTime: { $gt: startDateObj },
                 }]
             });
 
             if (overlap) throw new BadRequestException('ไม่สามารถสร้างเวลาซ้ำได้');
 
-            const durationHours = (endTime.getTime() - startTime.getTime()) / (1000 * 60 * 60);
+            const durationHours = (endDateObj.getTime() - startDateObj.getTime()) / (1000 * 60 * 60);
             const price = teacher.hourlyRate * durationHours;
 
             docs.push({
@@ -109,8 +117,8 @@ export class SlotsService {
                     document: {
                         teacherId: teacherObjId,
                         date: body.date,
-                        startTime,
-                        endTime,
+                        startTime: startDateObj,
+                        endTime: endDateObj,
                         price,
                         status: 'available',
                         bookedBy: null,
@@ -134,29 +142,36 @@ export class SlotsService {
             for (let i = 0; i < repeatDays; i++) {
                 const currentDate = baseDate.add(i, 'day');
 
-                const startTime = dayjs.tz(`${currentDate
-                    .format('YYYY-MM-DD')}T${body.startTime}`, 'Asia/Bangkok').toDate();
-                const endTime = dayjs
+                let startTime = dayjs.tz(`${currentDate
+                    .format('YYYY-MM-DD')}T${body.startTime}`, 'Asia/Bangkok');
+                let endTime = dayjs
                     .tz(`${currentDate
-                        .format('YYYY-MM-DD')}T${body.endTime}`, 'Asia/Bangkok').toDate();
+                        .format('YYYY-MM-DD')}T${body.endTime}`, 'Asia/Bangkok');
 
 
-                if (startTime >= endTime) {
-                    throw new BadRequestException('startTime ต้องน้อยกว่า endTime');
+                if (endTime.isSame(startTime)) {
+                    throw new BadRequestException('เวลาเริ่มและเวลาสิ้นสุดต้องไม่เท่ากัน');
                 }
+
+                if (endTime.isBefore(startTime)) {
+                    endTime = endTime.add(1, 'day');
+                }
+
+                const startDateObj = startTime.toDate();
+                const endDateObj = endTime.toDate();
 
                 const overlap = await this.slotModel.exists({
                     teacherId: teacherObjId,
                     date: currentDate.format('YYYY-MM-DD'),
                     $or: [{
-                        startTime: { $lt: endTime },
-                        endTime: { $gt: startTime },
+                        startTime: { $lt: endDateObj },
+                        endTime: { $gt: startDateObj },
                     }]
                 });
 
-                if (overlap) continue;
+                if (overlap) throw new BadRequestException('ไม่สามารถสร้างเวลาซ้ำได้');
 
-                const durationHours = (endTime.getTime() - startTime.getTime()) / (1000 * 60 * 60);
+                const durationHours = (endDateObj.getTime() - startDateObj.getTime()) / (1000 * 60 * 60);
                 const price = teacher.hourlyRate * durationHours;
 
                 docs.push({
@@ -164,8 +179,8 @@ export class SlotsService {
                         document: {
                             teacherId: teacherObjId,
                             date: currentDate.format('YYYY-MM-DD'),
-                            startTime,
-                            endTime,
+                            startTime: startDateObj,
+                            endTime: endDateObj,
                             price,
                             status: 'available',
                             bookedBy: null,
@@ -190,24 +205,33 @@ export class SlotsService {
             for (let i = 0; i < repeatWeeks; i++) {
                 const currentDate = baseDate.add(i, 'week');
 
-                const startTime = dayjs
-                    .tz(`${currentDate.format('YYYY-MM-DD')}T${body.startTime}`, 'Asia/Bangkok').toDate();
-                const endTime = dayjs
-                    .tz(`${currentDate.format('YYYY-MM-DD')}T${body.endTime}`, 'Asia/Bangkok').toDate();
+                let startTime = dayjs
+                    .tz(`${currentDate.format('YYYY-MM-DD')}T${body.startTime}`, 'Asia/Bangkok');
+                let endTime = dayjs
+                    .tz(`${currentDate.format('YYYY-MM-DD')}T${body.endTime}`, 'Asia/Bangkok');
 
-                if (startTime >= endTime) throw new BadRequestException('startTime ต้องน้อยกว่า endTime');
+                if (endTime.isSame(startTime)) {
+                    throw new BadRequestException('เวลาเริ่มและเวลาสิ้นสุดต้องไม่เท่ากัน');
+                }
+
+                if (endTime.isBefore(startTime)) {
+                    endTime = endTime.add(1, 'day');
+                }
+
+                const startDateObj = startTime.toDate();
+                const endDateObj = endTime.toDate();
 
                 const overlap = await this.slotModel.exists({
                     teacherId: teacherObjId,
                     date: currentDate.format('YYYY-MM-DD'),
                     $and: [
-                        { startTime: { $lt: endTime } },
-                        { endTime: { $gt: startTime } },
+                        { startTime: { $lt: endDateObj } },
+                        { endTime: { $gt: startDateObj } },
                     ],
                 });
                 if (overlap) continue;
 
-                const durationHours = (endTime.getTime() - startTime.getTime()) / (1000 * 60 * 60);
+                const durationHours = (endDateObj.getTime() - startDateObj.getTime()) / (1000 * 60 * 60);
                 const price = teacher.hourlyRate * durationHours;
 
                 docs.push({
@@ -215,8 +239,8 @@ export class SlotsService {
                         document: {
                             teacherId: teacherObjId,
                             date: currentDate.format('YYYY-MM-DD'),
-                            startTime,
-                            endTime,
+                            startTime: startDateObj,
+                            endTime: endDateObj,
                             price,
                             status: 'available',
                             bookedBy: null,
@@ -493,10 +517,20 @@ export class SlotsService {
 
         let deletedCount = 0;
 
-        // ✳️ ลบ slot เดี่ยว
         if (hasSingle) {
-            const startTime = dayjs.tz(`${body.date}T${body.startTime}`, 'Asia/Bangkok').toDate();
-            const endTime = dayjs.tz(`${body.date}T${body.endTime}`, 'Asia/Bangkok').toDate();
+            let startTime = dayjs.tz(`${body.date}T${body.startTime}`, 'Asia/Bangkok');
+            let endTime = dayjs.tz(`${body.date}T${body.endTime}`, 'Asia/Bangkok');
+
+            if (endTime.isSame(startTime)) {
+                throw new BadRequestException('เวลาเริ่มและเวลาสิ้นสุดต้องไม่เท่ากัน');
+            }
+
+            if (endTime.isBefore(startTime)) {
+                endTime = endTime.add(1, 'day');
+            }
+
+            const startDateObj = startTime.toDate();
+            const endDateObj = endTime.toDate();
 
             const result = await this.slotModel.deleteOne({
                 teacherId: teacherObjId,
