@@ -29,8 +29,12 @@ export class BookingService {
     async CreatebookingSlot(
         slotId: string,
         studentId: string,
+        subjectId: string,
     ): Promise<any> {
         const studentObjId = new Types.ObjectId(studentId);
+        const subjectObjId = new Types.ObjectId(subjectId)
+
+        if (!Types.ObjectId.isValid(subjectId)) throw new BadRequestException('subject id ไม่ถูกต้อง');
 
         const slot = await this.slotModel.findById(slotId);
         if (!slot) throw new NotFoundException('ไม่พบ slot ที่ต้องการจอง');
@@ -55,11 +59,13 @@ export class BookingService {
             date: slot.date,
             price: slot.price,
             status: 'pending',
+            subject: subjectObjId
         });
 
         slot.status = 'pending';
         slot.bookingId = booking._id.toString();
         slot.bookedBy = studentObjId;
+        slot.subject = subjectObjId
         await slot.save();
 
         return booking;
@@ -75,7 +81,7 @@ export class BookingService {
             .populate('subject', '_id name')
             .populate({
                 path: 'teacherId',
-                select: 'name lastName userId',
+                select: 'name lastName verifyStatus userId',
                 populate: {
                     path: 'userId',
                     select: 'profileImage',
@@ -110,6 +116,7 @@ export class BookingService {
                     _id: teacher?._id,
                     name: teacher?.name,
                     lastName: teacher?.lastName,
+                    verifyStatus: teacher?.verifyStatus,
                     profileImage: teacher?.userId?.profileImage ?? null,
                 },
             };
@@ -127,7 +134,7 @@ export class BookingService {
             .populate('subject', '_id name')
             .populate({
                 path: 'teacherId',
-                select: 'name lastName userId',
+                select: 'name lastName userId verifyStatus',
                 populate: {
                     path: 'userId',
                     select: 'profileImage',
@@ -165,6 +172,7 @@ export class BookingService {
                 _id: teacher?._id,
                 name: teacher?.name,
                 lastName: teacher?.lastName,
+                verifyStatus: teacher?.verifyStatus,
                 profileImage: teacher?.userId?.profileImage ?? null,
             },
         };
@@ -180,7 +188,7 @@ export class BookingService {
             .populate('subject', '_id name')
             .populate({
                 path: 'teacherId',
-                select: 'name lastName userId',
+                select: 'name lastName userId verifyStatus',
                 populate: {
                     path: 'userId',
                     select: 'profileImage',
@@ -207,6 +215,7 @@ export class BookingService {
                     _id: teacher?._id,
                     name: teacher?.name,
                     lastName: teacher?.lastName,
+                    verifyStatus: teacher?.verifyStatus,
                     profileImage: teacher?.userId?.profileImage ?? null,
                 },
             };

@@ -27,8 +27,13 @@ export class BookingController {
     async CreatebookingSlot(
         @Param('slotId') slotId: string,
         @CurrentUser() studentId: string,
+        @Body('subject') body: any
     ) {
-        const booking = await this.bookingService.CreatebookingSlot(slotId, studentId,);
+        const booking = await this.bookingService.CreatebookingSlot(
+            slotId,
+            studentId,
+            body
+        );
 
         return {
             message: 'จองตารางเรียนสำเร็จ',
@@ -36,7 +41,7 @@ export class BookingController {
         };
     }
 
-    
+
     @Get('mine')
     async getMySlots(@CurrentUser() userId: string) {
         const data = await this.bookingService.getMySlot(userId);

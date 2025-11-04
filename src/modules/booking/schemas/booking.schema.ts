@@ -42,11 +42,9 @@ export class Booking {
     @Prop({
         type: Types.ObjectId,
         ref: SubjectList.name,
+        default: null
     })
     subject: Types.ObjectId;
-
-    // @Prop({ type: Object, default: {} })
-    // meta?: Record<string, any>;
 
     @Prop({
         type: String,

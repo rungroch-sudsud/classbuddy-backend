@@ -32,7 +32,7 @@ export class BookingCronService {
 
       await this.slotModel.updateOne(
         { _id: booking.slotId, status: 'pending' },
-        { $set: { status: 'available', bookingId: null, bookedBy: null } },
+        { $set: { status: 'available', bookingId: null, bookedBy: null, subject: null } },
       );
     }
 
