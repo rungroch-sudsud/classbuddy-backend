@@ -535,15 +535,14 @@ export class SlotsService {
             const result = await this.slotModel.deleteOne({
                 teacherId: teacherObjId,
                 date: body.date,
-                startTime,
-                endTime,
+                startTime: startDateObj,
+                endTime: endDateObj,
                 status: 'available',
             });
 
             deletedCount = result.deletedCount ?? 0;
         }
 
-        // 🔁 ลบ slot แบบรายวัน
         if (hasDailyRecurring) {
             const baseDate = dayjs(body.date);
             const repeatDays = Number(body.repeatDailyForDays ?? 7);
@@ -558,14 +557,25 @@ export class SlotsService {
 
             for (let i = 0; i < repeatDays; i++) {
                 const currentDate = baseDate.add(i, 'day');
-                const startTime = dayjs.tz(`${currentDate.format('YYYY-MM-DD')}T${body.startTime}`, 'Asia/Bangkok').toDate();
-                const endTime = dayjs.tz(`${currentDate.format('YYYY-MM-DD')}T${body.endTime}`, 'Asia/Bangkok').toDate();
+                let startTime = dayjs.tz(`${currentDate.format('YYYY-MM-DD')}T${body.startTime}`, 'Asia/Bangkok');
+                let endTime = dayjs.tz(`${currentDate.format('YYYY-MM-DD')}T${body.endTime}`, 'Asia/Bangkok');
+
+                if (endTime.isSame(startTime)) {
+                    throw new BadRequestException('เวลาเริ่มและเวลาสิ้นสุดต้องไม่เท่ากัน');
+                }
+
+                if (endTime.isBefore(startTime)) {
+                    endTime = endTime.add(1, 'day');
+                }
+
+                const startDateObj = startTime.toDate();
+                const endDateObj = endTime.toDate();
 
                 const result = await this.slotModel.deleteOne({
                     teacherId: teacherObjId,
                     date: currentDate.format('YYYY-MM-DD'),
-                    startTime,
-                    endTime,
+                    startTime: startDateObj,
+                    endTime: endDateObj,
                     status: 'available',
                 });
 
@@ -589,14 +599,26 @@ export class SlotsService {
 
             for (let i = 0; i < repeatWeeks; i++) {
                 const currentDate = baseDate.add(i, 'week');
-                const startTime = dayjs.tz(`${currentDate.format('YYYY-MM-DD')}T${body.startTime}`, 'Asia/Bangkok').toDate();
-                const endTime = dayjs.tz(`${currentDate.format('YYYY-MM-DD')}T${body.endTime}`, 'Asia/Bangkok').toDate();
+
+                let startTime = dayjs.tz(`${currentDate.format('YYYY-MM-DD')}T${body.startTime}`, 'Asia/Bangkok');
+                let endTime = dayjs.tz(`${currentDate.format('YYYY-MM-DD')}T${body.endTime}`, 'Asia/Bangkok');
+
+                if (endTime.isSame(startTime)) {
+                    throw new BadRequestException('เวลาเริ่มและเวลาสิ้นสุดต้องไม่เท่ากัน');
+                }
+
+                if (endTime.isBefore(startTime)) {
+                    endTime = endTime.add(1, 'day');
+                }
+
+                const startDateObj = startTime.toDate();
+                const endDateObj = endTime.toDate();
 
                 const result = await this.slotModel.deleteOne({
                     teacherId: teacherObjId,
                     date: currentDate.format('YYYY-MM-DD'),
-                    startTime,
-                    endTime,
+                    startTime: startDateObj,
+                    endTime: endDateObj,
                     status: 'available',
                 });
 
