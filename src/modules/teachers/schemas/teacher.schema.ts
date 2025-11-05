@@ -43,6 +43,9 @@ export class Teacher {
     @Prop({ default: null })
     customSubjects?: string;
 
+    @Prop({ min: 0, max: 80, required: true })
+    experience?: number;
+
     @Prop({
         min: 200,
         max: 3000,
@@ -56,14 +59,17 @@ export class Teacher {
     @Prop({ min: 0, default: 0 })
     reviewCount?: number;
 
+    @Prop({ min: 0, max: 100, default: 0 })
+    satisfactionRate: number;
+
     @Prop({ min: 0, default: 0 })
     totalTeachingHours?: number;
 
     @Prop({ min: 0, default: 0 })
-    classCount?: number;
+    totalTeachingClass?: number;
 
-    @Prop({ min: 0, max: 80, required: true })
-    experience?: number;
+    @Prop({ min: 0, default: 0 })
+    totalStudentInClass?: number;
 
     @Prop([
         {
@@ -88,26 +94,22 @@ export class Teacher {
     @Prop({ type: String, default: null })
     idCardWithPerson?: string | null;
 
-    @Prop([
-        {
-            reviewerId: {
-                type: Types.ObjectId,
-                ref: 'User',
-                required: true
+    @Prop({
+        type: [
+            {
+                reviewerId: { type: Types.ObjectId, ref: User.name, required: true },
+                rating: { type: Number, min: 1, max: 5, required: true },
+                comment: { type: String, maxlength: 500 },
+                createdAt: { type: Date, default: Date.now },
             },
-            rating: {
-                type: Number,
-                min: 1,
-                max: 5,
-                required: true
-            },
-            comment: { type: String },
-        },
-    ])
+        ],
+        default: [],
+    })
     reviews: {
         reviewerId: Types.ObjectId;
         rating: number;
         comment?: string;
+        createdAt: Date;
     }[];
 
     @Prop({ maxlength: 20 })

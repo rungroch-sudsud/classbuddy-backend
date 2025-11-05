@@ -29,12 +29,12 @@ export class BookingService {
     async CreatebookingSlot(
         slotId: string,
         studentId: string,
-        subjectId: string,
+        body: CreateBookingDto,
     ): Promise<any> {
         const studentObjId = new Types.ObjectId(studentId);
-        const subjectObjId = new Types.ObjectId(subjectId)
+        const subjectObjId = new Types.ObjectId(body.subject)
 
-        if (!Types.ObjectId.isValid(subjectId)) throw new BadRequestException('subject id ไม่ถูกต้อง');
+        if (!Types.ObjectId.isValid(body.subject)) throw new BadRequestException('subject id ไม่ถูกต้อง');
 
         const slot = await this.slotModel.findById(slotId);
         if (!slot) throw new NotFoundException('ไม่พบ slot ที่ต้องการจอง');

@@ -1,5 +1,5 @@
-import { Body, Controller, Get, Param, Patch, Post, Query, UploadedFile, UploadedFiles, UseGuards } from '@nestjs/common';
-import { ApiBearerAuth, ApiBody, ApiConsumes, ApiQuery, ApiTags } from '@nestjs/swagger';
+import { Body, Controller, Delete, Get, Param, Patch, Post, Query, UploadedFile, UploadedFiles, UseGuards } from '@nestjs/common';
+import { ApiBearerAuth, ApiBody, ApiConsumes, ApiOperation, ApiQuery, ApiTags } from '@nestjs/swagger';
 import { JwtGuard } from '../auth/guard/auth.guard';
 import { CurrentUser } from 'src/shared/utils/currentUser';
 import { CreateTeacherProfileDto, reviewTeacherDto, UpdateTeacherDto } from './schemas/teacher.zod.schema';
@@ -33,7 +33,7 @@ export class TeachersController {
             data: teacher,
         };
     }
-    
+
 
     @Post('profile/id-card-with-person')
     @ApiBody({ type: UploadFileDto })
@@ -154,19 +154,35 @@ export class TeachersController {
 
     //Review Section
     @Post('review/:teacherId')
+    @ApiOperation({ summary: 'นักเรียนที่เคยเรียนรีวิวครู' })
     @ApiBody({ type: reviewTeacherDto })
     @UseGuards(JwtGuard)
     async addReview(
         @Param('teacherId') teacherId: string,
         @CurrentUser() reviewerId: string,
-        @Body() body: any,
+        @Body() body: reviewTeacherDto,
     ) {
         const review = await this.teacherService.addReview(teacherId, reviewerId, body);
+        
         return {
             message: 'รีวิวครูคนนี้สำเร็จ',
             data: review,
         };
     }
 
+
+    @Delete('review/:teacherId')
+    @UseGuards(JwtGuard)
+    async deleteReview(
+        @Param('teacherId') teacherId: string,
+        @CurrentUser() userId: string,
+    ) {
+        await this.teacherService.deleteReview(teacherId, userId);
+
+        return {
+            message: 'ลบรีวิวเรียบร้อยแล้ว',
+            data: null
+        };
+    }
 
 }

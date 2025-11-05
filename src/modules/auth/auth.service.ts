@@ -73,7 +73,7 @@ export class AuthService {
         // console.log('Save OTP:', sessionId, otp);
         // console.log('Redis check:', check);
 
-        await this.smsService.sendOtp(phone, otp, refCode);
+        // await this.smsService.sendOtp(phone, otp, refCode);
 
         return { sessionId };
     }

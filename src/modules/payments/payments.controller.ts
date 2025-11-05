@@ -28,11 +28,12 @@ export class PaymentsController {
         @CurrentUser() userId: string,
     ) {
         const create = await this.paymentsService.createPromptPayCharge(
-            bookingId, userId
+            bookingId, 
+            userId
         )
 
         return {
-            message: 'ชำระเงินสำเร็จแล้ว',
+            message: 'สร้างการชำระเงินสำเร็จ',
             data: create,
         };
     }

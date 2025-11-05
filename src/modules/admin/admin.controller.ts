@@ -38,11 +38,11 @@ export class AdminController {
     @Patch(':teacherId/verify')
     async verifyTeacher(
         @Param('teacherId') teacherId: string) {
-        const verify = await this.adminService.verifyTeacher(teacherId);
+        await this.adminService.verifyTeacher(teacherId);
 
         return {
             message: 'ยืนยันตัวตนครูคนนี้เรียบร้อย',
-            data: verify,
+            data: null,
         };
     }
 

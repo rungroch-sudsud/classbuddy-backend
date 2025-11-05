@@ -1,4 +1,4 @@
-import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, Injectable, InternalServerErrorException, NotFoundException } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Teacher } from '../teachers/schemas/teacher.schema';
 import { isValidObjectId, Model } from 'mongoose';
@@ -48,22 +48,37 @@ export class AdminService {
             throw new BadRequestException('ข้อมูลบัญชีธนาคารไม่ครบถ้วน');
         }
 
-        const recipient = await this.omise.recipients.create({
-            name: teacher.bankAccountName,
-            type: 'individual',
-            bank_account: {
-                brand: teacher.bankName,
-                number: teacher.bankAccountNumber,
+        try {
+            const recipient = await this.omise.recipients.create({
                 name: teacher.bankAccountName,
-            },
-        });
+                type: 'individual',
+                bank_account: {
+                    brand: teacher.bankName,
+                    number: teacher.bankAccountNumber,
+                    name: teacher.bankAccountName,
+                },
+            });
 
-        teacher.recipientId = recipient.id;
-        teacher.verifyStatus = 'process';
+            teacher.recipientId = recipient.id;
+            teacher.verifyStatus = 'process';
+            await teacher.save();
 
-        await teacher.save();
+            return teacher
 
-        return teacher
+        } catch (error) {
+            if (error?.code === 'invalid_bank_account') {
+                throw new BadRequestException(
+                    `ข้อมูลบัญชีธนาคารไม่ถูกต้อง กรุณาตรวจสอบเลขบัญชีอีกครั้ง'}`
+                );
+            }
+
+            if (error?.object === 'error' && error?.message) {
+                throw new BadRequestException(`เกิดข้อผิดพลาดจาก Omise: ${error.message}`);
+            }
+
+            console.error('Omise unexpected error:', error);
+            throw new InternalServerErrorException('ไม่สามารถเชื่อมต่อกับ Omise ได้ในขณะนี้');
+        }
     }
 
 

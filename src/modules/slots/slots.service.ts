@@ -462,6 +462,7 @@ export class SlotsService {
                 { session }
             );
 
+            // Wallet Section
             const wallet = await this.walletModel
                 .findOne({ userId: teacher._id })
                 .session(session);
@@ -476,6 +477,7 @@ export class SlotsService {
             wallet.availableBalance += slot.price;
             await wallet.save({ session });
 
+            // Teaching Counter Section
             const durationHours =
                 (slot.endTime.getTime() - slot.startTime.getTime()) /
                 (1000 * 60 * 60);
@@ -485,6 +487,26 @@ export class SlotsService {
                 { $inc: { totalTeachingHours: durationHours } },
                 { session }
             );
+
+            await this.teacherModel.updateOne(
+                { _id: teacher._id },
+                { $inc: { totalTeachingClass: 1 } },
+                { session }
+            );
+
+            const isExistingStudent = await this.slotModel.exists({
+                teacherId: teacher._id,
+                bookedBy: slot.bookedBy,
+                status: 'studied',
+            });
+
+            if (!isExistingStudent) {
+                await this.teacherModel.updateOne(
+                    { _id: teacher._id },
+                    { $inc: { totalStudentInClass: 1 } },
+                    { session }
+                );
+            }
 
             await session.commitTransaction();
             return wallet

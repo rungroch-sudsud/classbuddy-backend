@@ -256,9 +256,7 @@ export class TeachersService {
             { path: 'userId', select: '_id profileImage' },
         ]);
 
-        const stats = await this.getTeachingStats(teacher._id);
         const obj = teacher.toObject();
-
 
         const profileImage = (obj.userId as any)?.profileImage ?? null;
 
@@ -266,8 +264,7 @@ export class TeachersService {
             ...obj,
             userId: obj.userId?._id,
             profileImage,
-            teachingCount: stats.count,
-            teachingHours: stats.totalHours,
+
         };
     }
 
@@ -355,20 +352,72 @@ export class TeachersService {
         );
         if (alreadyReviewed) throw new BadRequestException('คุณได้รีวิวครูคนนี้ไปแล้ว');
 
+        const reviewrObjId = new Types.ObjectId(reviewerId)
+
+        const hasStudy = await this.slotModel.findOne({
+            teacherId: teacher._id,
+            bookedBy: reviewrObjId,
+            status: 'studied'
+        })
+
+        if (!hasStudy) throw new BadRequestException('คุณยังไม่เคยเรียนกับครูคนนี้')
+
         teacher.reviews.push({
-            reviewerId: new Types.ObjectId(reviewerId),
+            reviewerId: reviewrObjId,
             rating: body.rating,
-            comment: body.comment
+            comment: body.comment,
+            createdAt: new Date(),
         });
 
         const total = teacher.reviews.reduce((sum, r) => sum + r.rating, 0);
         const count = teacher.reviews.length;
-        teacher.averageRating = total / count;
+        const avg = total / count;
+
+
+        teacher.averageRating = Number(avg.toFixed(1));
         teacher.reviewCount = count;
+        teacher.satisfactionRate = Math.round((avg / 5) * 100);
 
         await teacher.save();
 
-        return { teacher };
+        return {
+            averageRating: teacher.averageRating,
+            reviewCount: teacher.reviewCount,
+            satisfactionRate: teacher.satisfactionRate,
+        }
+    }
+
+
+    async deleteReview(
+        teacherId: string,
+        reviewerId: string
+    ): Promise<any> {
+        const teacher = await this.teacherModel.findById(teacherId);
+        if (!teacher) throw new NotFoundException('ไม่พบครู');
+
+        const reviewIndex = teacher.reviews.findIndex(
+            (r) => r.reviewerId.toString() === reviewerId
+        );
+        if (reviewIndex === -1) {
+            throw new NotFoundException('ไม่พบรีวิวของคุณในครูคนนี้');
+        }
+
+        teacher.reviews.splice(reviewIndex, 1);
+
+        if (teacher.reviews.length > 0) {
+            const total = teacher.reviews.reduce((sum, r) => sum + r.rating, 0);
+            teacher.reviewCount = teacher.reviews.length;
+            teacher.averageRating = total / teacher.reviewCount;
+            teacher.satisfactionRate = Math.round((teacher.averageRating / 5) * 100);
+        } else {
+            teacher.reviewCount = 0;
+            teacher.averageRating = 0;
+            teacher.satisfactionRate = 0;
+        }
+
+        await teacher.save();
+
+        return teacher
     }
 
 }

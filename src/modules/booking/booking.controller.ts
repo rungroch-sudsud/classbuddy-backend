@@ -4,6 +4,7 @@ import { JwtGuard } from '../auth/guard/auth.guard';
 import { CurrentUser } from 'src/shared/utils/currentUser';
 
 import { BookingService } from './booking.service';
+import { CreateBookingDto } from './schemas/booking.zod.schema';
 
 
 
@@ -27,7 +28,7 @@ export class BookingController {
     async CreatebookingSlot(
         @Param('slotId') slotId: string,
         @CurrentUser() studentId: string,
-        @Body('subject') body: any
+        @Body() body: CreateBookingDto
     ) {
         const booking = await this.bookingService.CreatebookingSlot(
             slotId,
