@@ -99,10 +99,12 @@ export class BookingService {
 
         return sorted.map(({ teacherId, startTime, endTime, date, paidAt, ...rest }) => {
             const teacher: any = teacherId;
+            const startLocal = dayjs(startTime).tz('Asia/Bangkok');
+            const endLocal = dayjs(endTime).tz('Asia/Bangkok');
 
-            const dateDisplay = dayjs(startTime).locale('th').format('D MMMM YYYY');
-            const start = `${dayjs(startTime).format('HH:mm')}`;
-            const end = `${dayjs(endTime).format('HH:mm')}`
+            const dateDisplay = dayjs(startLocal).locale('th').format('D MMMM YYYY');
+            const start = startLocal.format('HH:mm');
+            const end = endLocal.format('HH:mm');
             const paidAtDisplay = paidAt ? dayjs(paidAt).locale('th').format('D MMMM YYYY') : null;
 
             return {
@@ -151,9 +153,12 @@ export class BookingService {
 
         const teacher: any = booking.teacherId;
 
-        const dateDisplay = dayjs(booking.startTime).locale('th').format('D MMMM YYYY');
-        const start = `${dayjs(booking.startTime).format('HH:mm')}`;
-        const end = `${dayjs(booking.endTime).format('HH:mm')}`
+        const startLocal = dayjs(booking.startTime).tz('Asia/Bangkok');
+        const endLocal = dayjs(booking.endTime).tz('Asia/Bangkok');
+
+        const dateDisplay = dayjs(startLocal).locale('th').format('D MMMM YYYY');
+        const start = startLocal.format('HH:mm');
+        const end = endLocal.format('HH:mm');
 
         const { teacherId, startTime, endTime, paidAt, ...rest } = booking;
 
@@ -199,9 +204,12 @@ export class BookingService {
         return bookings.map(({ teacherId, startTime, endTime, date, paidAt, ...rest }) => {
             const teacher: any = teacherId;
 
-            const dateDisplay = dayjs(startTime).locale('th').format('D MMMM YYYY');
-            const start = `${dayjs(startTime).format('HH:mm')}`;
-            const end = `${dayjs(endTime).format('HH:mm')}`;
+            const startLocal = dayjs(startTime).tz('Asia/Bangkok');
+            const endLocal = dayjs(endTime).tz('Asia/Bangkok');
+
+            const dateDisplay = dayjs(startLocal).locale('th').format('D MMMM YYYY');
+            const start = startLocal.format('HH:mm');
+            const end = endLocal.format('HH:mm');
             const paidAtDisplay = paidAt ? dayjs(paidAt).locale('th').format('D MMMM YYYY') : null;
 
             return {
