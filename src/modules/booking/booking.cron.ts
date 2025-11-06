@@ -17,7 +17,7 @@ export class BookingCronService {
 
   @Cron('*/3 * * * *')
   async expireOldBookings() {
-    const tenMinutesAgo = dayjs().subtract(5, 'minute').toDate();
+    const tenMinutesAgo = dayjs().subtract(10, 'minute').toDate();
 
     const expiredBookings = await this.bookingModel.find({
       status: 'pending',

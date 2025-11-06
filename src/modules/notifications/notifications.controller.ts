@@ -1,4 +1,4 @@
-import { Controller, Get, UseGuards } from '@nestjs/common';
+import { Body, Controller, Get, Param, Post, UseGuards } from '@nestjs/common';
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import { NotificationsService } from './notifications.service';
 import { JwtGuard } from '../auth/guard/auth.guard';
@@ -25,6 +25,19 @@ export class NotificationsController {
             message: 'ดึงการแจ้งเตือนของฉันสำเร็จ',
             data: notific,
         };
+    }
+
+    @Post('test/:userId')
+    testNotify(
+        @Param('userId') userId: string,
+        @Body() payload: { 
+            recipientType: 'User' | 'Teacher';
+            message: string,
+            type: string;
+            meta?: Record<string, any>;
+        }
+    ) {
+        return this.notificationService.sendNotification(userId, payload);
     }
 
 

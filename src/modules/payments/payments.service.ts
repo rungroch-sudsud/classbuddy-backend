@@ -49,7 +49,7 @@ export class PaymentsService {
         }
 
         if (booking.status !== 'pending') {
-            throw new BadRequestException('คุณไม่สามารถชำระเงินได้เนื่องสถานะไม่ถูกต้อง');
+            throw new BadRequestException('ไม่สามารถชำระเงินได้เนื่องจากหมดเวลาชำระเงินหรือสถานะไม่ถูกต้อง');
         }
 
         const user = await this.userModel.findById(userObjId);

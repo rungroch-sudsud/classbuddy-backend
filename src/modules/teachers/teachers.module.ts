@@ -7,6 +7,7 @@ import { S3Module } from 'src/infra/s3/s3.module';
 import { Slot, SlotSchema } from '../slots/schemas/slot.schema';
 import { ChatModule } from '../chat/chat.module';
 import { User, UserSchema } from '../users/schemas/user.schema';
+import { SocketModule } from '../socket/socket.module';
 
 @Module({
     imports: [
@@ -16,7 +17,8 @@ import { User, UserSchema } from '../users/schemas/user.schema';
             { name: Slot.name, schema: SlotSchema },
         ]),
         S3Module,
-        ChatModule
+        ChatModule,
+        SocketModule
     ],
     providers: [TeachersService],
     controllers: [TeachersController],

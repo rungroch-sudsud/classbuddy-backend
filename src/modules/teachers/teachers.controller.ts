@@ -72,6 +72,7 @@ export class TeachersController {
 
 
     @Get('all')
+    @ApiOperation({ summary: 'ดึงครูทั้งหมด สำหรับแอดมิน' })
     async getAllTeachers() {
         const getAll = await this.teacherService.getAllTeacher();
         return {
@@ -163,7 +164,7 @@ export class TeachersController {
         @Body() body: reviewTeacherDto,
     ) {
         const review = await this.teacherService.addReview(teacherId, reviewerId, body);
-        
+
         return {
             message: 'รีวิวครูคนนี้สำเร็จ',
             data: review,

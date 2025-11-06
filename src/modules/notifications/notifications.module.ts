@@ -4,6 +4,8 @@ import { Notification, NotificationSchema } from './schema/notification';
 import { NotificationsService } from './notifications.service';
 import { NotificationsController } from './notifications.controller';
 import { Teacher, TeacherSchema } from '../teachers/schemas/teacher.schema';
+import { SocketModule } from '../socket/socket.module';
+
 
 @Module({
     imports: [
@@ -12,6 +14,7 @@ import { Teacher, TeacherSchema } from '../teachers/schemas/teacher.schema';
             { name: Teacher.name, schema: TeacherSchema },
             { name: Notification.name, schema: NotificationSchema }
         ]),
+        SocketModule
     ],
     providers: [NotificationsService],
     controllers: [NotificationsController],

@@ -7,6 +7,7 @@ import { CreateTeacherProfileDto, reviewTeacherDto, UpdateTeacherDto } from './s
 import { Slot } from '../slots/schemas/slot.schema';
 import { StreamChatService } from '../chat/stream-chat.service';
 import { User } from '../users/schemas/user.schema';
+import { SocketService } from '../socket/socket.service';
 
 
 @Injectable()
@@ -16,40 +17,12 @@ export class TeachersService {
         @InjectModel(User.name) private userModel: Model<User>,
         @InjectModel(Slot.name) private slotModel: Model<Slot>,
         private readonly s3Service: S3Service,
+        private readonly socketService: SocketService,
         private readonly streamChatService: StreamChatService
     ) { }
 
     private async findTeacher(userId: string): Promise<TeacherDocument | null> {
         return this.teacherModel.findOne({ userId: new Types.ObjectId(userId) });
-    }
-
-    private async getTeachingStats(teacherId: string | Types.ObjectId) {
-        const id = new Types.ObjectId(teacherId);
-
-        const [stats] = await this.slotModel.aggregate([
-            {
-                $match: {
-                    teacherId: id,
-                    status: 'completed'
-                }
-            },
-            {
-                $group: {
-                    _id: null,
-                    count: { $sum: 1 },
-                    totalHours: {
-                        $sum: {
-                            $divide: [
-                                { $subtract: ["$endTime", "$startTime"] },
-                                1000 * 60 * 60
-                            ]
-                        }
-                    }
-                }
-            }
-        ]);
-        if (!stats) return { count: 0, totalHours: 0 };
-        return stats;
     }
 
     private checkIfVerificationComplete(teacher: Teacher): boolean {
@@ -162,12 +135,22 @@ export class TeachersService {
             .populate('subjects')
             .lean();
 
-        return teachers.map((teacher: any) => ({
-            ...teacher,
-            userId: teacher.userId?._id ?? null,
-            profileImage: teacher.userId?.profileImage ?? null,
-            subjects: teacher.subjects ?? [],
-        }));
+        return teachers.map((teacher: any) => {
+            const user =
+                typeof teacher.userId === 'object'
+                    ? teacher.userId
+                    : { _id: teacher.userId, profileImage: null };
+
+            const isOnline = this.socketService.isOnline(user._id?.toString());
+
+            return {
+                ...teacher,
+                userId: user._id ?? null,
+                profileImage: user.profileImage ?? null,
+                subjects: teacher.subjects ?? [],
+                isOnline,
+            };
+        });
     }
 
 
@@ -210,8 +193,9 @@ export class TeachersService {
                 .populate('userId', '_id profileImage')
                 .populate('subjects')
                 .select(`
-                    -idCard -idCardWithPerson -bankName
-                     -bankAccountName -bankAccountNumber
+                        -idCardWithPerson -bankName -certificate
+                     -bankAccountName -bankAccountNumber -recipientId
+                     -reviews 
                      `)
                 .sort(sortOption)
                 .skip(skip)
@@ -222,16 +206,18 @@ export class TeachersService {
 
         const teachersWithStats = await Promise.all(
             teachers.map(async (teacher: any) => {
-                const stats = await this.getTeachingStats(teacher._id);
-                const profileImage = teacher.userId?.profileImage ?? null;
                 const userId = teacher.userId?._id ?? null;
+                const profileImage = teacher.userId?.profileImage ?? null;
+
+                const isOnline = userId
+                    ? this.socketService.isOnline(userId.toString())
+                    : false;
 
                 return {
                     ...teacher,
                     userId,
                     profileImage,
-                    teachingCount: stats?.count,
-                    teachingHours: stats?.totalHours,
+                    isOnline
                 };
             })
         );
@@ -256,15 +242,19 @@ export class TeachersService {
             { path: 'userId', select: '_id profileImage' },
         ]);
 
-        const obj = teacher.toObject();
+        const teacherObj = teacher.toObject();
+        const userId = teacher.userId?._id ?? null;
+        const profileImage = (teacherObj.userId as any)?.profileImage ?? null;
 
-        const profileImage = (obj.userId as any)?.profileImage ?? null;
+        const isOnline = userId
+            ? this.socketService.isOnline(userId.toString())
+            : false;
 
         return {
-            ...obj,
-            userId: obj.userId?._id,
+            ...teacherObj,
+            userId,
             profileImage,
-
+            isOnline
         };
     }
 
@@ -278,6 +268,10 @@ export class TeachersService {
 
         const teacher = await this.teacherModel
             .findById(new Types.ObjectId(teacherId))
+            .select(`
+                     -idCardWithPerson -bankName
+                     -bankAccountName -bankAccountNumber -recipientId
+                     `)
             .populate([
                 { path: 'subjects' },
                 { path: 'userId', select: '_id profileImage' },
@@ -286,15 +280,18 @@ export class TeachersService {
 
         if (!teacher) throw new NotFoundException('ไม่พบข้อมูลผู้ใช้');
 
-        const stats = await this.getTeachingStats(teacher._id);
+        const userId = teacher.userId?._id ?? null;
         const profileImage = (teacher.userId as any)?.profileImage ?? null;
+
+        const isOnline = userId
+            ? this.socketService.isOnline(userId.toString())
+            : false;
 
         return {
             ...teacher,
-            userId: teacher.userId?._id,
+            userId,
             profileImage,
-            teachingCount: stats.count,
-            teachingHours: stats.totalHours,
+            isOnline
         };
     }
 

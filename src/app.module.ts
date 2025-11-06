@@ -24,6 +24,7 @@ import { NotificationsModule } from './modules/notifications/notifications.modul
 import { AdminModule } from './modules/admin/admin.module';
 import { ChatModule } from './modules/chat/chat.module';
 import { ScheduleModule } from '@nestjs/schedule';
+import { SocketModule } from './modules/socket/socket.module';
 
 
 @Module({
@@ -44,6 +45,7 @@ import { ScheduleModule } from '@nestjs/schedule';
     NotificationsModule,
     AdminModule,
     ChatModule,
+    SocketModule,
   ],
   controllers: [
     WebhookController,

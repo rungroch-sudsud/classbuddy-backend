@@ -14,7 +14,11 @@ export class Notification {
     })
     recipientId: Types.ObjectId;
 
-    @Prop({ type: String, enum: ['User', 'Teacher'], required: true })
+    @Prop({
+        type: String,
+        enum: ['User', 'Teacher'],
+        required: true
+    })
     recipientType: string;
 
     @Prop({
@@ -24,10 +28,14 @@ export class Notification {
     })
     senderId?: Types.ObjectId | null;
 
-    @Prop({ type: String, enum: ['User', 'Teacher', 'System'], default: 'System' })
+    @Prop({
+        type: String,
+        enum: ['User', 'Teacher', 'System'],
+        default: 'System'
+    })
     senderType: string;
 
-    @Prop({ required: true })
+    @Prop({ required: true, maxlength: 500 })
     message: string;
 
     @Prop({
@@ -37,6 +45,7 @@ export class Notification {
             'booking_wait_payment',
             'booking_reject',
             'booking_paid',
+            'review_added',
             'system'
         ],
         default: 'system'
