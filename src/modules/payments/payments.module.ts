@@ -9,7 +9,6 @@ import { PaymentsService } from './payments.service';
 import { PaymentsController } from './payments.controller';
 import { Slot, SlotSchema } from '../slots/schemas/slot.schema';
 import { BullModule } from '@nestjs/bullmq';
-import { REDIS_CLIENT } from 'src/infra/redis/redis.provider';
 import { PayoutLog, PayoutLogSchema } from './schemas/payout.schema';
 import { WebhookController } from './webhook.controller';
 import { WebhookService } from './webhook.service';
@@ -18,6 +17,7 @@ import { PayoutScheduler } from './processors/payout.scheduler';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { Notification, NotificationSchema } from '../notifications/schema/notification';
 import { ChatModule } from '../chat/chat.module';
+
 
 @Module({
     imports: [

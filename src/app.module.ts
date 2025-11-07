@@ -1,3 +1,4 @@
+import { VideoService } from './modules/chat/video.service';
 import { WebhookService } from './modules/payments/webhook.service';
 import { WebhookController } from './modules/payments/webhook.controller';
 import { S3Module } from './infra/s3/s3.module';
@@ -58,6 +59,7 @@ import { SocketModule } from './modules/socket/socket.module';
 
   ],
   providers: [
+    VideoService,
     WebhookService, AppService],
   exports: [],
 })

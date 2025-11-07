@@ -1,4 +1,10 @@
-import { BadRequestException, ConflictException, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
+import {
+    BadRequestException,
+    ConflictException,
+    ForbiddenException,
+    Injectable,
+    NotFoundException
+} from '@nestjs/common';
 import { InjectModel, InjectConnection } from '@nestjs/mongoose';
 import { Slot } from './schemas/slot.schema';
 import { Model, Types } from 'mongoose';
@@ -27,46 +33,22 @@ export class SlotsService {
         @InjectConnection() private readonly connection: Connection,
     ) { }
 
-    private combineDateAndTime(dateStr: string, timeStr: string): Date {
-        const [year, month, day] = dateStr.split('-').map(Number);
-        const [hours, minutes] = timeStr.split(':').map(Number);
-
-        if (isNaN(year) || isNaN(month) || isNaN(day)) {
-            throw new BadRequestException(`รูปแบบวันที่ไม่ถูกต้อง: ${dateStr}`);
-        }
-        if (isNaN(hours) || isNaN(minutes)) {
-            throw new BadRequestException(`รูปแบบเวลาไม่ถูกต้อง: ${timeStr}`);
-        }
-
-        return new Date(year, month - 1, day, hours, minutes);
-    }
-
-    private toLocalTime(date: Date | string) {
-        if (!date) return null;
-        return new Date(date).toLocaleTimeString('th-TH', {
-            timeZone: 'Asia/Bangkok',
-            hour: '2-digit',
-            minute: '2-digit',
-            hour12: false,
-        });
-    }
-
 
     async createSlots(
         teacherId: string,
         body: any
-    ) {
+    ): Promise<any> {
         const teacher = await this.teacherModel.findOne({
             userId: new Types.ObjectId(teacherId)
         });
 
         if (!teacher) throw new NotFoundException('ไม่พบข้อมูลครู');
 
-        console.log('Server timezone check -----------------------');
-        console.log('Server local time:', new Date().toString());
-        console.log('Server UTC time:', new Date().toISOString());
-        console.log('Bangkok time (dayjs):', dayjs().tz('Asia/Bangkok').format());
-        console.log('------------------------------------------------');
+        // console.log('Server timezone check -----------------------');
+        // console.log('Server local time:', new Date().toString());
+        // console.log('Server UTC time:', new Date().toISOString());
+        // console.log('Bangkok time (dayjs):', dayjs().tz('Asia/Bangkok').format());
+        // console.log('------------------------------------------------');
 
         const teacherObjId = teacher._id;
         const docs: any[] = [];
@@ -653,7 +635,6 @@ export class SlotsService {
             // deletedSlots,
         };
     }
-
 
 
 }

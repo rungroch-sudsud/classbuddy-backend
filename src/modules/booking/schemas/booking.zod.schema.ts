@@ -7,3 +7,21 @@ export const CreateBookingSchema = z.object({
 })
 
 export class CreateBookingDto extends createZodDto(CreateBookingSchema) { }
+
+
+export const MySlotResponseSchema = z.object({
+    _id: z.union([z.string(), z.any()]),
+    date: z.string(),
+    startTime: z.string(),
+    endTime: z.string(),
+    paidAt: z.string().nullable(),
+    teacher: z.object({
+        _id: z.string(),
+        name: z.string(),
+        lastName: z.string(),
+        verifyStatus: z.string(),
+        profileImage: z.string().nullable(),
+    }),
+});
+
+export type MySlotResponse = z.infer<typeof MySlotResponseSchema>;

@@ -1,10 +1,10 @@
-import { Injectable, BadRequestException, Inject } from '@nestjs/common';
+import { Injectable, BadRequestException, Inject, InternalServerErrorException } from '@nestjs/common';
 import { UsersService } from '../users/users.service';
 import { JwtService } from '@nestjs/jwt';
 import { SmsService } from 'src/infra/sms/sms.service';
 import { ChangePasswordDto, RegisterDto } from './schemas/auth.zod.schema';
 import { InjectModel } from '@nestjs/mongoose';
-import { User, UserDocument } from '../users/schemas/user.schema';
+import { User } from '../users/schemas/user.schema';
 import { Model } from 'mongoose';
 import { StreamChatService } from '../chat/stream-chat.service';
 import { v4 as uuidv4 } from 'uuid';
@@ -21,7 +21,7 @@ export class AuthService {
         private readonly smsService: SmsService,
         private readonly streamChatService: StreamChatService,
         @Inject('REDIS_CLIENT') private readonly redis: Redis,
-        @InjectModel(User.name) private readonly userModel: Model<UserDocument>,
+        @InjectModel(User.name) private readonly userModel: Model<User>,
     ) { }
 
     private generateOtp(length = 6): string {
@@ -69,11 +69,9 @@ export class AuthService {
             JSON.stringify({ phone, otp, hashed, refCode, otpCreatedAt: Date.now() })
         );
 
-        // const check = await this.redis.get(`otp-session:${sessionId}`);
         // console.log('Save OTP:', sessionId, otp);
-        // console.log('Redis check:', check);
 
-        // await this.smsService.sendOtp(phone, otp, refCode);
+        await this.smsService.sendOtp(phone, otp, refCode);
 
         return { sessionId };
     }
@@ -83,7 +81,7 @@ export class AuthService {
         sessionId,
         otp,
     }: any
-    ): Promise<any> {
+    ): Promise<{ accessToken: string }> {
         const sessionKey = `otp-session:${sessionId}`;
         const attemptKey = `otp-attempt:${sessionId}`;
 
@@ -135,7 +133,7 @@ export class AuthService {
 
 
     async login(
-        body: any
+        body: { phone: string; password: string }
     ): Promise<{ accessToken: string }> {
         const { phone, password } = body;
 
@@ -158,7 +156,7 @@ export class AuthService {
     }
 
 
-    async resendOtp(sessionId: string) {
+    async resendOtp(sessionId: string): Promise<{ refCode: string }> {
         const key = `otp-session:${sessionId}`;
         const cooldownKey = `otp-resend-cooldown:${sessionId}`;
 
@@ -190,7 +188,12 @@ export class AuthService {
         );
 
         await this.redis.setex(cooldownKey, 60, 'cooldown');
-        await this.smsService.sendOtp(sessionData.phone, newOtp, newRefCode);
+
+        try {
+            await this.smsService.sendOtp(sessionData.phone, newOtp, newRefCode);
+        } catch (err) {
+            throw new InternalServerErrorException('ไม่สามารถส่ง OTP ได้ในขณะนี้');
+        }
 
         return { refCode: newRefCode };
     }
@@ -198,7 +201,7 @@ export class AuthService {
 
     async forgotPassword(
         phone: string,
-    ): Promise<any> {
+    ): Promise<{ sessionId: string }> {
         const user = await this.userService.findByPhone(phone);
         if (!user) throw new BadRequestException('ไม่พบเบอร์นี้ในระบบ');
 
@@ -220,13 +223,21 @@ export class AuthService {
             JSON.stringify({ phone, otp, refCode, createdAt: Date.now() })
         );
 
-        await this.smsService.sendOtp(phone, otp, refCode);
+        try {
+            await this.smsService.sendOtp(phone, otp, refCode);
+        } catch (err) {
+            await this.redis.del(cooldownKey);
+            throw new InternalServerErrorException('ไม่สามารถส่ง OTP ได้ในขณะนี้');
+        }
 
         return { sessionId };
     }
 
 
-    async verifyForgotPassword(sessionId: string, otp: string) {
+    async verifyForgotPassword(
+        sessionId: string,
+        otp: string
+    ): Promise<{ sessionId: string }> {
         const sessionKey = `forgot-otp-session:${sessionId}`;
         const data = await this.redis.get(sessionKey);
         if (!data) throw new BadRequestException('OTP หมดอายุหรือไม่พบ session');
@@ -258,7 +269,7 @@ export class AuthService {
         sessionId: string,
         newPassword: string,
         confirmPassword: string
-    ): Promise<any> {
+    ): Promise<{ accessToken: string }> {
         if (newPassword !== confirmPassword) {
             throw new BadRequestException('รหัสผ่านไม่ตรงกัน');
         }
@@ -287,7 +298,7 @@ export class AuthService {
     }
 
 
-    async resendForgotPasswordOtp(sessionId: string): Promise<any> {
+    async resendForgotPasswordOtp(sessionId: string): Promise<{ refCode: string }> {
         const sessionKey = `forgot-otp-session:${sessionId}`;
         const cooldownKey = `forgot-otp-resend-cooldown:${sessionId}`;
 
@@ -329,7 +340,7 @@ export class AuthService {
     async changePassword(
         userId: string,
         body: ChangePasswordDto
-    ): Promise<any> {
+    ): Promise<void> {
         const user = await this.userModel.findById(userId);
         if (!user) {
             throw new BadRequestException('ไม่พบผู้ใช้');
@@ -342,9 +353,8 @@ export class AuthService {
 
         const hashed = await bcrypt.hash(body.newPassword, 10);
         user.password = hashed;
-        await user.save();
 
-        return { user };
+        await user.save();
     }
 
 }

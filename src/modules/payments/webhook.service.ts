@@ -13,6 +13,7 @@ import { Notification } from '../notifications/schema/notification';
 import { Role } from '../auth/role/role.enum';
 import { StreamChatService } from '../chat/stream-chat.service';
 import { ChatService } from '../chat/chat.service';
+import { VideoService } from '../chat/video.service';
 
 const Omise = require('omise');
 
@@ -31,7 +32,8 @@ export class WebhookService {
         @InjectModel(PayoutLog.name) private payoutLogModel: Model<any>,
         @InjectModel(Notification.name) private notificationModel: Model<any>,
         private readonly streamChatService: StreamChatService,
-        private readonly chatService: ChatService
+        private readonly chatService: ChatService,
+        private readonly videoService: VideoService
     ) {
         const secretKey = process.env.OMISE_SECRET_KEY;
         const publicKey = process.env.OMISE_PUBLIC_KEY;
@@ -250,7 +252,7 @@ export class WebhookService {
 
         const bookingObjId = bookingId ? new Types.ObjectId(bookingId) : null;
         const userObjId = userId ? new Types.ObjectId(userId) : null;
-        console.log(slotId)
+        // console.log(slotId)
         const session = await this.connection.startSession();
         try {
             await session.withTransaction(async () => {
@@ -355,9 +357,13 @@ export class WebhookService {
                         teacher.userId.toString(),
                     );
 
+                    await this.videoService.createCallRoom(booking._id.toString());
+
                     console.log(`[GETSTREAM] Created chat channel for booking ${booking._id}`);
+                    console.log(`[STREAM VIDEO] Created video call room for booking ${booking._id}`);
+
                 } catch (err) {
-                    console.warn('[GETSTREAM] Failed to create chat channel:', err.message);
+                    console.warn('[GETSTREAM] Failed to create channel:', err.message);
                 }
 
                 // 9️⃣ แจ้งเตือนทั้งนักเรียนและครู

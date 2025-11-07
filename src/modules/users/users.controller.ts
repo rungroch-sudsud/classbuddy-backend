@@ -5,26 +5,13 @@ import {
   Get,
   Post,
   Patch,
-  Delete,
-  HttpStatus,
-  Query,
-  Req,
-  Res,
-  Request,
   UploadedFile,
-  UploadedFiles,
   UseGuards,
-  UseInterceptors,
-  BadRequestException,
 } from '@nestjs/common';
 import {
   ApiBearerAuth,
   ApiBody,
   ApiConsumes,
-  ApiOperation,
-  ApiParam,
-  ApiQuery,
-  ApiResponse,
   ApiTags,
 } from '@nestjs/swagger';
 import { UsersService } from './users.service';
@@ -35,7 +22,6 @@ import { ZodFilePipe } from 'src/shared/validators/zod.validation.pipe';
 import { UploadInterceptor } from 'src/shared/interceptors/upload.interceptor';
 import { ImageFileSchema } from 'src/shared/validators/zod.schema';
 import { UploadFileDto } from 'src/shared/docs/upload.file.docs';
-
 
 
 @ApiTags('Users')
@@ -57,7 +43,7 @@ export class UsersController {
     const user = await this.usersService.updateProfile(userId, body);
 
     return {
-      message: 'Update profile successfully',
+      message: 'อัพเดทข้อมูลของฉันสำเร็จ',
       data: user,
     };
   }
@@ -75,7 +61,7 @@ export class UsersController {
     const update = await this.usersService.updateProfileImage(userId, file);
 
     return {
-      message: 'Update profile successfully',
+      message: 'อัพเดทรูปโปรไฟล์ของฉันสำเร็จ',
       data: update,
     };
   }

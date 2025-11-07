@@ -1,8 +1,31 @@
-import { Body, Controller, Delete, Get, Param, Patch, Post, Query, UploadedFile, UploadedFiles, UseGuards } from '@nestjs/common';
-import { ApiBearerAuth, ApiBody, ApiConsumes, ApiOperation, ApiQuery, ApiTags } from '@nestjs/swagger';
+import {
+    Body,
+    Controller,
+    Delete,
+    Get,
+    Param,
+    Patch,
+    Post,
+    Query,
+    UploadedFile,
+    UploadedFiles,
+    UseGuards
+} from '@nestjs/common';
+import {
+    ApiBearerAuth,
+    ApiBody,
+    ApiConsumes,
+    ApiOperation,
+    ApiQuery,
+    ApiTags
+} from '@nestjs/swagger';
 import { JwtGuard } from '../auth/guard/auth.guard';
 import { CurrentUser } from 'src/shared/utils/currentUser';
-import { CreateTeacherProfileDto, reviewTeacherDto, UpdateTeacherDto } from './schemas/teacher.zod.schema';
+import {
+    CreateTeacherProfileDto,
+    reviewTeacherDto,
+    UpdateTeacherDto
+} from './schemas/teacher.zod.schema';
 import { TeachersService } from './teachers.service';
 import { UploadInterceptor } from 'src/shared/interceptors/upload.interceptor';
 import { ZodFilePipe, ZodFilesPipe } from 'src/shared/validators/zod.validation.pipe';
@@ -29,7 +52,7 @@ export class TeachersController {
         const teacher = await this.teacherService.createTeacherProfile(userId, body);
 
         return {
-            message: 'Teacher profile created successfully',
+            message: 'สร้างบัญชีผู้ใช้สำหรับครูสำเร็จ',
             data: teacher,
         };
     }
@@ -47,7 +70,7 @@ export class TeachersController {
         const update = await this.teacherService.updateIdCardWithPerson(userId, file);
 
         return {
-            message: 'Update successfully',
+            message: 'อัพเดทข้อมูลสำเร็จ',
             data: update,
         };
     }
@@ -65,7 +88,7 @@ export class TeachersController {
         const update = await this.teacherService.updateCertificate(userId, files);
 
         return {
-            message: 'Update certificate successfully',
+            message: 'อัพเดทข้อมูลสำเร็จ',
             data: update,
         };
     }
@@ -116,7 +139,7 @@ export class TeachersController {
         const find = await this.teacherService.getTeacherProfileMine(userId);
 
         return {
-            message: 'ดึงโปรไฟล์ของฉันสำเร็จ',
+            message: 'แสดงโปรไฟล์ของฉันสำเร็จ',
             data: find,
         };
     }
@@ -127,7 +150,7 @@ export class TeachersController {
         const find = await this.teacherService.getTeacherProfileById(teacherId);
 
         return {
-            message: 'ดึงโปรไฟล์ครูสำเร็จ',
+            message: 'แสดงโปรไฟล์ครูสำเร็จ',
             data: find,
         };
     }

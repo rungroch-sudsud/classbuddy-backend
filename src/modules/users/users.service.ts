@@ -1,18 +1,16 @@
-import { ConflictException, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model, Types } from 'mongoose';
-import { User, UserDocument } from './schemas/user.schema';
+import { User } from './schemas/user.schema';
 import { UpdateProfileDto } from './schemas/user.zod.schema';
 import { S3Service } from 'src/infra/s3/s3.service';
-import { Teacher, TeacherDocument } from '../teachers/schemas/teacher.schema';
 import { StreamChatService } from '../chat/stream-chat.service';
 
 
 @Injectable()
 export class UsersService {
     constructor(
-        @InjectModel(User.name) private userModel: Model<UserDocument>,
-        @InjectModel(Teacher.name) private teacherModel: Model<TeacherDocument>,
+        @InjectModel(User.name) private userModel: Model<User>,
         private readonly s3Service: S3Service,
         private readonly streamChatService: StreamChatService
     ) { }
@@ -37,15 +35,15 @@ export class UsersService {
     async updateProfile(
         userId: string,
         body: UpdateProfileDto,
-    ): Promise<UserDocument> {
+    ): Promise<User> {
         const update = await this.userModel.findByIdAndUpdate(
             userId,
             { $set: body },
             { new: true },
         )
-            .select('-password -phone');
+            .select('-password -phone -role');
 
-        if (!update) throw new NotFoundException('User not found');
+        if (!update) throw new NotFoundException('ไม่พบผู้ใช้งาน');
 
         try {
             await this.streamChatService.upsertUser({
@@ -92,7 +90,7 @@ export class UsersService {
 
     async getUserProfileMine(
         userId: string
-    ): Promise<Record<string, any>> {
+    ): Promise<User> {
         const user = await this.userModel
             .findById(new Types.ObjectId(userId))
             .select('-password')
@@ -103,7 +101,10 @@ export class UsersService {
     }
 
 
-    async toggleBookmark(userId: string, slotId: string) {
+    async toggleBookmark(
+        userId: string,
+        slotId: string
+    ): Promise<{ bookmarked: boolean; bookmarks: string[] }> {
         const user = await this.userModel.findById(userId);
         if (!user) throw new NotFoundException('ไม่พบผู้ใช้');
 

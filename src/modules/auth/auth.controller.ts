@@ -3,7 +3,7 @@ import { AuthService } from './auth.service';
 import { ZodValidationPipe } from 'src/shared/validators/zod.validation.pipe';
 import { ApiBearerAuth, ApiBody, ApiTags } from '@nestjs/swagger';
 import { ChangePasswordDto, forgotPasswordOtpDto, LoginDto, RegisterDto, ResendOtpDto, ResetPasswordDto, VerifyForgotPasswordDto, VerifyOtpDto, VerifyOtpSchema } from './schemas/auth.zod.schema';
-import { LoginSchema, RegisterSchema } from './schemas/auth.zod.schema';
+import { RegisterSchema } from './schemas/auth.zod.schema';
 import { JwtGuard } from './guard/auth.guard';
 import { CurrentUser } from 'src/shared/utils/currentUser';
 
@@ -92,7 +92,7 @@ export class AuthController {
         );
 
         return {
-            message: 'Verify opt successfully',
+            message: 'ยืนยัน OTP สำเร็จ',
             data: verify,
         };
     }
@@ -108,7 +108,7 @@ export class AuthController {
         );
 
         return {
-            message: 'Reset password successfully',
+            message: 'เปลี่ยนรหัสผ่านสำเร็จ',
             data: reset,
         };
     }
@@ -128,18 +128,15 @@ export class AuthController {
 
 
     @UseGuards(JwtGuard)
-    @ApiBody({ type: ChangePasswordDto})
+    @ApiBody({ type: ChangePasswordDto })
     @Patch('change-password')
     async changePassword(
         @CurrentUser() userId: string,
         @Body() body: ChangePasswordDto
     ) {
-        const change = await this.authService.changePassword(userId, body);
+        await this.authService.changePassword(userId, body);
 
-        return {
-            message: 'เปลี่ยนรหัสผ่านสำเร็จ',
-            data: change,
-        };
+        return { message: 'เปลี่ยนรหัสผ่านสำเร็จ' };
     }
 
 }

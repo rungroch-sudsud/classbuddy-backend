@@ -1,6 +1,6 @@
 import { BadRequestException, ConflictException, Injectable, NotFoundException } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
-import { isValidObjectId, Model, Types } from 'mongoose';
+import { Model, Types } from 'mongoose';
 import { Teacher, TeacherDocument } from './schemas/teacher.schema';
 import { S3Service } from 'src/infra/s3/s3.service';
 import { CreateTeacherProfileDto, reviewTeacherDto, UpdateTeacherDto } from './schemas/teacher.zod.schema';
@@ -37,7 +37,7 @@ export class TeachersService {
     async createTeacherProfile(
         userId: string,
         body: CreateTeacherProfileDto
-    ): Promise<TeacherDocument> {
+    ): Promise<Teacher> {
         const exist = await this.findTeacher(userId);
         if (exist) throw new ConflictException('มีครูคนนี้อยู่ในระบบอยู่แล้ว');
 
@@ -58,7 +58,7 @@ export class TeachersService {
     async updatePayments(
         userId: string,
         body: any
-    ): Promise<TeacherDocument> {
+    ): Promise<Teacher> {
         const exist = await this.findTeacher(userId);
         if (exist) throw new ConflictException('มีครูคนนี้อยู่ในระบบอยู่แล้ว');
 
@@ -69,6 +69,7 @@ export class TeachersService {
 
         return createTeacher.save();
     }
+
 
     async updateIdCardWithPerson(
         userId: string,
@@ -128,7 +129,7 @@ export class TeachersService {
     }
 
 
-    async getAllTeacher(): Promise<any[]> {
+    async getAllTeacher(): Promise<Teacher[]> {
         const teachers = await this.teacherModel
             .find()
             .populate('userId', '_id profileImage')
@@ -388,7 +389,7 @@ export class TeachersService {
     async deleteReview(
         teacherId: string,
         reviewerId: string
-    ): Promise<any> {
+    ): Promise<void> {
         const teacher = await this.teacherModel.findById(teacherId);
         if (!teacher) throw new NotFoundException('ไม่พบครู');
 
@@ -413,8 +414,6 @@ export class TeachersService {
         }
 
         await teacher.save();
-
-        return teacher
     }
 
 }

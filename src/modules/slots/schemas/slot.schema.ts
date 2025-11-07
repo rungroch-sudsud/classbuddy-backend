@@ -50,6 +50,9 @@ export class Slot extends Document {
   })
   bookedBy: Types.ObjectId
 
+  @Prop({ type: String, default: null })
+  callRoomId: string;
+
   @Prop({ type: Date, default: null })
   paidAt?: Date;
 }

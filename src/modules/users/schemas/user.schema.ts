@@ -35,11 +35,11 @@ export class User {
   })
   subjects?: Types.ObjectId[];
 
-  @Prop()
-  class?: string;
+  @Prop({ default: 0 })
+  studyClass?: number;
 
-  // @Prop()
-  // point?: string;
+  @Prop({ default: 0 })
+  point?: number;
 
   @Prop({
     type: String,
@@ -51,7 +51,11 @@ export class User {
   @Prop({ type: [String], default: [] })
   bookmarks: string[];
 
-  @Prop()
+  @Prop({
+    type: String,
+    maxlength: 512,
+    trim: true,
+  })
   profileImage?: string;
 
 }

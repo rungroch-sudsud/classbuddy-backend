@@ -24,7 +24,7 @@ export class Booking {
     })
     teacherId: Types.ObjectId;
 
-    @Prop({ type: String, required: true})
+    @Prop({ type: String, required: true })
     slotId: string;
 
     @Prop({ type: String })
@@ -52,6 +52,9 @@ export class Booking {
         default: 'pending'
     })
     status: BookingStatus;
+
+    @Prop({ type: String, default: null })
+    callRoomId: string;
 
     @Prop({ type: Date, default: null })
     paidAt?: Date;

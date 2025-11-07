@@ -159,7 +159,6 @@ export const reviewTeacherSchema = z.object({
   ),
   comment: z
     .string()
-    .min(1, 'กรุณาใส่ความคิดเห็นอย่างน้อย 1 ตัวอักษร')
     .max(500, 'ความคิดเห็นยาวเกินไป')
     .optional(),
 });

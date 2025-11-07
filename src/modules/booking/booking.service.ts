@@ -1,14 +1,19 @@
-import { BadRequestException, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
+import {
+    BadRequestException,
+    ForbiddenException,
+    Injectable,
+    NotFoundException
+} from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Booking } from './schemas/booking.schema';
 import { isValidObjectId, Model, Types } from 'mongoose';
 import { Slot } from '../slots/schemas/slot.schema';
 import { Notification } from '../notifications/schema/notification';
-import { CreateBookingDto } from './schemas/booking.zod.schema';
+import { CreateBookingDto, MySlotResponse } from './schemas/booking.zod.schema';
 import { Teacher } from '../teachers/schemas/teacher.schema';
+import { User } from '../users/schemas/user.schema';
 import dayjs from 'dayjs';
 import 'dayjs/locale/th';
-import { User } from '../users/schemas/user.schema';
 
 
 @Injectable()
@@ -26,7 +31,7 @@ export class BookingService {
         slotId: string,
         studentId: string,
         body: CreateBookingDto,
-    ): Promise<any> {
+    ): Promise<Booking> {
         const studentObjId = new Types.ObjectId(studentId);
         const subjectObjId = new Types.ObjectId(body.subject)
 
@@ -71,7 +76,7 @@ export class BookingService {
     }
 
 
-    async getMySlot(userId: string) {
+    async getMySlot(userId: string):Promise<MySlotResponse[]> {
         const bookings = await this.bookingModel
             .find({
                 studentId: new Types.ObjectId(userId),
@@ -86,10 +91,10 @@ export class BookingService {
                     select: 'profileImage',
                 },
             })
-            .lean();
+            .lean() as any;
 
         const sorted = bookings.sort((a, b) => {
-            const statusOrder = { paid: 0, wait_for_payment: 1, pending: 2 };
+            const statusOrder = { paid: 0, pending: 1 };
             const statusA = statusOrder[a.status] ?? 99;
             const statusB = statusOrder[b.status] ?? 99;
 
@@ -125,7 +130,10 @@ export class BookingService {
     }
 
 
-    async getBookingById(bookingId: string, userId: string) {
+    async getBookingById(
+        bookingId: string, 
+        userId: string
+    ): Promise<MySlotResponse> {
         if (!isValidObjectId(bookingId)) {
             throw new BadRequestException('Booking ID ไม่ถูกต้อง');
         }
@@ -183,7 +191,7 @@ export class BookingService {
     }
 
 
-    async getHistoryBookingMine(userId: string): Promise<any> {
+    async getHistoryBookingMine(userId: string): Promise<MySlotResponse[]> {
         const bookings = await this.bookingModel
             .find({
                 studentId: new Types.ObjectId(userId),
@@ -199,7 +207,7 @@ export class BookingService {
                 },
             })
             .sort({ startTime: -1 })
-            .lean();
+            .lean() as any;
 
         return bookings.map(({ teacherId, startTime, endTime, date, paidAt, ...rest }) => {
             const teacher: any = teacherId;
