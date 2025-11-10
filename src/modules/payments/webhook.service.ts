@@ -9,13 +9,14 @@ import { User } from '../users/schemas/user.schema';
 import { Teacher } from '../teachers/schemas/teacher.schema';
 import { Slot } from '../slots/schemas/slot.schema';
 import { PayoutLog } from './schemas/payout.schema';
-import { Notification } from '../notifications/schema/notification';
 import { Role } from '../auth/role/role.enum';
 import { StreamChatService } from '../chat/stream-chat.service';
 import { ChatService } from '../chat/chat.service';
 import { VideoService } from '../chat/video.service';
+import { NotificationsService } from '../notifications/notifications.service';
 
 const Omise = require('omise');
+
 
 @Injectable()
 export class WebhookService {
@@ -30,7 +31,7 @@ export class WebhookService {
         @InjectModel(Teacher.name) private teacherModel: Model<any>,
         @InjectModel(Slot.name) private slotModel: Model<any>,
         @InjectModel(PayoutLog.name) private payoutLogModel: Model<any>,
-        @InjectModel(Notification.name) private notificationModel: Model<any>,
+        private readonly notificationService: NotificationsService,
         private readonly streamChatService: StreamChatService,
         private readonly chatService: ChatService,
         private readonly videoService: VideoService
@@ -84,12 +85,11 @@ export class WebhookService {
                 console.warn('[GETSTREAM] Failed to upsert teacher:', err.message);
             }
 
-            await this.notificationModel.create({
-                senderType: 'System',
-                recipientId: teacher._id,
+            await this.notificationService.sendNotification(teacher.userId, {
                 recipientType: 'Teacher',
-                message: 'บัญชีของคุณได้รับการยืนยันตัวตนเรียบร้อยแล้ว',
-                meta: { recipientId, verifiedAt: teacher.verifiedAt },
+                message: `บัญชีของคุณได้รับการยืนยันตัวตนเรียบร้อยแล้ว`,
+                type: 'booking_paid',
+                meta: { recipientId, verifiedAt: teacher.verifiedAt }
             });
 
             console.log(`[OMISE WEBHOOK] ${teacher.name} ${teacher.lastName} ${teacher._id} ถูกยืนยันสำเร็จจาก Omise`);
@@ -101,161 +101,27 @@ export class WebhookService {
     }
 
 
-    // private async handleChargeWebhook(evt: any) {
-    //     const chargeId = evt.data.id;
-    //     const charge = await this.omise.charges.retrieve(chargeId);
-    //     const status = charge.status as PaymentStatus
-    //     const { bookingId, userId } = charge.metadata ?? {};
-    //     const amountTHB = Math.round((charge.amount ?? 0)) / 100;
-
-    //     const bookingObjId = bookingId ? new Types.ObjectId(bookingId) : null;
-    //     const userObjId = userId ? new Types.ObjectId(userId) : null;
-
-    //     const session = await this.connection.startSession();
-    //     try {
-    //         await session.withTransaction(async () => {
-
-    //             const setNow: any = { status, raw: charge };
-    //             if (status === 'successful') setNow.paidAt = new Date();
-
-    //             const setOnInsert: any = {
-    //                 chargeId,
-    //                 sourceId: charge?.source?.id,
-    //                 bookingId: bookingObjId ?? undefined,
-    //                 userId: userObjId ?? undefined,
-    //                 amount: amountTHB,
-    //                 currency: charge?.currency ?? 'thb',
-    //                 createdAt: new Date(),
-    //             };
-
-    //             for (const key in setOnInsert) {
-    //                 if (setOnInsert[key] === undefined) delete setOnInsert[key];
-    //             }
-
-    //             await this.paymentModel.findOneAndUpdate(
-    //                 { chargeId },
-    //                 { $set: setNow, $setOnInsert: setOnInsert },
-    //                 { new: true, upsert: true, session },
-    //             );
-
-    //             // if (status !== PaymentStatus.SUCCESS) {
-    //             //     return;
-    //             // }
-
-    //             // เติม point ให้ user
-    //             await this.walletModel.updateOne(
-    //                 { userId: userObjId },
-    //                 { $inc: { availableBalance: amountTHB } },
-    //                 { upsert: true, session },
-    //             );
-
-    //             // ดึง booking และเช็กยอด
-    //             const booking = await this.bookingModel.findById(bookingObjId).session(session);
-    //             if (!booking) throw new Error('Booking not found');
-
-    //             if (booking.status === 'paid') return;
-    //             if (booking.status !== 'wait_for_payment') {
-    //                 throw new ConflictException('Booking is not awaiting payment');
-    //             }
-    //             if (booking.price !== amountTHB) {
-    //                 throw new Error(`Payment amount mismatch: expected ${booking.price}, got ${amountTHB}`);
-    //             }
-
-    //             // 5. หัก point ทันทีเพื่อจ่าย booking
-    //             const wallet = await this.walletModel.findOne({ userId: userObjId }).session(session);
-    //             if (!wallet || wallet.availableBalance < booking.price) {
-    //                 throw new Error('Insufficient balance after topup — this should not happen');
-    //             }
-
-    //             await this.walletModel.updateOne(
-    //                 { userId: userObjId, role: Role.User },
-    //                 { $inc: { availableBalance: -booking.price } },
-    //                 { session },
-    //             );
-    //             console.log(booking.price, wallet, amountTHB)
-
-    //             // เปลี่ยน booking เป็น paid
-    //             booking.status = 'paid';
-    //             booking.paidAt = new Date();
-    //             await booking.save({ session });
-
-    //             await this.slotModel.updateOne(
-    //                 { bookingId: booking._id },
-    //                 { $set: { status: 'paid' } },
-    //                 { session },
-    //             );
-
-    //             // เพิ่ม point ให้ pendingBalance ของ teacher
-    //             if (booking.teacherId) {
-    //                 await this.walletModel.updateOne(
-    //                     { userId: booking.teacherId, role: 'teacher' },
-    //                     { $inc: { pendingBalance: booking.price } },
-    //                     { upsert: true, session },
-    //                 );
-    //             }
-
-    //             const start = booking.startTime instanceof Date
-    //                 ? booking.startTime.toTimeString().slice(0, 5)
-    //                 : booking.startTime;
-
-    //             const end = booking.endTime instanceof Date
-    //                 ? booking.endTime.toTimeString().slice(0, 5)
-    //                 : booking.endTime;
-
-    //             await this.notificationModel.create([
-    //                 {
-    //                     senderType: 'System',
-    //                     recipientId: new Types.ObjectId(booking.studentId),
-    //                     recipientType: 'User',
-    //                     type: 'booking_paid',
-    //                     message: `ชำระเงินสำเร็จ! คุณสามารถรอเรียนกับครูได้ในวันที่ ${booking.date} เวลา ${start} - ${end}`,
-    //                     meta: {
-    //                         bookingId: booking._id,
-    //                         date: booking.date,
-    //                         startTime: booking.startTime,
-    //                         endTime: booking.endTime,
-    //                         price: booking.price,
-    //                     },
-    //                 },
-    //                 {
-    //                     senderType: 'System',
-    //                     recipientId: new Types.ObjectId(booking.teacherId),
-    //                     recipientType: 'Teacher',
-    //                     type: 'booking_paid',
-    //                     message: `นักเรียนได้ชำระเงินค่าเรียนเรียบร้อยแล้ว! นัดสอนวันที่ ${booking.date} เวลา ${start} - ${end}`,
-    //                     meta: {
-    //                         bookingId: booking._id,
-    //                         studentId: userObjId,
-    //                         date: booking.date,
-    //                         startTime: booking.startTime,
-    //                         endTime: booking.endTime,
-    //                         price: booking.price,
-    //                     },
-    //                 },
-    //             ],
-    //                 { session, ordered: true });
-    //         });
-    //     } catch (err) {
-    //         console.error('[OmiseWebhookError]', err);
-    //         throw err;
-    //     } finally {
-    //         await session.endSession();
-    //     }
-    // }
-
     private async handleChargeWebhook(evt: any) {
         const chargeId = evt.data.id;
         const charge = await this.omise.charges.retrieve(chargeId);
         const status = charge.status as PaymentStatus;
-        const { bookingId, slotId, userId } = charge.metadata ?? {};
+        const { bookingId, userId } = charge.metadata ?? {};
         const amountTHB = Math.round((charge.amount ?? 0)) / 100;
 
-        const bookingObjId = bookingId ? new Types.ObjectId(bookingId) : null;
-        const userObjId = userId ? new Types.ObjectId(userId) : null;
-        // console.log(slotId)
+        const bookingObjId = bookingId && new Types.ObjectId(bookingId);
+        const userObjId = userId && new Types.ObjectId(userId);
+
         const session = await this.connection.startSession();
+
+        let postProcess: {
+            bookingId?: string;
+            teacherId?: string;
+            studentId?: string;
+        } = {};
+
         try {
             await session.withTransaction(async () => {
+
                 const setNow: any = { status, raw: charge };
                 if (status === 'successful') setNow.paidAt = new Date();
 
@@ -269,10 +135,6 @@ export class WebhookService {
                     createdAt: new Date(),
                 };
 
-                for (const key in setOnInsert) {
-                    if (setOnInsert[key] === undefined) delete setOnInsert[key];
-                }
-
                 // 1️⃣ บันทึกข้อมูลการชำระเงิน
                 await this.paymentModel.findOneAndUpdate(
                     { chargeId },
@@ -280,10 +142,7 @@ export class WebhookService {
                     { new: true, upsert: true, session },
                 );
 
-                if (status !== PaymentStatus.SUCCESS) {
-                    console.log(`[OMISE WEBHOOK] Payment ${chargeId} ยังไม่สำเร็จ status: ${status}`);
-                    return;
-                }
+                if (status !== PaymentStatus.SUCCESS) return;
 
                 // 2️⃣ เติมเงินเข้ากระเป๋า (top up)
                 await this.walletModel.updateOne(
@@ -332,7 +191,7 @@ export class WebhookService {
                 // 7️⃣ อัปเดต slot เป็น paid
                 await this.slotModel.updateOne(
                     { bookingId: booking._id },
-                    { $set: { status: 'paid' } },
+                    { $set: { status: 'paid', paidAt: new Date() } },
                     { session },
                 );
 
@@ -345,67 +204,50 @@ export class WebhookService {
                     );
                 }
 
+                postProcess = {
+                    bookingId: booking._id.toString(),
+                    teacherId: booking.teacherId?.toString(),
+                    studentId: booking.studentId?.toString(),
+                };
+
+            });
+
+            if (postProcess.bookingId && postProcess.teacherId && postProcess.studentId) {
                 try {
                     const teacher = await this.teacherModel
-                        .findById(booking.teacherId)
+                        .findById(postProcess.teacherId)
                         .lean<Teacher & { userId: Types.ObjectId }>();
 
-                    if (!teacher) throw new Error(`[WEBHOOK] Teacher not found for ${booking.teacherId}`);
+                    if (!teacher) {
+                        throw new Error(`[WEBHOOK] Teacher not found for ${postProcess.teacherId}`);
+                    }
 
                     await this.chatService.createOrGetChannel(
-                        booking.studentId.toString(),
-                        teacher.userId.toString(),
+                        postProcess.studentId.toString(),
+                        postProcess.teacherId.toString(),
                     );
 
-                    await this.videoService.createCallRoom(booking._id.toString());
+                    await this.videoService.createCallRoom(postProcess.bookingId);
+                    console.log(`[STREAM VIDEO] Created video call room for booking ${postProcess.bookingId}`);
 
-                    console.log(`[GETSTREAM] Created chat channel for booking ${booking._id}`);
-                    console.log(`[STREAM VIDEO] Created video call room for booking ${booking._id}`);
+                    await this.notificationService.sendNotification(postProcess.studentId, {
+                        recipientType: 'User',
+                        message: `ชำระเงินสำเร็จแล้ว 🎉 สามารถตรวจสอบตารางเรียนของคุณได้ที่ตารางของฉัน`,
+                        type: 'booking_paid',
+                        // meta: { bookingId: postProcess.bookingId },
+                    });
+
+                    await this.notificationService.sendNotification(teacher.userId.toString(), {
+                        recipientType: 'Teacher',
+                        message: `มีนักเรียนจองตารางเรียนกับคุณแล้ว ✨ ตรวจสอบรายละเอียดการสอน`,
+                        type: 'booking_paid',
+                        // meta: { bookingId: postProcess.bookingId },
+                    });
 
                 } catch (err) {
                     console.warn('[GETSTREAM] Failed to create channel:', err.message);
                 }
-
-                // 9️⃣ แจ้งเตือนทั้งนักเรียนและครู
-                const start = booking.startTime instanceof Date
-                    ? booking.startTime.toTimeString().slice(0, 5)
-                    : booking.startTime;
-                const end = booking.endTime instanceof Date
-                    ? booking.endTime.toTimeString().slice(0, 5)
-                    : booking.endTime;
-
-                await this.notificationModel.create([
-                    {
-                        senderType: 'System',
-                        recipientId: new Types.ObjectId(booking.studentId),
-                        recipientType: 'User',
-                        type: 'booking_paid',
-                        message: `ชำระเงินสำเร็จ! คุณสามารถรอเรียนกับครูได้ในวันที่ ${booking.date} เวลา ${start} - ${end}`,
-                        meta: {
-                            bookingId: booking._id,
-                            date: booking.date,
-                            startTime: booking.startTime,
-                            endTime: booking.endTime,
-                            price: booking.price,
-                        },
-                    },
-                    {
-                        senderType: 'System',
-                        recipientId: new Types.ObjectId(booking.teacherId),
-                        recipientType: 'Teacher',
-                        type: 'booking_paid',
-                        message: `นักเรียนได้ชำระเงินค่าเรียนเรียบร้อยแล้ว! นัดสอนวันที่ ${booking.date} เวลา ${start} - ${end}`,
-                        meta: {
-                            bookingId: booking._id,
-                            studentId: userObjId,
-                            date: booking.date,
-                            startTime: booking.startTime,
-                            endTime: booking.endTime,
-                            price: booking.price,
-                        },
-                    },
-                ], { session, ordered: true });
-            });
+            }
         } catch (err) {
             console.error('[OMISE WEBHOOK]', err);
             throw err;

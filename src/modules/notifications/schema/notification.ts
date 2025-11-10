@@ -41,7 +41,6 @@ export class Notification {
     @Prop({
         type: String,
         enum: [
-            'booking_request',
             'booking_wait_payment',
             'booking_reject',
             'booking_paid',

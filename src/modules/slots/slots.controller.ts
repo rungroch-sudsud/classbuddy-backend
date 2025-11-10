@@ -1,6 +1,21 @@
-import { Body, Controller, Get, Param, Patch, Post, UseGuards } from '@nestjs/common';
+import {
+    Body,
+    Controller,
+    Get,
+    Param,
+    Patch,
+    Post,
+    UseGuards
+} from '@nestjs/common';
 import { SlotsService } from './slots.service';
-import { ApiBearerAuth, ApiBody, ApiExtraModels, ApiOperation, ApiTags, getSchemaPath } from '@nestjs/swagger';
+import {
+    ApiBearerAuth,
+    ApiBody,
+    ApiExtraModels,
+    ApiOperation,
+    ApiTags,
+    getSchemaPath
+} from '@nestjs/swagger';
 import { JwtGuard } from '../auth/guard/auth.guard';
 import { CurrentUser } from 'src/shared/utils/currentUser';
 import { CreateSlotDto, CreateWeeklySlotDto } from './schemas/slot.zod.schema';
@@ -196,6 +211,7 @@ export class SlotsController {
             },
         },
     })
+    @ApiOperation({ summary: 'ยกเลิก slot ของฉัน' })
     @UseGuards(JwtGuard)
     async cancelSingleSlot(
         @CurrentUser() userId: string,
@@ -205,6 +221,21 @@ export class SlotsController {
 
         return {
             message: 'คุณได้ลบ slot นี้เรียบร้อยแล้ว',
+            data: slot,
+        };
+    }
+
+    @Post('/cancel/refund')
+    @ApiOperation({ summary: 'ยกเลิก slot ของฉันและคืนเงิน' })
+    @UseGuards(JwtGuard)
+    async cancelSlotAndRefund(
+        @CurrentUser() teacherId: string,
+        @Param('slotId') slotId: string
+    ) {
+        const slot = await this.slotsService.cancelSlotAndRefund(teacherId, slotId);
+
+        return {
+            message: 'คุณได้ยกเลิก slot นี้เรียบร้อยแล้ว',
             data: slot,
         };
     }

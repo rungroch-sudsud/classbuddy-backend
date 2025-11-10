@@ -76,7 +76,7 @@ export class BookingService {
     }
 
 
-    async getMySlot(userId: string):Promise<MySlotResponse[]> {
+    async getMySlot(userId: string): Promise<MySlotResponse[]> {
         const bookings = await this.bookingModel
             .find({
                 studentId: new Types.ObjectId(userId),
@@ -104,8 +104,8 @@ export class BookingService {
 
         return sorted.map(({ teacherId, startTime, endTime, date, paidAt, ...rest }) => {
             const teacher: any = teacherId;
-            const startLocal = dayjs(startTime).tz('Asia/Bangkok');
-            const endLocal = dayjs(endTime).tz('Asia/Bangkok');
+            const startLocal = dayjs.utc(startTime).tz('Asia/Bangkok');
+            const endLocal = dayjs.utc(endTime).tz('Asia/Bangkok');
 
             const dateDisplay = dayjs(startLocal).locale('th').format('D MMMM YYYY');
             const start = startLocal.format('HH:mm');
@@ -131,7 +131,7 @@ export class BookingService {
 
 
     async getBookingById(
-        bookingId: string, 
+        bookingId: string,
         userId: string
     ): Promise<MySlotResponse> {
         if (!isValidObjectId(bookingId)) {
@@ -160,9 +160,8 @@ export class BookingService {
         }
 
         const teacher: any = booking.teacherId;
-
-        const startLocal = dayjs(booking.startTime).tz('Asia/Bangkok');
-        const endLocal = dayjs(booking.endTime).tz('Asia/Bangkok');
+        const startLocal = dayjs.utc(booking.startTime).tz('Asia/Bangkok');
+        const endLocal = dayjs.utc(booking.endTime).tz('Asia/Bangkok');
 
         const dateDisplay = dayjs(startLocal).locale('th').format('D MMMM YYYY');
         const start = startLocal.format('HH:mm');
@@ -212,8 +211,8 @@ export class BookingService {
         return bookings.map(({ teacherId, startTime, endTime, date, paidAt, ...rest }) => {
             const teacher: any = teacherId;
 
-            const startLocal = dayjs(startTime).tz('Asia/Bangkok');
-            const endLocal = dayjs(endTime).tz('Asia/Bangkok');
+            const startLocal = dayjs.utc(startTime).tz('Asia/Bangkok');
+            const endLocal = dayjs.utc(endTime).tz('Asia/Bangkok');
 
             const dateDisplay = dayjs(startLocal).locale('th').format('D MMMM YYYY');
             const start = startLocal.format('HH:mm');

@@ -7,6 +7,7 @@ import { Teacher } from 'src/modules/teachers/schemas/teacher.schema';
 import { PayoutLog } from '../schemas/payout.schema';
 import { PaymentsService } from '../payments.service';
 import { ModuleRef } from '@nestjs/core';
+import axios from 'axios';
 
 const Omise = require('omise');
 
@@ -34,7 +35,7 @@ export class PayoutProcessor extends WorkerHost {
         this.paymentsService = this.moduleRef.get(PaymentsService, { strict: false });
     }
 
-    
+
     async process(job: Job) {
         if (job.name === 'weekly-payout') {
             const result = await this.paymentsService.payoutTeachers();
@@ -47,18 +48,25 @@ export class PayoutProcessor extends WorkerHost {
             console.log(`[PAYOUT] Processing payout for teacher ${data.name} ${data.lastName}`);
 
             try {
-                const transfer = await this.omise.transfers.create({
-                    recipient: data.recipientId,
-                    amount: Math.floor(data.teacherNet * 100),
-                    description: `Payout for ${data.name}`,
-                    metadata: {
-                        teacherId: data.teacherId,
-                        walletId: data.walletId,
-                        payoutLogId: data.payoutLogId,
-                    }
-                },
-                    { headers: { 'Idempotency-Key': data.payoutLogId } }
+                const res = await axios.post(
+                    'https://api.omise.co/transfers',
+                    {
+                        recipient: data.recipientId,
+                        amount: Math.floor(data.teacherNet * 100),
+                        description: `Payout for ${data.name}`,
+                        metadata: {
+                            teacherId: data.teacherId,
+                            walletId: data.walletId,
+                            payoutLogId: data.payoutLogId,
+                        },
+                    },
+                    {
+                        auth: { username: process.env.OMISE_SECRET_KEY!, password: '' },
+                        headers: { 'Idempotency-Key': data.payoutLogId },
+                    },
                 );
+
+                const transfer = res.data;
 
                 await session.withTransaction(async () => {
                     await this.payoutLogModel.updateOne(

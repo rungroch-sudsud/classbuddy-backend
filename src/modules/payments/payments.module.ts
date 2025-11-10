@@ -17,6 +17,7 @@ import { PayoutScheduler } from './processors/payout.scheduler';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { Notification, NotificationSchema } from '../notifications/schema/notification';
 import { ChatModule } from '../chat/chat.module';
+import { NotificationsModule } from '../notifications/notifications.module';
 
 
 @Module({
@@ -45,7 +46,8 @@ import { ChatModule } from '../chat/chat.module';
         BullModule.registerQueue({
             name: 'payout',
         }),
-        ChatModule
+        ChatModule,
+        NotificationsModule
     ],
     controllers: [PaymentsController, WebhookController],
     providers: [

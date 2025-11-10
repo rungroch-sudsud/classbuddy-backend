@@ -3,7 +3,7 @@ export const BookingStatusList = [
     'available',
     'paid',
     'studied',
-    'rejected',
+    'canceled',
     'expired',
 ] as const;
 

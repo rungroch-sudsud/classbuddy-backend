@@ -16,6 +16,7 @@ import dayjs from 'dayjs';
 import utc from 'dayjs/plugin/utc';
 import timezone from 'dayjs/plugin/timezone';
 import 'dayjs/locale/th';
+import { Role } from '../auth/role/role.enum';
 
 
 dayjs.extend(utc);
@@ -43,12 +44,6 @@ export class SlotsService {
         });
 
         if (!teacher) throw new NotFoundException('ไม่พบข้อมูลครู');
-
-        // console.log('Server timezone check -----------------------');
-        // console.log('Server local time:', new Date().toString());
-        // console.log('Server UTC time:', new Date().toISOString());
-        // console.log('Bangkok time (dayjs):', dayjs().tz('Asia/Bangkok').format());
-        // console.log('------------------------------------------------');
 
         const teacherObjId = teacher._id;
         const docs: any[] = [];
@@ -270,8 +265,8 @@ export class SlotsService {
         });
 
         return sorted.map(({ startTime, endTime, date, ...rest }) => {
-            const startLocal = dayjs(startTime).tz('Asia/Bangkok');
-            const endLocal = dayjs(endTime).tz('Asia/Bangkok');
+            const startLocal = dayjs.utc(startTime).tz('Asia/Bangkok');
+            const endLocal = dayjs.utc(endTime).tz('Asia/Bangkok');
 
             const dateDisplay = startLocal.locale('th').format('D MMMM YYYY');
             const start = startLocal.format('HH:mm');
@@ -315,8 +310,8 @@ export class SlotsService {
 
         const { startTime, endTime, date, ...rest } = slot;
 
-        const startLocal = dayjs(slot.startTime).tz('Asia/Bangkok');
-        const endLocal = dayjs(slot.endTime).tz('Asia/Bangkok');
+        const startLocal = dayjs.utc(startTime).tz('Asia/Bangkok');
+        const endLocal = dayjs.utc(endTime).tz('Asia/Bangkok');
 
         const dateDisplay = startLocal.locale('th').format('D MMMM YYYY');
         const start = startLocal.format('HH:mm');
@@ -387,8 +382,8 @@ export class SlotsService {
             .lean();
 
         return slots.map(({ startTime, endTime, date, ...rest }) => {
-            const startLocal = dayjs(startTime).tz('Asia/Bangkok');
-            const endLocal = dayjs(endTime).tz('Asia/Bangkok');
+            const startLocal = dayjs.utc(startTime).tz('Asia/Bangkok');
+            const endLocal = dayjs.utc(endTime).tz('Asia/Bangkok');
 
             const dateDisplay = startLocal.locale('th').format('D MMMM YYYY');
             const start = startLocal.format('HH:mm');
@@ -634,6 +629,67 @@ export class SlotsService {
             deletedCount,
             // deletedSlots,
         };
+    }
+
+    async cancelSlotAndRefund(
+        teacherId: string,
+        slotId: string
+    ): Promise<any> {
+        const teacher = await this.teacherModel.findOne({
+            userId: new Types.ObjectId(teacherId)
+        })
+
+        if (!teacher) throw new BadRequestException('ไม่พบครูคนนี้');
+
+        const slot = await this.slotModel.findById(slotId);
+        if (!slot) throw new BadRequestException('ไม่พบ slot');
+
+        if (teacher._id.toString() !== slot.teacherId.toString()) {
+            throw new BadRequestException('คุณไม่มีสิทธิ์แก้ไข slot นี้');
+        }
+
+        if (slot.status !== 'paid') {
+            throw new BadRequestException('ไม่สามารถยกเลิก slot ที่ยังไม่ชำระเงินได้');
+        }
+
+        const booking = await this.bookingModel.findOne({ slotId: slot._id })
+        if (!booking) throw new BadRequestException('ไม่พบ booking')
+
+        const session = await this.connection.startSession();
+
+        try {
+            await session.withTransaction(async () => {
+
+                slot.status = 'canceled';
+                await slot.save({ session });
+
+                booking.status = 'canceled';
+                await booking.save({ session });
+
+                await this.walletModel.updateOne(
+                    { userId: teacher._id, role: Role.Teacher },
+                    { $inc: { pendingBalance: -booking.price } },
+                    { session },
+                );
+
+                await this.walletModel.updateOne(
+                    { userId: booking.studentId, role: Role.User },
+                    { $inc: { availableBalance: booking.price } },
+                    { session, upsert: true },
+                );
+
+                console.log(
+                    `[REFUND] slot ${slot._id} canceled, refunded ${booking.price} THB to student`
+                );
+            });
+
+        } catch (err) {
+            console.error('[REFUND ERROR]', err);
+            throw new BadRequestException('ยกเลิก slot ไม่สำเร็จ');
+        }
+        finally {
+            await session.endSession();
+        }
     }
 
 

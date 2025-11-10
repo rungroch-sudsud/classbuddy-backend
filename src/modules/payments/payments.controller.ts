@@ -1,14 +1,8 @@
 import { Body, Controller, Get, Param, Patch, Post, Query, UploadedFile, UploadedFiles, UseGuards } from '@nestjs/common';
-import { ApiBearerAuth, ApiBody, ApiConsumes, ApiQuery, ApiTags } from '@nestjs/swagger';
+import { ApiBearerAuth, ApiBody, ApiConsumes, ApiOperation, ApiQuery, ApiTags } from '@nestjs/swagger';
 import { JwtGuard } from '../auth/guard/auth.guard';
 import { CurrentUser } from 'src/shared/utils/currentUser';
-
-import { UploadInterceptor } from 'src/shared/interceptors/upload.interceptor';
-import { ZodFilePipe, ZodFilesPipe } from 'src/shared/validators/zod.validation.pipe';
-import { UploadFileDto, UploadFilesDto } from 'src/shared/docs/upload.file.docs';
-import { FilesSchema, ImageFileSchema } from 'src/shared/validators/zod.schema';
 import { PaymentsService } from './payments.service';
-
 
 
 
@@ -28,7 +22,7 @@ export class PaymentsController {
         @CurrentUser() userId: string,
     ) {
         const create = await this.paymentsService.createPromptPayCharge(
-            bookingId, 
+            bookingId,
             userId
         )
 
@@ -45,6 +39,22 @@ export class PaymentsController {
         const result = await this.paymentsService.payoutTeachers();
 
         return result
+    }
+
+
+    @Get('history/mine')
+    @ApiOperation({ summary: 'ประวัติการจ่ายเงิน / การเรียน' })
+    @UseGuards(JwtGuard)
+    async paymentsHistory(@CurrentUser() userId: string) {
+        const result = await this.paymentsService.paymentsHistory(
+            userId
+        );
+
+        return {
+            message: 'ดึงประวัติการชำระเงินของฉันสำเร็จ',
+            data: result
+        }
+
     }
 
 

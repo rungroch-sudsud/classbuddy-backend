@@ -9,7 +9,7 @@ import { Teacher } from '../teachers/schemas/teacher.schema';
 import { PayoutLog } from './schemas/payout.schema';
 import { InjectQueue } from '@nestjs/bullmq';
 import { Queue } from 'bullmq';
-import { Slot } from '../slots/schemas/slot.schema';
+
 
 const Omise = require('omise');
 
@@ -24,7 +24,6 @@ export class PaymentsService {
         @InjectModel(User.name) private userModel: Model<any>,
         @InjectModel(Teacher.name) private teacherModel: Model<any>,
         @InjectModel(Booking.name) private bookingModel: Model<any>,
-        @InjectModel(Slot.name) private slotModel: Model<any>,
         @InjectModel(PayoutLog.name) private payoutLogModel: Model<any>,
         @InjectQueue('payout') private PayoutQueue: Queue,
     ) {
@@ -212,5 +211,25 @@ export class PaymentsService {
         }
         return { queued };
     }
+
+
+    async paymentsHistory(userId: string): Promise<any[]> {
+        const payments = await this.paymentModel.find({
+            userId: new Types.ObjectId(userId)
+        })
+            .sort({ createdAt: -1 });
+
+        if (!payments) throw new NotFoundException('ยังไม่มีประวัติการชำระเงิน')
+
+        return payments.map(p => ({
+            id: p._id,
+            amount: p.amount,
+            bookingId: p.bookingId,
+            chargeId: p.chargeId,
+            status: p.status,
+            paidAt: p.createdAt,
+        }));
+    }
+
 }
 
