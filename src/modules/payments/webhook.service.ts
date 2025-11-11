@@ -224,7 +224,7 @@ export class WebhookService {
 
                     await this.chatService.createOrGetChannel(
                         postProcess.studentId.toString(),
-                        postProcess.teacherId.toString(),
+                        teacher.userId.toString(),
                     );
 
                     await this.videoService.createCallRoom(postProcess.bookingId);

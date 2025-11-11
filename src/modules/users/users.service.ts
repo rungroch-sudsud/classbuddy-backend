@@ -51,7 +51,7 @@ export class UsersService {
                 name: `${update.name ?? ''} ${update.lastName ?? ''}`.trim(),
                 image: update.profileImage ?? undefined
             });
-
+            console.log(`[GETSTREAM] upsert user in getStream ${userId} ${update.name} `);
         } catch (err) {
             console.warn('[GETSTREAM] Failed to upsert Stream user:', err.message);
         }

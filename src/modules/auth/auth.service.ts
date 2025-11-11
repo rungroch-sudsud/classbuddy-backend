@@ -69,7 +69,7 @@ export class AuthService {
             JSON.stringify({ phone, otp, hashed, refCode, otpCreatedAt: Date.now() })
         );
 
-        // console.log('Save OTP:', sessionId, otp);
+        console.log('Save OTP:', sessionId, otp);
 
         await this.smsService.sendOtp(phone, otp, refCode);
 
