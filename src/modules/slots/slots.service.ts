@@ -261,7 +261,7 @@ export class SlotsService {
             const statusB = statusOrder[b.status] ?? 99;
 
             if (statusA !== statusB) return statusA - statusB;
-            return new Date(b.startTime).getTime() - new Date(a.startTime).getTime();
+            return new Date(a.startTime).getTime() - new Date(b.startTime).getTime();
         });
 
         return sorted.map(({ startTime, endTime, date, ...rest }) => {
