@@ -632,12 +632,12 @@ export class SlotsService {
     }
 
     async cancelSlotAndRefund(
-        teacherId: string,
+        userId: string,
         slotId: string
     ): Promise<any> {
         const teacher = await this.teacherModel.findOne({
-            userId: new Types.ObjectId(teacherId)
-        })
+            userId: new Types.ObjectId(userId)
+        });
 
         if (!teacher) throw new BadRequestException('ไม่พบครูคนนี้');
 

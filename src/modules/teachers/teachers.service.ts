@@ -8,6 +8,7 @@ import { Slot } from '../slots/schemas/slot.schema';
 import { StreamChatService } from '../chat/stream-chat.service';
 import { User } from '../users/schemas/user.schema';
 import { SocketService } from '../socket/socket.service';
+import { SubjectList } from '../subjects/schemas/subject.schema';
 
 
 @Injectable()
@@ -16,9 +17,10 @@ export class TeachersService {
         @InjectModel(Teacher.name) private teacherModel: Model<Teacher>,
         @InjectModel(User.name) private userModel: Model<User>,
         @InjectModel(Slot.name) private slotModel: Model<Slot>,
+        @InjectModel(SubjectList.name) private subjectModel: Model<SubjectList>,
         private readonly s3Service: S3Service,
         private readonly socketService: SocketService,
-        private readonly streamChatService: StreamChatService
+        private readonly streamChatService: StreamChatService,
     ) { }
 
     private async findTeacher(userId: string): Promise<TeacherDocument | null> {
@@ -162,12 +164,19 @@ export class TeachersService {
         limit = 10,
     ): Promise<any> {
         const query: any = { verifyStatus: 'verified' };
+        let subjectIds: Types.ObjectId[] = [];
 
         if (search && search.trim() !== '') {
+            const subjectMatches = await this.subjectModel
+                .find({ name: { $regex: search, $options: 'i' } })
+                .select('_id');
+            subjectIds = subjectMatches.map((s) => s._id);
+
             query.$or = [
-                { 'userId.name': { $regex: search, $options: 'i' } },
-                { 'userId.lastName': { $regex: search, $options: 'i' } },
+                { name: { $regex: search, $options: 'i' } },
+                { lastName: { $regex: search, $options: 'i' } },
                 { bio: { $regex: search, $options: 'i' } },
+                { subjects: { $in: subjectIds } },
             ];
         }
 
@@ -192,7 +201,7 @@ export class TeachersService {
             this.teacherModel
                 .find(query)
                 .populate('userId', '_id profileImage')
-                .populate('subjects')
+                .populate('subjects', 'name')
                 .select(`
                         -idCardWithPerson -bankName -certificate
                      -bankAccountName -bankAccountNumber -recipientId

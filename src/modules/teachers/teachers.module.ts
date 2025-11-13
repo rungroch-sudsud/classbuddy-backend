@@ -8,6 +8,7 @@ import { Slot, SlotSchema } from '../slots/schemas/slot.schema';
 import { ChatModule } from '../chat/chat.module';
 import { User, UserSchema } from '../users/schemas/user.schema';
 import { SocketModule } from '../socket/socket.module';
+import { SubjectList, SubjectSchema } from '../subjects/schemas/subject.schema';
 
 @Module({
     imports: [
@@ -15,6 +16,7 @@ import { SocketModule } from '../socket/socket.module';
             { name: Teacher.name, schema: TeacherSchema },
             { name: User.name, schema: UserSchema },
             { name: Slot.name, schema: SlotSchema },
+            { name: SubjectList.name, schema: SubjectSchema }
         ]),
         S3Module,
         ChatModule,

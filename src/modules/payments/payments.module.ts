@@ -23,6 +23,8 @@ import { NotificationsModule } from '../notifications/notifications.module';
 @Module({
     imports: [
         ConfigModule,
+        ChatModule,
+        NotificationsModule,
         MongooseModule.forFeature([
             { name: Wallet.name, schema: WalletSchema },
             { name: Payment.name, schema: PaymentSchema },
@@ -46,8 +48,6 @@ import { NotificationsModule } from '../notifications/notifications.module';
         BullModule.registerQueue({
             name: 'payout',
         }),
-        ChatModule,
-        NotificationsModule
     ],
     controllers: [PaymentsController, WebhookController],
     providers: [

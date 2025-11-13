@@ -225,14 +225,14 @@ export class SlotsController {
         };
     }
 
-    @Post('/cancel/refund')
+    @Post(':slotId/cancel/refund')
     @ApiOperation({ summary: 'ยกเลิก slot ของฉันและคืนเงิน' })
     @UseGuards(JwtGuard)
     async cancelSlotAndRefund(
-        @CurrentUser() teacherId: string,
+        @CurrentUser() userId: string,
         @Param('slotId') slotId: string
     ) {
-        const slot = await this.slotsService.cancelSlotAndRefund(teacherId, slotId);
+        const slot = await this.slotsService.cancelSlotAndRefund(userId, slotId);
 
         return {
             message: 'คุณได้ยกเลิก slot นี้เรียบร้อยแล้ว',

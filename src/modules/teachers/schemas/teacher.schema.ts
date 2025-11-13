@@ -4,7 +4,6 @@ import { SubjectList } from "src/modules/subjects/schemas/subject.schema";
 import { User } from "src/modules/users/schemas/user.schema";
 
 
-
 @Schema({ timestamps: true })
 export class Teacher {
     @Prop({
