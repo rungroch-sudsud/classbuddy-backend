@@ -155,7 +155,15 @@ export class BookingService {
             throw new NotFoundException('ไม่พบข้อมูลการจอง');
         }
 
-        if (userId !== booking.studentId.toString()) {
+        const teacherRecord = await this.teacherModel.findOne({
+            userId: new Types.ObjectId(userId)
+        });
+
+        const isStudent = userId === booking.studentId.toString();
+        const isTeacher = teacherRecord &&
+            teacherRecord._id.toString() === booking.teacherId?._id.toString();
+
+        if (!isStudent && !isTeacher) {
             throw new ForbiddenException('คุณไม่มีสิทธิ์เข้าถึงข้อมูลการจองนี้');
         }
 
