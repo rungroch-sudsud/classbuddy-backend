@@ -254,14 +254,24 @@ export class SlotsService {
             .populate('subject', '_id name')
             .populate('bookedBy', '_id name lastName profileImage')
             .populate({
-                path: 'teacherId',
-                select: 'name lastName verifyStatus userId',
-                populate: {
-                    path: 'userId',
-                    select: 'profileImage',
-                },
+                path : 'booking', 
+                populate :[ 
+                    {
+                    path : 'subject',
+                    select : '_id name',    
+                    },
+                    {
+                        path: 'teacherId',
+                        select: 'name lastName verifyStatus userId',
+                        populate: {
+                            path: 'userId',
+                            select: 'profileImage',
+                        }
+                    }
+                ],
             })
-            .lean();
+            .lean<Array<Slot & {booking : any}>>();
+
 
         const sorted = slots.sort((a, b) => {
             const statusOrder = { paid: 1, pending: 2 };
@@ -272,29 +282,46 @@ export class SlotsService {
             return new Date(a.startTime).getTime() - new Date(b.startTime).getTime();
         });
 
-        return sorted.map(({ teacherId, startTime, endTime, date, paidAt, ...rest }) => {
-            const teacher: any = teacherId;
+        return sorted.map(({ startTime, endTime, date, booking, ...rest }) => {
+            const teacher : any = booking.teacherId;
             const startLocal = dayjs.utc(startTime).tz('Asia/Bangkok');
             const endLocal = dayjs.utc(endTime).tz('Asia/Bangkok');
 
-            const dateDisplay = dayjs(startLocal).locale('th').format('D MMMM YYYY');
+            const dateDisplay = startLocal.locale('th').format('D MMMM YYYY');
             const start = startLocal.format('HH:mm');
             const end = endLocal.format('HH:mm');
-            const paidAtDisplay = paidAt ? dayjs(paidAt).locale('th').format('D MMMM YYYY') : null;
 
-            return {
-                ...rest,
-                date: dateDisplay,
-                startTime: start,
-                endTime: end,
-                paidAt: paidAtDisplay,
-                teacher: {
+            const bookingStartLocal = dayjs.utc(startTime).tz('Asia/Bangkok');
+            const bookingEndLocal = dayjs.utc(endTime).tz('Asia/Bangkok');
+            const bookingDateDisplay = dayjs(bookingStartLocal).locale('th').format('D MMMM YYYY');
+            const bookingStart = bookingStartLocal.format('HH:mm');
+            const bookingEnd = bookingEndLocal.format('HH:mm');
+            const bookingPaidAtDisplay = booking.paidAt ? dayjs(booking.paidAt).locale('th').format('D MMMM YYYY') : null;
+
+            const formattedBoking = {
+                ...booking,
+                date: bookingDateDisplay,
+                startTime: bookingStart,
+                endTime: bookingEnd,
+                paidAt: bookingPaidAtDisplay,
+                teacher :  {
                     _id: teacher?._id,
                     name: teacher?.name,
                     lastName: teacher?.lastName,
                     verifyStatus: teacher?.verifyStatus,
                     profileImage: teacher?.userId?.profileImage ?? null,
-                },
+                }
+                
+            }
+
+            delete formattedBoking.teacherId
+
+            return {
+                date: dateDisplay,
+                startTime: start,
+                endTime: end,
+                booking : formattedBoking,
+                ...rest,
             };
         });
     }
