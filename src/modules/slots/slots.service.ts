@@ -251,6 +251,7 @@ export class SlotsService {
             teacherId: teacher._id,
             status: { $in: ['pending', 'paid'] }
         })
+            .populate('booking')
             .populate('subject', '_id name')
             .populate('bookedBy', '_id name lastName profileImage')
             .lean();

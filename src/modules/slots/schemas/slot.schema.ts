@@ -1,21 +1,20 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 import { Document, Types } from 'mongoose';
 import { SubjectList } from 'src/modules/subjects/schemas/subject.schema';
-import { BookingStatusList } from "src/shared/enums/booking.status.enum";
+import { BookingStatusList } from 'src/shared/enums/booking.status.enum';
 import type { BookingStatus } from 'src/shared/enums/booking.status.enum';
-
 
 @Schema()
 export class Slot extends Document {
   @Prop({
     type: Types.ObjectId,
     ref: 'Teacher',
-    required: true
+    required: true,
   })
   teacherId: string;
 
-  @Prop({ type: String, default: null })
-  bookingId: string;
+  @Prop({ type: Types.ObjectId, ref: 'Booking', default: null })
+  bookingId: Types.ObjectId;
 
   @Prop({ type: String, required: true })
   date: string;
@@ -32,23 +31,23 @@ export class Slot extends Document {
   @Prop({
     type: Types.ObjectId,
     ref: SubjectList.name,
-    default: null
+    default: null,
   })
   subject: Types.ObjectId;
 
   @Prop({
     type: String,
     enum: BookingStatusList,
-    default: 'available'
+    default: 'available',
   })
   status: BookingStatus;
 
   @Prop({
     type: Types.ObjectId,
     ref: 'User',
-    default: null
+    default: null,
   })
-  bookedBy: Types.ObjectId
+  bookedBy: Types.ObjectId;
 
   @Prop({ type: String, default: null })
   callRoomId: string;

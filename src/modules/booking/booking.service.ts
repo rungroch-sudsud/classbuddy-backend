@@ -67,12 +67,12 @@ export class BookingService {
         });
 
         slot.status = 'pending';
-        slot.bookingId = booking._id.toString();
+        slot.bookingId = booking._id;
         slot.bookedBy = studentObjId;
         slot.subject = subjectObjId
         await slot.save();
 
-        return booking;
+        return booking
     }
 
 
