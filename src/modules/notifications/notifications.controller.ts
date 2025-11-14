@@ -1,0 +1,44 @@
+import { Body, Controller, Get, Param, Post, UseGuards } from '@nestjs/common';
+import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
+import { NotificationsService } from './notifications.service';
+import { JwtGuard } from '../auth/guard/auth.guard';
+import { CurrentUser } from 'src/shared/utils/currentUser';
+
+
+
+
+@ApiTags('Notifications')
+@ApiBearerAuth()
+@Controller('notifications')
+export class NotificationsController {
+    constructor(
+        private readonly notificationService: NotificationsService
+    ) { }
+
+
+    @Get('mine')
+    @UseGuards(JwtGuard)
+    async getMySlots(@CurrentUser() userId: string) {
+        const notific = await this.notificationService.getNotificationMine(userId);
+
+        return {
+            message: 'ดึงการแจ้งเตือนของฉันสำเร็จ',
+            data: notific,
+        };
+    }
+
+    @Post('test/:userId')
+    testNotify(
+        @Param('userId') userId: string,
+        @Body() payload: { 
+            recipientType: 'User' | 'Teacher';
+            message: string,
+            type: string;
+            meta?: Record<string, any>;
+        }
+    ) {
+        return this.notificationService.sendNotification(userId, payload);
+    }
+
+
+}

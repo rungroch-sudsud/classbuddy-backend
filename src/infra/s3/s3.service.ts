@@ -1,25 +1,29 @@
 import { PutObjectAclCommand, PutObjectCommand, S3 } from '@aws-sdk/client-s3';
-import { HttpStatus } from '@nestjs/common';
-import { envConfig } from 'src/configs/env.config';
+import { HttpStatus, Injectable } from '@nestjs/common';
+import { config } from 'dotenv';
+
+config();
+
 
 const BUCKET_NAME = 'not-along-bucket';
 const DIGITAL_OCEAN_REGION = 'sgp1';
 
-const s3Client = new S3({
-  forcePathStyle: false,
-  endpoint: `https://${DIGITAL_OCEAN_REGION}.digitaloceanspaces.com`,
-  region: 'us-east-1',
-  credentials: {
-    accessKeyId:  process.env.DIGITAL_OCEAN_SPACES_KEY!,
-    secretAccessKey:process.env.DIGITAL_OCEAN_SPACES_SECRET!,
-  },
-});
 
-class S3Service {
-  constructor(private readonly s3Client: S3) {
-    if (!this.s3Client) {
-      throw new Error('S3 client is not initialized');
-    }
+
+@Injectable()
+export class S3Service {
+  private readonly s3Client: S3;
+
+  constructor() {
+    this.s3Client = new S3({
+      forcePathStyle: false,
+      endpoint: `https://${DIGITAL_OCEAN_REGION}.digitaloceanspaces.com`,
+      region: 'us-east-1',
+      credentials: {
+        accessKeyId: process.env.DIGITAL_OCEAN_SPACES_KEY!,
+        secretAccessKey: process.env.DIGITAL_OCEAN_SPACES_SECRET!,
+      },
+    });
   }
 
   async uploadFile(
@@ -84,6 +88,3 @@ class S3Service {
   }
 }
 
-const s3Service = new S3Service(s3Client);
-
-export { s3Service };

@@ -5,34 +5,23 @@ import {
   Get,
   Post,
   Patch,
-  Delete,
-  HttpStatus,
-  Query,
-  Req,
-  Res,
-  Request,
   UploadedFile,
-  UploadedFiles,
   UseGuards,
-  UseInterceptors,
-  BadRequestException,
 } from '@nestjs/common';
 import {
   ApiBearerAuth,
   ApiBody,
   ApiConsumes,
-  ApiOperation,
-  ApiParam,
-  ApiQuery,
-  ApiResponse,
   ApiTags,
 } from '@nestjs/swagger';
 import { UsersService } from './users.service';
 import { CurrentUser } from 'src/shared/utils/currentUser';
-import { JwtGuard } from '../auth/strategies/auth.guard';
-import { CreateTeacherProfileDto, UpdateProfileDto } from './schemas/user.zod.schema';
-import { FileInterceptor } from '@nestjs/platform-express';
-
+import { JwtGuard } from '../auth/guard/auth.guard';
+import { UpdateProfileDto } from './schemas/user.zod.schema';
+import { ZodFilePipe } from 'src/shared/validators/zod.validation.pipe';
+import { UploadInterceptor } from 'src/shared/interceptors/upload.interceptor';
+import { ImageFileSchema } from 'src/shared/validators/zod.schema';
+import { UploadFileDto } from 'src/shared/docs/upload.file.docs';
 
 
 @ApiTags('Users')
@@ -54,47 +43,54 @@ export class UsersController {
     const user = await this.usersService.updateProfile(userId, body);
 
     return {
-      message: 'User created successfully',
+      message: 'อัพเดทข้อมูลของฉันสำเร็จ',
       data: user,
     };
   }
 
-  @Post('profile/upload-image')
+
+  @Post('profile/image')
+  @ApiBody({ type: UploadFileDto })
+  @ApiConsumes('multipart/form-data')
   @UseGuards(JwtGuard)
-  @UseInterceptors(FileInterceptor('file'))
+  @UploadInterceptor('file', 1, 5)
   async uploadProfileImage(
     @CurrentUser() userId: string,
-    @UploadedFile() file: Express.Multer.File,
+    @UploadedFile(new ZodFilePipe(ImageFileSchema)) file: Express.Multer.File,
   ) {
     const update = await this.usersService.updateProfileImage(userId, file);
 
     return {
-      message: 'Update profile successfully',
+      message: 'อัพเดทรูปโปรไฟล์ของฉันสำเร็จ',
       data: update,
     };
   }
 
 
-
-  @Post('teacher/profile')
+  @Get('mine')
   @UseGuards(JwtGuard)
-  @ApiBody({ type: CreateTeacherProfileDto })
-  async createTeacherProfile(
-    @CurrentUser() userId: string,
-    @Body() body: CreateTeacherProfileDto,
-  ) {
-    const teacher = await this.usersService.createTeachProfile(userId, body);
+  async getMe(@CurrentUser() userId: string) {
+    const user = await this.usersService.getUserProfileMine(userId);
 
     return {
-      message: 'Teacher profile created successfully',
-      data: teacher,
+      message: 'ดึงโปรไฟล์ของฉันสำเร็จ',
+      data: user,
     };
   }
 
 
-  @Get('teacher')
-  async getAllTeachers(): Promise<any[]> {
-    return this.usersService.findAll();
+  @Patch('bookmarks/:slotId')
+  @UseGuards(JwtGuard)
+  async toggleBookmark(
+    @CurrentUser() userId: string,
+    @Param('slotId') slotId: string,
+  ) {
+    const booked = await this.usersService.toggleBookmark(userId, slotId);
+
+    return {
+      message: 'บันทึกข้อมูลเรียบร้อย',
+      data: booked,
+    };
   }
 
 }
