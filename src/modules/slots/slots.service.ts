@@ -247,13 +247,20 @@ export class SlotsService {
 
         if (!teacher) throw new NotFoundException('ไม่พบข้อมูลครู');
 
-        const slots = await this.slotModel.find({
+        let slots = await this.slotModel.find({
             teacherId: teacher._id,
             status: { $in: ['pending', 'paid'] }
         })
-            .populate('booking')
             .populate('subject', '_id name')
             .populate('bookedBy', '_id name lastName profileImage')
+            .populate({
+                path: 'teacherId',
+                select: 'name lastName verifyStatus userId',
+                populate: {
+                    path: 'userId',
+                    select: 'profileImage',
+                },
+            })
             .lean();
 
         const sorted = slots.sort((a, b) => {
@@ -265,19 +272,29 @@ export class SlotsService {
             return new Date(a.startTime).getTime() - new Date(b.startTime).getTime();
         });
 
-        return sorted.map(({ startTime, endTime, date, ...rest }) => {
+        return sorted.map(({ teacherId, startTime, endTime, date, paidAt, ...rest }) => {
+            const teacher: any = teacherId;
             const startLocal = dayjs.utc(startTime).tz('Asia/Bangkok');
             const endLocal = dayjs.utc(endTime).tz('Asia/Bangkok');
 
-            const dateDisplay = startLocal.locale('th').format('D MMMM YYYY');
+            const dateDisplay = dayjs(startLocal).locale('th').format('D MMMM YYYY');
             const start = startLocal.format('HH:mm');
             const end = endLocal.format('HH:mm');
+            const paidAtDisplay = paidAt ? dayjs(paidAt).locale('th').format('D MMMM YYYY') : null;
 
             return {
+                ...rest,
                 date: dateDisplay,
                 startTime: start,
                 endTime: end,
-                ...rest,
+                paidAt: paidAtDisplay,
+                teacher: {
+                    _id: teacher?._id,
+                    name: teacher?.name,
+                    lastName: teacher?.lastName,
+                    verifyStatus: teacher?.verifyStatus,
+                    profileImage: teacher?.userId?.profileImage ?? null,
+                },
             };
         });
     }
