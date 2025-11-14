@@ -57,4 +57,12 @@ export class Slot extends Document {
 }
 
 export type SlotDocument = Slot & Document;
+
 export const SlotSchema = SchemaFactory.createForClass(Slot);
+
+SlotSchema.virtual('booking', {
+  ref: 'Booking',
+  localField: 'bookingId',
+  foreignField: '_id',
+  justOne: true,
+});
