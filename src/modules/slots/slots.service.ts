@@ -17,6 +17,8 @@ import utc from 'dayjs/plugin/utc';
 import timezone from 'dayjs/plugin/timezone';
 import 'dayjs/locale/th';
 import { Role } from '../auth/role/role.enum';
+import { User } from '../users/schemas/user.schema';
+import { SlotStatus } from 'src/shared/enums/slot.enum';
 
 
 dayjs.extend(utc);
@@ -28,6 +30,7 @@ dayjs.tz.setDefault('Asia/Bangkok');
 export class SlotsService {
     constructor(
         @InjectModel(Slot.name) private slotModel: Model<Slot>,
+        @InjectModel(User.name) private userModel: Model<User>,
         @InjectModel(Teacher.name) private readonly teacherModel: Model<Teacher>,
         @InjectModel(Wallet.name) private readonly walletModel: Model<Wallet>,
         @InjectModel(Booking.name) private readonly bookingModel: Model<Booking>,
@@ -631,28 +634,30 @@ export class SlotsService {
         };
     }
 
-    async cancelSlotAndRefund(
-        userId: string,
+    async studentCancelSlotAndRefund(
+        studentUserId: string,
         slotId: string
     ): Promise<any> {
-        const teacher = await this.teacherModel.findOne({
-            userId: new Types.ObjectId(userId)
-        });
+        const student = await this.userModel.findById(studentUserId).lean()
 
-        if (!teacher) throw new BadRequestException('ไม่พบครูคนนี้');
+        if (!student) throw new BadRequestException('ไม่พบนักเรียนคนนี้');
 
-        const slot = await this.slotModel.findById(slotId);
+        const slot = await this.slotModel.findById(slotId)
+
         if (!slot) throw new BadRequestException('ไม่พบ slot');
 
-        if (teacher._id.toString() !== slot.teacherId.toString()) {
-            throw new BadRequestException('คุณไม่มีสิทธิ์แก้ไข slot นี้');
+        const studentDidNotBookThisClass = student._id.toString() !== slot.bookedBy.toString()
+
+        if (studentDidNotBookThisClass) {
+            throw new BadRequestException('คุณไม่ได้ลงสมัคร Class นี้');
         }
 
-        if (slot.status !== 'paid') {
+        if (slot.status !== SlotStatus.PAID) {
             throw new BadRequestException('ไม่สามารถยกเลิก slot ที่ยังไม่ชำระเงินได้');
         }
 
         const booking = await this.bookingModel.findOne({ slotId: slot._id })
+
         if (!booking) throw new BadRequestException('ไม่พบ booking')
 
         const session = await this.connection.startSession();
@@ -667,7 +672,7 @@ export class SlotsService {
                 await booking.save({ session });
 
                 await this.walletModel.updateOne(
-                    { userId: teacher._id, role: Role.Teacher },
+                    { userId: slot.teacherId, role: Role.Teacher },
                     { $inc: { pendingBalance: -booking.price } },
                     { session },
                 );

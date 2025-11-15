@@ -14,6 +14,7 @@ import { Teacher } from '../teachers/schemas/teacher.schema';
 import { User } from '../users/schemas/user.schema';
 import dayjs from 'dayjs';
 import 'dayjs/locale/th';
+import { SlotStatus } from 'src/shared/enums/slot.enum';
 
 
 @Injectable()
@@ -50,7 +51,7 @@ export class BookingService {
 
         if (existingBooking) throw new BadRequestException('คุณได้จอง slot นี้ไปแล้ว');
 
-        if (slot.status !== 'available') {
+        if (slot.status !== SlotStatus.AVAILABLE) {
             throw new BadRequestException('Slot นี้ถูกจองหรือไม่ว่างแล้ว');
         }
 

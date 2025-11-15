@@ -7,6 +7,7 @@ import { SubjectList, SubjectSchema } from '../subjects/schemas/subject.schema';
 import { Wallet, WalletSchema } from '../payments/schemas/wallet.schema';
 import { Teacher, TeacherSchema } from '../teachers/schemas/teacher.schema';
 import { Booking, BookingSchema } from '../booking/schemas/booking.schema';
+import { User, UserSchema } from '../users/schemas/user.schema';
 
 @Module({
   imports: [
@@ -15,11 +16,12 @@ import { Booking, BookingSchema } from '../booking/schemas/booking.schema';
       { name: SubjectList.name, schema: SubjectSchema },
       { name: Wallet.name, schema: WalletSchema },
       { name: Teacher.name, schema: TeacherSchema },
-      { name: Booking.name, schema: BookingSchema }
+      { name: Booking.name, schema: BookingSchema },
+      { name: User.name, schema: UserSchema },
     ]),
   ],
   providers: [SlotsService],
   controllers: [SlotsController],
   exports: [SlotsService, MongooseModule],
 })
-export class SlotsModule { }
+export class SlotsModule {}
