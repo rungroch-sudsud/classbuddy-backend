@@ -5,12 +5,14 @@ import { User } from './schemas/user.schema';
 import { UpdateProfileDto } from './schemas/user.zod.schema';
 import { S3Service } from 'src/infra/s3/s3.service';
 import { StreamChatService } from '../chat/stream-chat.service';
+import { Wallet } from '../payments/schemas/wallet.schema';
 
 
 @Injectable()
 export class UsersService {
     constructor(
         @InjectModel(User.name) private userModel: Model<User>,
+        @InjectModel(Wallet.name) private walletModel : Model<Wallet>,
         private readonly s3Service: S3Service,
         private readonly streamChatService: StreamChatService
     ) { }
@@ -95,8 +97,18 @@ export class UsersService {
             .findById(new Types.ObjectId(userId))
             .select('-password')
             .populate('subjects')
+            .lean()
 
         if (!user) throw new NotFoundException('ไม่พบข้อมูลผู้ใช้');
+
+        const userWallet = await this.walletModel
+            .findOne({userId : user._id})
+            .lean()
+
+        if (!userWallet) throw new NotFoundException('ไม่พบข้อมูลกระเป๋าเงินของผู้ใช้')
+
+        user.point = userWallet.availableBalance
+
         return user;
     }
 
