@@ -1,11 +1,10 @@
-import { Controller, Post, Body, BadRequestException, Patch, UseGuards } from '@nestjs/common';
-import { AuthService } from './auth.service';
-import { ZodValidationPipe } from 'src/shared/validators/zod.validation.pipe';
+import { BadRequestException, Body, Controller, Patch, Post, UseGuards } from '@nestjs/common';
 import { ApiBearerAuth, ApiBody, ApiTags } from '@nestjs/swagger';
-import { ChangePasswordDto, forgotPasswordOtpDto, LoginDto, RegisterDto, ResendOtpDto, ResetPasswordDto, VerifyForgotPasswordDto, VerifyOtpDto, VerifyOtpSchema } from './schemas/auth.zod.schema';
-import { RegisterSchema } from './schemas/auth.zod.schema';
-import { JwtGuard } from './guard/auth.guard';
 import { CurrentUser } from 'src/shared/utils/currentUser';
+import { ZodValidationPipe } from 'src/shared/validators/zod.validation.pipe';
+import { AuthService } from './auth.service';
+import { JwtGuard } from './guard/auth.guard';
+import { ChangePasswordDto, forgotPasswordOtpDto, LoginDto, RegisterDto, RegisterSchema, ResendOtpDto, ResetPasswordDto, VerifyForgotPasswordDto, VerifyOtpDto } from './schemas/auth.zod.schema';
 
 
 
