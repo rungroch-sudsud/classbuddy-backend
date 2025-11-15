@@ -2,13 +2,12 @@ import { Processor, WorkerHost } from '@nestjs/bullmq';
 import { InjectModel } from '@nestjs/mongoose';
 import { Job } from 'bullmq';
 import { Model } from 'mongoose';
-import { BullMQJob } from 'src/shared/enums/bull-mq.enum';
-import { Booking } from '../schemas/booking.schema';
-import { errorLog, infoLog } from 'src/shared/utils/shared.util';
 import { StreamChatService } from 'src/modules/chat/stream-chat.service';
 import { Teacher } from 'src/modules/teachers/schemas/teacher.schema';
-import { success } from 'zod';
 import { User } from 'src/modules/users/schemas/user.schema';
+import { BullMQJob } from 'src/shared/enums/bull-mq.enum';
+import { errorLog, infoLog } from 'src/shared/utils/shared.util';
+import { Booking } from '../schemas/booking.schema';
 
 @Processor('booking')
 export class BookingProcessor extends WorkerHost {
@@ -44,19 +43,11 @@ export class BookingProcessor extends WorkerHost {
 
             const teacher = await this.teacherModel
                 .findById(booking.teacherId)
-                .lean();
+                .populate('user')
+                .lean<Teacher & { user: User }>();
 
             if (!teacher) {
                 errorLog(logEntity, 'ไม่พบคุณครูสำหรับคลาสนี้');
-                return { success: true };
-            }
-
-            const student = await this.userModel
-                .findById(booking.studentId)
-                .lean();
-
-            if (!student) {
-                errorLog(logEntity, 'ไม่พบนักเรียนของตลาสนี้');
                 return { success: true };
             }
 
@@ -66,14 +57,14 @@ export class BookingProcessor extends WorkerHost {
 
             const channel = chatClient.channel('messaging', chatChannelId);
 
-            const studentFullName = `${student.name} ${student.lastName}`;
+            const teacherFullName = `${teacher.name} ${teacher.lastName}`;
 
             channel.sendMessage({
                 text: '[ข้อความอัตโนมัติจากระบบ] : อีก 15 นาทีก็ใกล้จะได้เวลาเริ่มคลาสแล้ว อย่าลืมเตรียมตัวละ!',
                 user: {
                     id: booking.studentId.toString(),
-                    name: studentFullName,
-                    image: student.profileImage,
+                    name: teacherFullName,
+                    image: teacher.user.profileImage,
                 },
             });
 
