@@ -105,9 +105,7 @@ export class UsersService {
             .findOne({userId : user._id})
             .lean()
 
-        if (!userWallet) throw new NotFoundException('ไม่พบข้อมูลกระเป๋าเงินของผู้ใช้')
-
-        user.point = userWallet.availableBalance
+        user.point = userWallet?.availableBalance ?? 0;
 
         return user;
     }
