@@ -3,24 +3,21 @@ import {
     Controller,
     Get,
     Param,
-    Patch,
     Post,
     UseGuards
 } from '@nestjs/common';
 import {
     ApiBearerAuth,
-    ApiBody,
-    ApiConsumes,
     ApiOperation,
-    ApiQuery,
-    ApiTags,
-    ApiParam
+    ApiParam,
+    ApiTags
 } from '@nestjs/swagger';
-import { JwtGuard } from '../auth/guard/auth.guard';
 import { CurrentUser } from 'src/shared/utils/currentUser';
+import { JwtGuard } from '../auth/guard/auth.guard';
 import { BookingService } from './booking.service';
 import { CreateBookingDto } from './schemas/booking.zod.schema';
-
+import { InjectQueue } from '@nestjs/bullmq';
+import { Queue } from 'bullmq';
 
 @ApiTags('Booking')
 @ApiBearerAuth()
@@ -29,7 +26,8 @@ import { CreateBookingDto } from './schemas/booking.zod.schema';
 @UseGuards(JwtGuard)
 export class BookingController {
     constructor(
-        private readonly bookingService: BookingService
+        @InjectQueue('booking') private bookingQueue : Queue,
+        private readonly bookingService: BookingService,
     ) { }
 
 
@@ -49,6 +47,8 @@ export class BookingController {
             studentId,
             body
         );
+
+        console.log('booking', booking)
 
         return {
             message: 'จองตารางเรียนสำเร็จ',
