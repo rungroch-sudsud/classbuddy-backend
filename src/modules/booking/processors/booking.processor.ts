@@ -62,7 +62,7 @@ export class BookingProcessor extends WorkerHost {
             channel.sendMessage({
                 text: '[ข้อความอัตโนมัติจากระบบ] : อีก 15 นาทีก็ใกล้จะได้เวลาเริ่มคลาสแล้ว อย่าลืมเตรียมตัวละ!',
                 user: {
-                    id: booking.studentId.toString(),
+                    id: teacher.userId.toString(),
                     name: teacherFullName,
                     image: teacher.user.profileImage,
                 },
