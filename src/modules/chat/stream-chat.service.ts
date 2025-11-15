@@ -1,7 +1,6 @@
 import { Injectable } from '@nestjs/common';
-import { StreamChat } from 'stream-chat';
-import { envConfig } from 'src/configs/env.config';
 import { StreamClient } from '@stream-io/node-sdk';
+import { StreamChat } from 'stream-chat';
 
 @Injectable()
 export class StreamChatService {
@@ -20,9 +19,7 @@ export class StreamChatService {
         return this.client;
     }
 
-    async upsertUser(
-        user: { id: string; name?: string; image?: string }
-    ) {
+    async upsertUser(user: { id: string; name?: string; image?: string }) {
         await this.client.upsertUser(user);
     }
 
@@ -58,6 +55,4 @@ export class StreamChatService {
     // createVideoToken(userId: string) {
     //     return this.videoClient.createToken(userId);
     // }
-
-
 }

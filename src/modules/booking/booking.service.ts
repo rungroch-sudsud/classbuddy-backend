@@ -2,7 +2,7 @@ import {
     BadRequestException,
     ForbiddenException,
     Injectable,
-    NotFoundException
+    NotFoundException,
 } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Booking } from './schemas/booking.schema';
@@ -15,7 +15,10 @@ import { User } from '../users/schemas/user.schema';
 import dayjs from 'dayjs';
 import 'dayjs/locale/th';
 import { SlotStatus } from 'src/shared/enums/slot.enum';
-
+import { InjectQueue } from '@nestjs/bullmq';
+import { Queue } from 'bullmq';
+import { secondsToMilliseconds } from 'src/shared/utils/shared.util';
+import { BullMQJob } from 'src/shared/enums/bull-mq.enum';
 
 @Injectable()
 export class BookingService {
@@ -24,9 +27,10 @@ export class BookingService {
         @InjectModel(User.name) private userModel: Model<User>,
         @InjectModel(Teacher.name) private teacherModel: Model<Teacher>,
         @InjectModel(Slot.name) private slotModel: Model<Slot>,
-        @InjectModel(Notification.name) private notificationModel: Model<Notification>,
-    ) { }
-
+        @InjectModel(Notification.name)
+        private notificationModel: Model<Notification>,
+        @InjectQueue('booking') private bookingQueue: Queue,
+    ) {}
 
     async CreatebookingSlot(
         slotId: string,
@@ -34,7 +38,7 @@ export class BookingService {
         body: CreateBookingDto,
     ): Promise<Booking> {
         const studentObjId = new Types.ObjectId(studentId);
-        const subjectObjId = new Types.ObjectId(body.subject)
+        const subjectObjId = new Types.ObjectId(body.subject);
 
         if (!Types.ObjectId.isValid(body.subject)) {
             throw new BadRequestException('subject id ไม่ถูกต้อง');
@@ -46,10 +50,11 @@ export class BookingService {
         const existingBooking = await this.bookingModel.findOne({
             slotId: slot._id,
             studentId: studentObjId,
-            status: 'pending'
+            status: 'pending',
         });
 
-        if (existingBooking) throw new BadRequestException('คุณได้จอง slot นี้ไปแล้ว');
+        if (existingBooking)
+            throw new BadRequestException('คุณได้จอง slot นี้ไปแล้ว');
 
         if (slot.status !== SlotStatus.AVAILABLE) {
             throw new BadRequestException('Slot นี้ถูกจองหรือไม่ว่างแล้ว');
@@ -64,21 +69,34 @@ export class BookingService {
             date: slot.date,
             price: slot.price,
             status: 'pending',
-            subject: subjectObjId
+            subject: subjectObjId,
         });
 
         slot.status = 'pending';
         slot.bookingId = booking._id;
         slot.bookedBy = studentObjId;
-        slot.subject = subjectObjId
+        slot.subject = subjectObjId;
         await slot.save();
 
-        return booking
+        const now = dayjs();
+
+        const secondsUntilClassStarts =
+            dayjs(booking.startTime).unix() - now.unix();
+
+        const secondsToNotifyUsersBeforeClass = 15 * 60; // : 15 นาทีก่อนคลาสเริ่่ม
+
+        const secondsToNotifyUsers =
+            secondsUntilClassStarts - secondsToNotifyUsersBeforeClass;
+
+        await this.bookingQueue.add(BullMQJob.NOTIFY_BEFORE_CLASS, booking, {
+            delay: secondsToMilliseconds(secondsToNotifyUsers),
+        });
+
+        return booking;
     }
 
-
     async getMySlot(userId: string): Promise<MySlotResponse[]> {
-        const bookings = await this.bookingModel
+        const bookings = (await this.bookingModel
             .find({
                 studentId: new Types.ObjectId(userId),
                 status: { $in: ['pending', 'paid'] },
@@ -92,7 +110,7 @@ export class BookingService {
                     select: 'profileImage',
                 },
             })
-            .lean() as any;
+            .lean()) as any;
 
         const sorted = bookings.sort((a, b) => {
             const statusOrder = { paid: 0, pending: 1 };
@@ -100,40 +118,48 @@ export class BookingService {
             const statusB = statusOrder[b.status] ?? 99;
 
             if (statusA !== statusB) return statusA - statusB;
-            return new Date(a.startTime).getTime() - new Date(b.startTime).getTime();
+            return (
+                new Date(a.startTime).getTime() -
+                new Date(b.startTime).getTime()
+            );
         });
 
-        return sorted.map(({ teacherId, startTime, endTime, date, paidAt, ...rest }) => {
-            const teacher: any = teacherId;
-            const startLocal = dayjs.utc(startTime).tz('Asia/Bangkok');
-            const endLocal = dayjs.utc(endTime).tz('Asia/Bangkok');
+        return sorted.map(
+            ({ teacherId, startTime, endTime, date, paidAt, ...rest }) => {
+                const teacher: any = teacherId;
+                const startLocal = dayjs.utc(startTime).tz('Asia/Bangkok');
+                const endLocal = dayjs.utc(endTime).tz('Asia/Bangkok');
 
-            const dateDisplay = dayjs(startLocal).locale('th').format('D MMMM YYYY');
-            const start = startLocal.format('HH:mm');
-            const end = endLocal.format('HH:mm');
-            const paidAtDisplay = paidAt ? dayjs(paidAt).locale('th').format('D MMMM YYYY') : null;
+                const dateDisplay = dayjs(startLocal)
+                    .locale('th')
+                    .format('D MMMM YYYY');
+                const start = startLocal.format('HH:mm');
+                const end = endLocal.format('HH:mm');
+                const paidAtDisplay = paidAt
+                    ? dayjs(paidAt).locale('th').format('D MMMM YYYY')
+                    : null;
 
-            return {
-                ...rest,
-                date: dateDisplay,
-                startTime: start,
-                endTime: end,
-                paidAt: paidAtDisplay,
-                teacher: {
-                    _id: teacher?._id,
-                    name: teacher?.name,
-                    lastName: teacher?.lastName,
-                    verifyStatus: teacher?.verifyStatus,
-                    profileImage: teacher?.userId?.profileImage ?? null,
-                },
-            };
-        });
+                return {
+                    ...rest,
+                    date: dateDisplay,
+                    startTime: start,
+                    endTime: end,
+                    paidAt: paidAtDisplay,
+                    teacher: {
+                        _id: teacher?._id,
+                        name: teacher?.name,
+                        lastName: teacher?.lastName,
+                        verifyStatus: teacher?.verifyStatus,
+                        profileImage: teacher?.userId?.profileImage ?? null,
+                    },
+                };
+            },
+        );
     }
-
 
     async getBookingById(
         bookingId: string,
-        userId: string
+        userId: string,
     ): Promise<MySlotResponse> {
         if (!isValidObjectId(bookingId)) {
             throw new BadRequestException('Booking ID ไม่ถูกต้อง');
@@ -157,22 +183,27 @@ export class BookingService {
         }
 
         const teacherRecord = await this.teacherModel.findOne({
-            userId: new Types.ObjectId(userId)
+            userId: new Types.ObjectId(userId),
         });
 
         const isStudent = userId === booking.studentId.toString();
-        const isTeacher = teacherRecord &&
+        const isTeacher =
+            teacherRecord &&
             teacherRecord._id.toString() === booking.teacherId?._id.toString();
 
         if (!isStudent && !isTeacher) {
-            throw new ForbiddenException('คุณไม่มีสิทธิ์เข้าถึงข้อมูลการจองนี้');
+            throw new ForbiddenException(
+                'คุณไม่มีสิทธิ์เข้าถึงข้อมูลการจองนี้',
+            );
         }
 
         const teacher: any = booking.teacherId;
         const startLocal = dayjs.utc(booking.startTime).tz('Asia/Bangkok');
         const endLocal = dayjs.utc(booking.endTime).tz('Asia/Bangkok');
 
-        const dateDisplay = dayjs(startLocal).locale('th').format('D MMMM YYYY');
+        const dateDisplay = dayjs(startLocal)
+            .locale('th')
+            .format('D MMMM YYYY');
         const start = startLocal.format('HH:mm');
         const end = endLocal.format('HH:mm');
 
@@ -198,9 +229,8 @@ export class BookingService {
         };
     }
 
-
     async getHistoryBookingMine(userId: string): Promise<MySlotResponse[]> {
-        const bookings = await this.bookingModel
+        const bookings = (await this.bookingModel
             .find({
                 studentId: new Types.ObjectId(userId),
                 status: { $in: ['studied', 'expired', 'rejected'] },
@@ -215,35 +245,39 @@ export class BookingService {
                 },
             })
             .sort({ startTime: -1 })
-            .lean() as any;
+            .lean()) as any;
 
-        return bookings.map(({ teacherId, startTime, endTime, date, paidAt, ...rest }) => {
-            const teacher: any = teacherId;
+        return bookings.map(
+            ({ teacherId, startTime, endTime, date, paidAt, ...rest }) => {
+                const teacher: any = teacherId;
 
-            const startLocal = dayjs.utc(startTime).tz('Asia/Bangkok');
-            const endLocal = dayjs.utc(endTime).tz('Asia/Bangkok');
+                const startLocal = dayjs.utc(startTime).tz('Asia/Bangkok');
+                const endLocal = dayjs.utc(endTime).tz('Asia/Bangkok');
 
-            const dateDisplay = dayjs(startLocal).locale('th').format('D MMMM YYYY');
-            const start = startLocal.format('HH:mm');
-            const end = endLocal.format('HH:mm');
-            const paidAtDisplay = paidAt ? dayjs(paidAt).locale('th').format('D MMMM YYYY') : null;
+                const dateDisplay = dayjs(startLocal)
+                    .locale('th')
+                    .format('D MMMM YYYY');
+                const start = startLocal.format('HH:mm');
+                const end = endLocal.format('HH:mm');
+                const paidAtDisplay = paidAt
+                    ? dayjs(paidAt).locale('th').format('D MMMM YYYY')
+                    : null;
 
-            return {
-                ...rest,
-                date: dateDisplay,
-                startTime: start,
-                endTime: end,
-                paidAt: paidAtDisplay,
-                teacher: {
-                    _id: teacher?._id,
-                    name: teacher?.name,
-                    lastName: teacher?.lastName,
-                    verifyStatus: teacher?.verifyStatus,
-                    profileImage: teacher?.userId?.profileImage ?? null,
-                },
-            };
-        });
+                return {
+                    ...rest,
+                    date: dateDisplay,
+                    startTime: start,
+                    endTime: end,
+                    paidAt: paidAtDisplay,
+                    teacher: {
+                        _id: teacher?._id,
+                        name: teacher?.name,
+                        lastName: teacher?.lastName,
+                        verifyStatus: teacher?.verifyStatus,
+                        profileImage: teacher?.userId?.profileImage ?? null,
+                    },
+                };
+            },
+        );
     }
-
-
 }

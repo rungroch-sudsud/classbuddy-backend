@@ -16,8 +16,6 @@ import { CurrentUser } from 'src/shared/utils/currentUser';
 import { JwtGuard } from '../auth/guard/auth.guard';
 import { BookingService } from './booking.service';
 import { CreateBookingDto } from './schemas/booking.zod.schema';
-import { InjectQueue } from '@nestjs/bullmq';
-import { Queue } from 'bullmq';
 
 @ApiTags('Booking')
 @ApiBearerAuth()
@@ -26,7 +24,6 @@ import { Queue } from 'bullmq';
 @UseGuards(JwtGuard)
 export class BookingController {
     constructor(
-        @InjectQueue('booking') private bookingQueue : Queue,
         private readonly bookingService: BookingService,
     ) { }
 
@@ -47,8 +44,6 @@ export class BookingController {
             studentId,
             body
         );
-
-        console.log('booking', booking)
 
         return {
             message: 'จองตารางเรียนสำเร็จ',

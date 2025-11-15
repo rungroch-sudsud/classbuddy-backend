@@ -1,3 +1,4 @@
+import dayjs from 'dayjs';
 import { MongoServerError } from 'mongodb';
 
 function isErrorObject(error: unknown): error is Error {
@@ -21,4 +22,18 @@ export function getErrorMessage(
     }
 
     return error.message;
+}
+
+export function secondsToMilliseconds(seconds: number) {
+    const oneSecondInMilliseconds = 1000;
+
+    return seconds * oneSecondInMilliseconds;
+}
+
+export function infoLog(entity : string, message : string, when : dayjs.Dayjs = dayjs()){
+    console.log(`[${entity}] -> ${message} (${when.format('DD/MM/YYYY HH:mm')})`)
+}
+
+export function errorLog(entity : string, message : string, when : dayjs.Dayjs = dayjs()){
+    console.error(`[${entity}] -> ${message} (${when.format('DD/MM/YYYY HH:mm')})`)
 }
