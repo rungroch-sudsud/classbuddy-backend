@@ -14,6 +14,7 @@ export function getErrorMessage(
 ): string {
     if (!isErrorObject(error)) return defaultErrorMessage;
 
+    // ไม่ต้องแสดงข้อความ error ให้กับ user เผื่อ hacker เอาไปเป็น hint ในการ hack ได้เพราะมันเป็น error เกี่ยวกับ database
     if (isMongoServerError(error)) {
         console.error(`[ERROR] : ${error.message}`);
         return defaultErrorMessage;
