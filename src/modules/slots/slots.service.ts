@@ -474,11 +474,11 @@ export class SlotsService {
                 throw new ForbiddenException('คุณไม่มีสิทธิ์ใน slot นี้');
             }
 
-            if (slot.status !== 'paid') {
+            if (slot.status !== SlotStatus.PAID) {
                 throw new BadRequestException('สามารถจบคลาสได้เฉพาะ slot ที่อยู่ในสถานะ "paid" เท่านั้น');
             }
 
-            slot.status = 'studied';
+            slot.status = SlotStatus.STUDIED;
             await slot.save({ session });
 
             await this.bookingModel.updateOne(
@@ -522,7 +522,7 @@ export class SlotsService {
             const isExistingStudent = await this.slotModel.exists({
                 teacherId: teacher._id,
                 bookedBy: slot.bookedBy,
-                status: 'studied',
+                status: SlotStatus.STUDIED,
             });
 
             if (!isExistingStudent) {

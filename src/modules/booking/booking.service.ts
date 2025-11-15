@@ -32,6 +32,40 @@ export class BookingService {
         @InjectQueue('booking') private bookingQueue: Queue,
     ) {}
 
+    private async _NotifyBeforeClassStarts(booking: Booking) {
+        const now = dayjs();
+
+        const secondsUntilClassStarts =
+            dayjs(booking.startTime).unix() - now.unix();
+
+        const secondsToNotifyUsersBeforeClass = 15 * 60; // : 15 นาทีก่อนคลาสเริ่่ม
+
+        const secondsToNotifyUsers =
+            secondsUntilClassStarts - secondsToNotifyUsersBeforeClass;
+
+        await this.bookingQueue.add(BullMQJob.NOTIFY_BEFORE_CLASS, booking, {
+            delay: secondsToMilliseconds(secondsToNotifyUsers),
+        });
+    }
+
+    private async _CheckParticipantsBeforeClassEnds(booking: Booking) {
+        const now = dayjs();
+
+        const secondsUntilClassEnds =
+            dayjs(booking.endTime).unix() - now.unix();
+
+        const secondsToCheckBeforeClassEnds = 5 * 60; // : 5 นาทีก่อนเลิกคลาส
+
+        const secondsToCheck =
+            secondsUntilClassEnds - secondsToCheckBeforeClassEnds;
+
+        await this.bookingQueue.add(
+            BullMQJob.CHECK_PARTICIPANTS_BEFORE_CLASS_ENDS,
+            booking,
+            { delay: secondsToMilliseconds(secondsToCheck) },
+        );
+    }
+
     async CreatebookingSlot(
         slotId: string,
         studentId: string,
@@ -78,19 +112,9 @@ export class BookingService {
         slot.subject = subjectObjId;
         await slot.save();
 
-        const now = dayjs();
+        await this._NotifyBeforeClassStarts(booking);
 
-        const secondsUntilClassStarts =
-            dayjs(booking.startTime).unix() - now.unix();
-
-        const secondsToNotifyUsersBeforeClass = 15 * 60; // : 15 นาทีก่อนคลาสเริ่่ม
-
-        const secondsToNotifyUsers =
-            secondsUntilClassStarts - secondsToNotifyUsersBeforeClass;
-
-        await this.bookingQueue.add(BullMQJob.NOTIFY_BEFORE_CLASS, booking, {
-            delay: secondsToMilliseconds(secondsToNotifyUsers),
-        });
+        await this._CheckParticipantsBeforeClassEnds(booking);
 
         return booking;
     }

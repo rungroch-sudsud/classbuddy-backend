@@ -19,6 +19,10 @@ export class StreamChatService {
         return this.client;
     }
 
+    getVideoClient() {
+        return this.videoClient;
+    }
+
     async upsertUser(user: { id: string; name?: string; image?: string }) {
         await this.client.upsertUser(user);
     }

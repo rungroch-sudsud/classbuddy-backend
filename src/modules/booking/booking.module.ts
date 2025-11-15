@@ -18,6 +18,7 @@ import { BookingService } from './booking.service';
 import { BookingProcessor } from './processors/booking.processor';
 import { Booking, BookingSchema } from './schemas/booking.schema';
 import { StreamChatService } from '../chat/stream-chat.service';
+import { SlotsService } from '../slots/slots.service';
 
 @Module({
     imports: [
@@ -41,6 +42,7 @@ import { StreamChatService } from '../chat/stream-chat.service';
         BookingService,
         BookingCronService,
         StreamChatService,
+        SlotsService,
         BookingProcessor,
     ],
     controllers: [BookingController],
