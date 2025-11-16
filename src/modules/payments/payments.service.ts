@@ -313,6 +313,8 @@ export class PaymentsService {
                 if (!studentWallet)
                     throw new NotFoundException('ไม่พบกระเป๋าเงินของนักเรียน');
 
+                console.log('studentWallet', studentWallet)
+
                 const notEnoughBalance =
                     studentWallet.availableBalance < booking.price;
 
