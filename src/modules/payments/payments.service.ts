@@ -277,13 +277,13 @@ export class PaymentsService {
     async payBookingWithWallet(
         bookingId: string,
         currentUserId: string,
-    ): Promise<Booking> {
+    ): Promise<void> {
         const session = await this.connection.startSession();
 
         infoLog('BOOKING', 'กำลังสร้าง booking ด้วย wallet');
 
         try {
-            const createdBooking = await session.withTransaction(async () => {
+            await session.withTransaction(async () => {
                 const booking = await this.bookingModel
                     .findById(bookingId)
                     .session(session);
@@ -321,7 +321,6 @@ export class PaymentsService {
 
                 if (!studentWallet)
                     throw new NotFoundException('ไม่พบกระเป๋าเงินของนักเรียน');
-
 
                 const notEnoughBalance =
                     studentWallet.availableBalance < booking.price;
@@ -400,11 +399,7 @@ export class PaymentsService {
                 });
 
                 infoLog('BOOKING', 'ชำระตลาสเรียนด้วย Wallet สำเร็จ!');
-
-                return booking;
             });
-
-            return createdBooking;
         } catch (error: unknown) {
             const errorMessage = getErrorMessage(error);
 
