@@ -1,6 +1,5 @@
-import { Schema, Prop, SchemaFactory } from "@nestjs/mongoose";
+import { Schema, Prop, SchemaFactory } from '@nestjs/mongoose';
 import { Document, Types } from 'mongoose';
-
 
 export enum PaymentType {
     TOPUP = 'TOPUP',
@@ -10,13 +9,17 @@ export enum PaymentType {
     // PAYOUT = 'PAYOUT',
 }
 
+export enum PaymentMethod {
+    WALLET = 'wallet',
+    PROMPTPAY = 'promptpay',
+}
+
 export enum PaymentStatus {
     SUCCESS = 'successful',
     FAILED = 'failed',
     PENDING = 'pending',
     AWAITING = 'awaiting_payment',
 }
-
 
 @Schema({ timestamps: true })
 export class Payment {
@@ -38,10 +41,13 @@ export class Payment {
     @Prop({ required: true })
     amount: number;
 
+    @Prop({ default: PaymentMethod.PROMPTPAY })
+    method: string;
+
     @Prop({
         required: true,
         enum: PaymentStatus,
-        default: PaymentStatus.PENDING
+        default: PaymentStatus.PENDING,
     })
     status: PaymentStatus;
 

@@ -39,7 +39,7 @@ export class BookingController {
         @CurrentUser() studentId: string,
         @Body() body: CreateBookingDto
     ) {
-        const booking = await this.bookingService.CreatebookingSlot(
+        const booking = await this.bookingService.createBookingSlot(
             slotId,
             studentId,
             body

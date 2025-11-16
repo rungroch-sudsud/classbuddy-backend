@@ -1,12 +1,8 @@
-import { Schema, Prop, SchemaFactory } from "@nestjs/mongoose";
-import mongoose, { HydratedDocument, Types } from "mongoose";
-import { Teacher } from "src/modules/teachers/schemas/teacher.schema";
-import { User } from "src/modules/users/schemas/user.schema";
-
+import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
+import { HydratedDocument, Types } from 'mongoose';
 
 @Schema({ timestamps: true })
 export class Notification {
-
     @Prop({
         type: Types.ObjectId,
         required: true,
@@ -17,7 +13,7 @@ export class Notification {
     @Prop({
         type: String,
         enum: ['User', 'Teacher'],
-        required: true
+        required: true,
     })
     recipientType: string;
 
@@ -31,7 +27,7 @@ export class Notification {
     @Prop({
         type: String,
         enum: ['User', 'Teacher', 'System'],
-        default: 'System'
+        default: 'System',
     })
     senderType: string;
 
@@ -45,9 +41,9 @@ export class Notification {
             'booking_reject',
             'booking_paid',
             'review_added',
-            'system'
+            'system',
         ],
-        default: 'system'
+        default: 'system',
     })
     type: string;
 

@@ -1,6 +1,5 @@
 import { Schema, Prop, SchemaFactory } from '@nestjs/mongoose';
-import { HydratedDocument, Types } from 'mongoose';
-import { Slot } from 'src/modules/slots/schemas/slot.schema';
+import { Document, HydratedDocument, Types } from 'mongoose';
 import { SubjectList } from 'src/modules/subjects/schemas/subject.schema';
 import { Teacher } from 'src/modules/teachers/schemas/teacher.schema';
 import { User } from 'src/modules/users/schemas/user.schema';
@@ -8,7 +7,7 @@ import { BookingStatusList } from 'src/shared/enums/booking.status.enum';
 import type { BookingStatus } from 'src/shared/enums/booking.status.enum';
 
 @Schema({ timestamps: true })
-export class Booking {
+export class Booking extends Document<Types.ObjectId> {
     @Prop({
         type: Types.ObjectId,
         ref: User.name,
