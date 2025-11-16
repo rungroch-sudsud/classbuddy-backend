@@ -146,7 +146,7 @@ export class BookingService {
         slotId: string,
         studentId: string,
         body: CreateBookingDto,
-    ) {
+    ): Promise<Booking> {
         const session = await this.connection.startSession();
 
         try {
@@ -158,7 +158,7 @@ export class BookingService {
                 body,
             );
 
-            session.withTransaction(async () => {
+            const createdBooking = await session.withTransaction(async () => {
                 // 1 : ตรวจสอบยอดเงินของนักเรียนว่าพอหรือไม่
                 const studentWallet = await this.walletModel
                     .findOne({
@@ -249,7 +249,11 @@ export class BookingService {
                 );
 
                 infoLog('BOOKING', 'สร้าง Booking โดยชำระผ่าน Wallet สำเร็จ');
+
+                return booking;
             });
+
+            return createdBooking;
         } catch (error: unknown) {
             const errorMessage = getErrorMessage(error);
 

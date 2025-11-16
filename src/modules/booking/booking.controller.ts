@@ -4,53 +4,71 @@ import {
     Get,
     Param,
     Post,
-    UseGuards
+    Query,
+    UseGuards,
 } from '@nestjs/common';
 import {
     ApiBearerAuth,
     ApiOperation,
     ApiParam,
-    ApiTags
+    ApiQuery,
+    ApiTags,
 } from '@nestjs/swagger';
+import { CreateBookingMethod } from 'src/shared/enums/booking.enum';
 import { CurrentUser } from 'src/shared/utils/currentUser';
 import { JwtGuard } from '../auth/guard/auth.guard';
 import { BookingService } from './booking.service';
+import { Booking } from './schemas/booking.schema';
 import { CreateBookingDto } from './schemas/booking.zod.schema';
 
 @ApiTags('Booking')
 @ApiBearerAuth()
-
 @Controller('booking')
 @UseGuards(JwtGuard)
 export class BookingController {
-    constructor(
-        private readonly bookingService: BookingService,
-    ) { }
-
+    constructor(private readonly bookingService: BookingService) {}
 
     @Post(':slotId')
     @ApiParam({
         name: 'slotId',
         description: 'slot id ที่ต้องการจอง',
     })
+    @ApiQuery({
+        name: 'method',
+        required: false,
+        type: String,
+        description: 'มี 2 method คือ 1. omise 2. wallet default จะเป็น omise',
+    })
     @UseGuards(JwtGuard)
     async CreatebookingSlot(
         @Param('slotId') slotId: string,
         @CurrentUser() studentId: string,
-        @Body() body: CreateBookingDto
+        @Body() body: CreateBookingDto,
+        @Query('method') method?: CreateBookingMethod,
     ) {
-        const booking = await this.bookingService.createBookingSlot(
-            slotId,
-            studentId,
-            body
-        );
+        let booking: Booking;
+
+        const createMethod = method ?? CreateBookingMethod.OMISE;
+
+        if (createMethod === CreateBookingMethod.OMISE) {
+            booking = await this.bookingService.createBookingSlot(
+                slotId,
+                studentId,
+                body,
+            );
+        } else {
+            booking = await this.bookingService.createBookingSlotByWallet(
+                slotId,
+                studentId,
+                body,
+            );
+        }
 
         return {
             message: 'จองตารางเรียนสำเร็จ',
             data: booking,
         };
     }
-
 
     @Get('mine')
     async getMySlots(@CurrentUser() userId: string) {
@@ -76,15 +94,16 @@ export class BookingController {
     @Get(':bookingId')
     async getBookingById(
         @Param('bookingId') bookingId: string,
-        @CurrentUser() userId: string
+        @CurrentUser() userId: string,
     ) {
-        const data = await this.bookingService.getBookingById(bookingId, userId);
+        const data = await this.bookingService.getBookingById(
+            bookingId,
+            userId,
+        );
 
         return {
             message: 'ดึงข้อมูลการจองสำเร็จ',
             data: data,
         };
     }
-
-
 }

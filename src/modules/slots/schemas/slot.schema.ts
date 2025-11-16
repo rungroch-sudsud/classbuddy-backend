@@ -1,8 +1,8 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 import { Document, Types } from 'mongoose';
 import { SubjectList } from 'src/modules/subjects/schemas/subject.schema';
-import { BookingStatusList } from 'src/shared/enums/booking.status.enum';
-import type { BookingStatus } from 'src/shared/enums/booking.status.enum';
+import { BookingStatusList } from 'src/shared/enums/booking.enum';
+import type { BookingStatus } from 'src/shared/enums/booking.enum';
 
 @Schema()
 export class Slot extends Document {
