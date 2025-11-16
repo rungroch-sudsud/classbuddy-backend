@@ -45,7 +45,7 @@ export class PaymentsService {
     constructor(
         @InjectConnection() private readonly connection: Connection,
         @InjectModel(Payment.name) private paymentModel: Model<any>,
-        @InjectModel(Wallet.name) private walletModel: Model<any>,
+        @InjectModel(Wallet.name) private walletModel: Model<Wallet>,
         @InjectModel(User.name) private userModel: Model<any>,
         @InjectModel(Teacher.name) private teacherModel: Model<any>,
         @InjectModel(Booking.name) private bookingModel: Model<Booking>,
@@ -310,7 +310,9 @@ export class PaymentsService {
                         $setOnInsert: {
                             userId: studentId,
                             role: Role.User,
-                            balance: 0,
+                            availableBalance: 0,
+                            pendingBalance: 0,
+                            lockedBalance: 0,
                             createdAt: new Date(),
                         },
                     },
@@ -320,7 +322,6 @@ export class PaymentsService {
                 if (!studentWallet)
                     throw new NotFoundException('ไม่พบกระเป๋าเงินของนักเรียน');
 
-                console.log('studentWallet', studentWallet);
 
                 const notEnoughBalance =
                     studentWallet.availableBalance < booking.price;
@@ -356,7 +357,7 @@ export class PaymentsService {
                 await this.slotModel.findOneAndUpdate(
                     { bookingId: booking._id },
                     { status: SlotStatus.PAID, paidAt: new Date() },
-                    { upsert: true, session },
+                    { session },
                 );
 
                 // 6 : เพิ่มเงินเข้ากระเป๋าตังครู (pendingBalance)
