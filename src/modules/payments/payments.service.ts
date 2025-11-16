@@ -301,26 +301,20 @@ export class PaymentsService {
                     );
 
                 // 1 : ตรวจสอบยอดเงินของนักเรียนว่าพอหรือไม่
-                const studentWallet = await this.walletModel.findOneAndUpdate(
-                    {
+                let studentWallet = await this.walletModel.findOne({
+                    userId: studentId,
+                    role: Role.User,
+                });
+
+                if (!studentWallet) {
+                    studentWallet = await this.walletModel.insertOne({
                         userId: studentId,
                         role: Role.User,
-                    },
-                    {
-                        $setOnInsert: {
-                            userId: studentId,
-                            role: Role.User,
-                            availableBalance: 0,
-                            pendingBalance: 0,
-                            lockedBalance: 0,
-                            createdAt: new Date(),
-                        },
-                    },
-                    { upsert: true, new: true, session },
-                );
-
-                if (!studentWallet)
-                    throw new NotFoundException('ไม่พบกระเป๋าเงินของนักเรียน');
+                        availableBalance: 0,
+                        pendingBalance: 0,
+                        lockedBalance: 0,
+                    });
+                }
 
                 const notEnoughBalance =
                     studentWallet.availableBalance < booking.price;
