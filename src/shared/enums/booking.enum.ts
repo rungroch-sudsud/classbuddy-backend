@@ -8,8 +8,3 @@ export const BookingStatusList = [
 ] as const;
 
 export type BookingStatus = (typeof BookingStatusList)[number];
-
-export enum CreateBookingMethod {
-    OMISE = 'omise',
-    WALLET = 'wallet',
-}

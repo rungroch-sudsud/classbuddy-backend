@@ -1,12 +1,4 @@
-import {
-    Body,
-    Controller,
-    Get,
-    Param,
-    Post,
-    Query,
-    UseGuards,
-} from '@nestjs/common';
+import { Body, Controller, Get, Param, Post, UseGuards } from '@nestjs/common';
 import {
     ApiBearerAuth,
     ApiOperation,
@@ -14,11 +6,9 @@ import {
     ApiQuery,
     ApiTags,
 } from '@nestjs/swagger';
-import { CreateBookingMethod } from 'src/shared/enums/booking.enum';
 import { CurrentUser } from 'src/shared/utils/currentUser';
 import { JwtGuard } from '../auth/guard/auth.guard';
 import { BookingService } from './booking.service';
-import { Booking } from './schemas/booking.schema';
 import { CreateBookingDto } from './schemas/booking.zod.schema';
 
 @ApiTags('Booking')
@@ -40,29 +30,16 @@ export class BookingController {
         description: 'มี 2 method คือ 1. omise 2. wallet default จะเป็น omise',
     })
     @UseGuards(JwtGuard)
-    async CreatebookingSlot(
+    async createBookingSlot(
         @Param('slotId') slotId: string,
         @CurrentUser() studentId: string,
         @Body() body: CreateBookingDto,
-        @Query('method') method?: CreateBookingMethod,
     ) {
-        let booking: Booking;
-
-        const createMethod = method ?? CreateBookingMethod.OMISE;
-
-        if (createMethod === CreateBookingMethod.OMISE) {
-            booking = await this.bookingService.createBookingSlot(
-                slotId,
-                studentId,
-                body,
-            );
-        } else {
-            booking = await this.bookingService.createBookingSlotByWallet(
-                slotId,
-                studentId,
-                body,
-            );
-        }
+        const booking = await this.bookingService.createBookingSlot(
+            slotId,
+            studentId,
+            body,
+        );
 
         return {
             message: 'จองตารางเรียนสำเร็จ',
