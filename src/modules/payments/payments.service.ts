@@ -306,14 +306,21 @@ export class PaymentsService {
                         userId: studentId,
                         role: Role.User,
                     },
-                    {},
+                    {
+                        $setOnInsert: {
+                            userId: studentId,
+                            role: Role.User,
+                            balance: 0,
+                            createdAt: new Date(),
+                        },
+                    },
                     { upsert: true, new: true, session },
                 );
 
                 if (!studentWallet)
                     throw new NotFoundException('ไม่พบกระเป๋าเงินของนักเรียน');
 
-                console.log('studentWallet', studentWallet)
+                console.log('studentWallet', studentWallet);
 
                 const notEnoughBalance =
                     studentWallet.availableBalance < booking.price;
