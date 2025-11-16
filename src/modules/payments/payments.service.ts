@@ -301,6 +301,7 @@ export class PaymentsService {
                     );
 
                 // 1 : ตรวจสอบยอดเงินของนักเรียนว่าพอหรือไม่
+                // TODO: ลองใช้ findOneAndUpdate กับ $setOnInsert แล้วบัค เลยใช้วิธีนี้ไปก่อน เดี๋ยวมา Optimize
                 let studentWallet = await this.walletModel.findOne({
                     userId: studentId,
                     role: Role.User,
