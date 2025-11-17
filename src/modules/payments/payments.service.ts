@@ -198,7 +198,6 @@ export class PaymentsService {
                     const teacherAmount = Number(
                         (totalAmount - systemFee).toFixed(2),
                     );
-
                     const gatewayFee = 30;
                     const teacherNet = Number(
                         (teacherAmount - gatewayFee).toFixed(2),

@@ -10,6 +10,7 @@ import { User } from '../users/schemas/user.schema';
 import { SocketService } from '../socket/socket.service';
 import { SubjectList } from '../subjects/schemas/subject.schema';
 import { Wallet } from '../payments/schemas/wallet.schema';
+import { PayoutLog } from '../payments/schemas/payout.schema';
 
 
 @Injectable()
@@ -22,7 +23,8 @@ export class TeachersService {
         @InjectModel(User.name) private userModel: Model<User>,
         @InjectModel(Slot.name) private slotModel: Model<Slot>,
         @InjectModel(SubjectList.name) private subjectModel: Model<SubjectList>,
-        @InjectModel(Wallet.name) private walletModel: Model<Wallet>
+        @InjectModel(Wallet.name) private walletModel: Model<Wallet>,
+        @InjectModel(PayoutLog.name) private payoutLogModel: Model<PayoutLog>
     ) { }
 
     private async findTeacher(userId: string): Promise<TeacherDocument | null> {
@@ -263,10 +265,10 @@ export class TeachersService {
             { path: 'userId', select: '_id profileImage' },
         ]);
 
-        const wallet = await this.walletModel.findOne({ 
+        const wallet = await this.walletModel.findOne({
             userId: teacher._id
         })
-        .select('-role');
+            .select('-role');
 
         const teacherObj = teacher.toObject();
         const userId = teacher.userId?._id ?? null;
@@ -458,6 +460,61 @@ export class TeachersService {
 
         return wallet;
 
+    }
+
+    async getPaymentHistory(
+        teacherId: string,
+        startDate?: string,
+        endDate?: string
+    ): Promise<any> {
+        const teacher = await this.findTeacher(teacherId)
+        if (!teacher) throw new NotFoundException('ไม่พบครู');
+
+        const teacherObjId = new Types.ObjectId(teacher._id);
+
+        const filter: any = {
+            teacherId: teacherObjId,
+            status: 'paid',
+        };
+
+        if (startDate || endDate) {
+            filter.transferredAt = {};
+
+            if (startDate)
+                filter.transferredAt.$gte = new Date(`${startDate}T00:00:00.000Z`);
+
+            if (endDate)
+                filter.transferredAt.$lte = new Date(`${endDate}T23:59:59.999Z`);
+        }
+
+        const wallet = await this.walletModel.findOne({
+            userId: teacherObjId
+        });
+        if (!wallet) throw new BadRequestException('ไม่พบ wallet')
+
+        const payoutLogs = await this.payoutLogModel
+            .find(filter)
+            .lean();
+
+        let totalPayoutAmount = 0;
+        let totalTeacherNet = 0;
+        let totalCommission = 0;
+
+        for (const log of payoutLogs) {
+            totalPayoutAmount += log.amount ?? 0;
+            totalTeacherNet += log.teacherNet ?? 0;
+            totalCommission += (log.systemFee ?? 0) + (log.gatewayFee ?? 0);
+        }
+
+        return {
+            startDate: startDate || null,
+            endDate: endDate || null,
+            totalPayoutAmount,
+            totalTeacherNet,
+            totalCommission,
+            availableBalance: wallet.availableBalance,
+            processingBalance: wallet.lockedBalance
+        };
     }
 
 }

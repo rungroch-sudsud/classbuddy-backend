@@ -10,6 +10,7 @@ import { User, UserSchema } from '../users/schemas/user.schema';
 import { SocketModule } from '../socket/socket.module';
 import { SubjectList, SubjectSchema } from '../subjects/schemas/subject.schema';
 import { Wallet, WalletSchema } from '../payments/schemas/wallet.schema';
+import { PayoutLog, PayoutLogSchema } from '../payments/schemas/payout.schema';
 
 @Module({
     imports: [
@@ -18,7 +19,8 @@ import { Wallet, WalletSchema } from '../payments/schemas/wallet.schema';
             { name: User.name, schema: UserSchema },
             { name: Slot.name, schema: SlotSchema },
             { name: SubjectList.name, schema: SubjectSchema },
-            { name: Wallet.name, schema: WalletSchema }
+            { name: Wallet.name, schema: WalletSchema },
+            { name: PayoutLog.name, schema: PayoutLogSchema }
         ]),
         S3Module,
         ChatModule,

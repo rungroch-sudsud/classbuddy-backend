@@ -209,6 +209,25 @@ export class TeachersController {
         };
     }
 
+    @Get('payment/history')
+    @UseGuards(JwtGuard)
+    async getPaymentHistory(
+        @CurrentUser() userId: string,
+        @Query('startDate') startDate?: string,
+        @Query('endDate') endDate?: string,
+    ) {
+        const result = await this.teacherService.getPaymentHistory(
+            userId,
+            startDate,
+            endDate,
+        );
+
+        return {
+            message: 'แสดงรายได้ของฉันสำเร็จ',
+            data: result,
+        };
+    }
+
     // @Get('wallet/mine')
     // @UseGuards(JwtGuard)
     // async getTeacherWallet(
