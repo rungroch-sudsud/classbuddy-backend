@@ -241,7 +241,7 @@ export class SlotsService {
 
         const newSlots = await this.slotModel.bulkWrite(docs, { ordered: false });
 
-        this.socketService.emit(SocketEvent.TEACHER_SLOT_UPDATE, { teacherId })
+        this.socketService.emit(SocketEvent.TEACHER_SLOT_UPDATE, { teacherId : teacher._id.toString() })
         
         return { success: true, count: newSlots.upsertedCount, data: newSlots };
     }
@@ -688,7 +688,7 @@ export class SlotsService {
             }
         }
 
-        this.socketService.emit(SocketEvent.TEACHER_SLOT_UPDATE, { teacherId })
+        this.socketService.emit(SocketEvent.TEACHER_SLOT_UPDATE, { teacherId : teacher._id.toString() })
 
         return {
             deletedCount,
