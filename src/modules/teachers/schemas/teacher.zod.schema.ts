@@ -30,11 +30,6 @@ export const CreateTeacherProfileSchema = z.object({
     .min(1, 'ต้องมีอย่างน้อย 1 วิชา')
     .max(100, 'id วิชาต้องไม่เกิน 100 ตัวอักษร'),
 
-  // subjectNames: z
-  //   .array(z.string())
-  //   .max(100, 'ชื่อวิชาต้องไม่เกิน 100 ตัวอักษร')
-  //   .optional(),
-
   customSubjects: z
     .string().min(2).max(50)
     .optional()
@@ -170,4 +165,12 @@ export const reviewTeacherSchema = z.object({
 
 export class reviewTeacherDto extends createZodDto(reviewTeacherSchema) { }
 
+
+export const ReviewSummarySchema = z.object({
+  averageRating: z.number(),
+  reviewCount: z.number().int(),
+  satisfactionRate: z.number().int(),
+});
+
+export class ReviewResponseDto extends createZodDto(ReviewSummarySchema) {}
 

@@ -19,6 +19,11 @@ import 'dayjs/locale/th';
 import { Role } from '../auth/role/role.enum';
 import { User } from '../users/schemas/user.schema';
 import { SlotStatus } from 'src/shared/enums/slot.enum';
+import {
+    SingleSlotDto,
+    DailyRecurringSlotDto,
+     WeeklyRecurringSlotDto
+} from './schemas/slot.zod.schema';
 
 
 dayjs.extend(utc);
@@ -40,7 +45,7 @@ export class SlotsService {
 
     async createSlots(
         teacherId: string,
-        body: any
+        body: | SingleSlotDto | DailyRecurringSlotDto | WeeklyRecurringSlotDto
     ): Promise<any> {
         const teacher = await this.teacherModel.findOne({
             userId: new Types.ObjectId(teacherId)
@@ -257,11 +262,11 @@ export class SlotsService {
             .populate('subject', '_id name')
             .populate('bookedBy', '_id name lastName profileImage')
             .populate({
-                path : 'booking', 
-                populate :[ 
+                path: 'booking',
+                populate: [
                     {
-                    path : 'subject',
-                    select : '_id name',    
+                        path: 'subject',
+                        select: '_id name',
                     },
                     {
                         path: 'teacherId',
@@ -273,7 +278,7 @@ export class SlotsService {
                     }
                 ],
             })
-            .lean<Array<Slot & {booking : any}>>();
+            .lean<Array<Slot & { booking: any }>>();
 
 
         const sorted = slots.sort((a, b) => {
@@ -286,7 +291,7 @@ export class SlotsService {
         });
 
         return sorted.map(({ startTime, endTime, date, booking, ...rest }) => {
-            const teacher : any = booking.teacherId;
+            const teacher: any = booking.teacherId;
             const startLocal = dayjs.utc(startTime).tz('Asia/Bangkok');
             const endLocal = dayjs.utc(endTime).tz('Asia/Bangkok');
 
@@ -307,14 +312,14 @@ export class SlotsService {
                 startTime: bookingStart,
                 endTime: bookingEnd,
                 paidAt: bookingPaidAtDisplay,
-                teacher :  {
+                teacher: {
                     _id: teacher?._id,
                     name: teacher?.name,
                     lastName: teacher?.lastName,
                     verifyStatus: teacher?.verifyStatus,
                     profileImage: teacher?.userId?.profileImage ?? null,
                 }
-                
+
             }
 
             delete formattedBoking.teacherId
@@ -323,7 +328,7 @@ export class SlotsService {
                 date: dateDisplay,
                 startTime: start,
                 endTime: end,
-                booking : formattedBoking,
+                booking: formattedBoking,
                 ...rest,
             };
         });
@@ -545,7 +550,10 @@ export class SlotsService {
     }
 
 
-    async deleteSlots(teacherId: string, body: any) {
+    async deleteSlots(
+        teacherId: string,
+        body: | SingleSlotDto | DailyRecurringSlotDto | WeeklyRecurringSlotDto
+    ) {
         const teacher = await this.teacherModel.findOne({
             userId: new Types.ObjectId(teacherId),
         });

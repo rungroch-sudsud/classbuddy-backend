@@ -18,12 +18,16 @@ import {
 } from '@nestjs/swagger';
 import { JwtGuard } from '../auth/guard/auth.guard';
 import { CurrentUser } from 'src/shared/utils/currentUser';
-import { CreateSlotDto, CreateWeeklySlotDto } from './schemas/slot.zod.schema';
+import { SingleSlotDto, DailyRecurringSlotDto, WeeklyRecurringSlotDto } from './schemas/slot.zod.schema';
 import { Roles } from '../auth/decorators/roles.decorator';
 import { RolesGuard } from '../auth/guard/roles.guard';
 import { Role } from '../auth/role/role.enum';
 
-@ApiExtraModels(CreateSlotDto, CreateWeeklySlotDto)
+@ApiExtraModels(
+    SingleSlotDto,
+    DailyRecurringSlotDto,
+    WeeklyRecurringSlotDto
+)
 @ApiTags('Slots')
 @ApiBearerAuth()
 
@@ -42,8 +46,9 @@ export class SlotsController {
     @ApiBody({
         schema: {
             oneOf: [
-                { $ref: getSchemaPath(CreateSlotDto) },
-                { $ref: getSchemaPath(CreateWeeklySlotDto) },
+                { $ref: getSchemaPath(SingleSlotDto) },
+                { $ref: getSchemaPath(DailyRecurringSlotDto) },
+                { $ref: getSchemaPath(WeeklyRecurringSlotDto) },
             ],
         },
         examples: {
@@ -81,7 +86,10 @@ export class SlotsController {
     @UseGuards(JwtGuard)
     async createSlots(
         @CurrentUser() teacherId: string,
-        @Body() body: any,
+        @Body() body:
+            | SingleSlotDto
+            | DailyRecurringSlotDto
+            | WeeklyRecurringSlotDto
     ) {
         const create = await this.slotsService.createSlots(teacherId, body);
 
@@ -178,8 +186,9 @@ export class SlotsController {
     @ApiBody({
         schema: {
             oneOf: [
-                { $ref: getSchemaPath(CreateSlotDto) },
-                { $ref: getSchemaPath(CreateWeeklySlotDto) },
+                { $ref: getSchemaPath(SingleSlotDto) },
+                { $ref: getSchemaPath(DailyRecurringSlotDto) },
+                { $ref: getSchemaPath(WeeklyRecurringSlotDto) },
             ],
         },
         examples: {
@@ -215,7 +224,10 @@ export class SlotsController {
     @UseGuards(JwtGuard)
     async cancelSingleSlot(
         @CurrentUser() userId: string,
-        @Body() body: any
+        @Body() body:
+            | SingleSlotDto
+            | DailyRecurringSlotDto
+            | WeeklyRecurringSlotDto
     ) {
         const slot = await this.slotsService.deleteSlots(userId, body);
 

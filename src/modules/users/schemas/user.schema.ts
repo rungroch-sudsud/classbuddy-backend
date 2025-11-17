@@ -39,9 +39,6 @@ export class User extends Document {
     @Prop({ default: 0 })
     studyClass?: number;
 
-    @Prop({ default: 0 })
-    point?: number;
-
     @Prop({
         type: String,
         enum: Role,

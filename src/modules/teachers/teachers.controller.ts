@@ -161,7 +161,7 @@ export class TeachersController {
     @UseGuards(JwtGuard)
     async updateTeacherProfile(
         @CurrentUser() userId: string,
-        @Body() body: any,
+        @Body() body: UpdateTeacherDto,
     ) {
         const updated = await this.teacherService.updateTeacherProfile(
             userId,
@@ -208,5 +208,18 @@ export class TeachersController {
             data: null
         };
     }
+
+    // @Get('wallet/mine')
+    // @UseGuards(JwtGuard)
+    // async getTeacherWallet(
+    //     @CurrentUser() userId: string,
+    // ) {
+    //    const wallet = await this.teacherService.getTeacherWallet(userId);
+
+    //     return {
+    //         message: 'my wallet',
+    //         data: wallet
+    //     };
+    // }
 
 }

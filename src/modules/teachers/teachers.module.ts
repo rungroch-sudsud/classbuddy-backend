@@ -9,6 +9,7 @@ import { ChatModule } from '../chat/chat.module';
 import { User, UserSchema } from '../users/schemas/user.schema';
 import { SocketModule } from '../socket/socket.module';
 import { SubjectList, SubjectSchema } from '../subjects/schemas/subject.schema';
+import { Wallet, WalletSchema } from '../payments/schemas/wallet.schema';
 
 @Module({
     imports: [
@@ -16,7 +17,8 @@ import { SubjectList, SubjectSchema } from '../subjects/schemas/subject.schema';
             { name: Teacher.name, schema: TeacherSchema },
             { name: User.name, schema: UserSchema },
             { name: Slot.name, schema: SlotSchema },
-            { name: SubjectList.name, schema: SubjectSchema }
+            { name: SubjectList.name, schema: SubjectSchema },
+            { name: Wallet.name, schema: WalletSchema }
         ]),
         S3Module,
         ChatModule,

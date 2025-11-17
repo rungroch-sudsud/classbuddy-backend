@@ -3,24 +3,26 @@ import { InjectModel } from '@nestjs/mongoose';
 import { Model, Types } from 'mongoose';
 import { Teacher, TeacherDocument } from './schemas/teacher.schema';
 import { S3Service } from 'src/infra/s3/s3.service';
-import { CreateTeacherProfileDto, reviewTeacherDto, UpdateTeacherDto } from './schemas/teacher.zod.schema';
+import { CreateTeacherProfileDto, ReviewResponseDto, reviewTeacherDto, UpdateTeacherDto } from './schemas/teacher.zod.schema';
 import { Slot } from '../slots/schemas/slot.schema';
 import { StreamChatService } from '../chat/stream-chat.service';
 import { User } from '../users/schemas/user.schema';
 import { SocketService } from '../socket/socket.service';
 import { SubjectList } from '../subjects/schemas/subject.schema';
+import { Wallet } from '../payments/schemas/wallet.schema';
 
 
 @Injectable()
 export class TeachersService {
     constructor(
+        private readonly s3Service: S3Service,
+        private readonly socketService: SocketService,
+        private readonly streamChatService: StreamChatService,
         @InjectModel(Teacher.name) private teacherModel: Model<Teacher>,
         @InjectModel(User.name) private userModel: Model<User>,
         @InjectModel(Slot.name) private slotModel: Model<Slot>,
         @InjectModel(SubjectList.name) private subjectModel: Model<SubjectList>,
-        private readonly s3Service: S3Service,
-        private readonly socketService: SocketService,
-        private readonly streamChatService: StreamChatService,
+        @InjectModel(Wallet.name) private walletModel: Model<Wallet>
     ) { }
 
     private async findTeacher(userId: string): Promise<TeacherDocument | null> {
@@ -39,27 +41,36 @@ export class TeachersService {
     async createTeacherProfile(
         userId: string,
         body: CreateTeacherProfileDto
-    ): Promise<Teacher> {
+    ): Promise<any> {
         const exist = await this.findTeacher(userId);
         if (exist) throw new ConflictException('มีครูคนนี้อยู่ในระบบอยู่แล้ว');
 
         const user = await this.userModel.findById(userId);
         if (!user) throw new NotFoundException('ไม่พบผู้ใช้งาน');
 
-        const createTeacher = new this.teacherModel({
+        const userObjId = new Types.ObjectId(userId)
+
+        const teacher = new this.teacherModel({
             ...body,
-            userId: new Types.ObjectId(userId),
+            userId: userObjId,
             name: user.name,
             lastName: user.lastName,
         });
+        await teacher.save();
 
-        return createTeacher.save();
+        const createWallet = new this.walletModel({
+            userId: teacher._id,
+            role: 'teacher'
+        });
+        await createWallet.save();
+
+        return { teacher, createWallet }
     }
 
 
     async updatePayments(
         userId: string,
-        body: any
+        body: UpdateTeacherDto
     ): Promise<Teacher> {
         const exist = await this.findTeacher(userId);
         if (exist) throw new ConflictException('มีครูคนนี้อยู่ในระบบอยู่แล้ว');
@@ -252,6 +263,11 @@ export class TeachersService {
             { path: 'userId', select: '_id profileImage' },
         ]);
 
+        const wallet = await this.walletModel.findOne({ 
+            userId: teacher._id
+        })
+        .select('-role');
+
         const teacherObj = teacher.toObject();
         const userId = teacher.userId?._id ?? null;
         const profileImage = (teacherObj.userId as any)?.profileImage ?? null;
@@ -264,6 +280,7 @@ export class TeachersService {
             ...teacherObj,
             userId,
             profileImage,
+            wallet,
             isOnline
         };
     }
@@ -350,7 +367,7 @@ export class TeachersService {
         teacherId: string,
         reviewerId: string,
         body: reviewTeacherDto
-    ): Promise<any> {
+    ): Promise<ReviewResponseDto> {
         const teacher = await this.teacherModel.findById(teacherId);
         if (!teacher) throw new NotFoundException('ไม่พบครู');
 
@@ -423,6 +440,24 @@ export class TeachersService {
         }
 
         await teacher.save();
+    }
+
+    async getTeacherWallet(teacherId: string): Promise<any> {
+        const teacher = await this.findTeacher(teacherId);
+        if (!teacher) throw new NotFoundException('ไม่พบครู');
+
+        const wallet = await this.walletModel.findOne({
+            userId: teacher._id
+        });
+
+        if (!wallet) throw new NotFoundException('ไม่พบ wallet');
+
+        if (wallet.userId.toString() !== teacher._id.toString()) {
+            throw new ConflictException('คุณไม่มีสิทธิ์เข้าถึง');
+        }
+
+        return wallet;
+
     }
 
 }

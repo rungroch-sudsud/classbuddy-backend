@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, ConflictException, Injectable, NotFoundException } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model, Types } from 'mongoose';
 import { User } from './schemas/user.schema';
@@ -12,10 +12,31 @@ import { Wallet } from '../payments/schemas/wallet.schema';
 export class UsersService {
     constructor(
         @InjectModel(User.name) private userModel: Model<User>,
-        @InjectModel(Wallet.name) private walletModel : Model<Wallet>,
+        @InjectModel(Wallet.name) private walletModel: Model<Wallet>,
         private readonly s3Service: S3Service,
         private readonly streamChatService: StreamChatService
     ) { }
+
+    private async createUserWalletIfNotExists(userId: string): Promise<void> {
+        const user = await this.userModel.findById(userId);
+        if (!user) throw new BadRequestException('ไม่พบผู้ใช้คนนี้');
+
+        const userObjId = new Types.ObjectId(userId);
+
+        const existingWallet = await this.walletModel.findOne({
+            userId: userObjId,
+            role: 'user',
+        });
+
+        if (existingWallet) return;
+        
+        const wallet = new this.walletModel({
+            userId: userObjId,
+            role: 'user',
+        });
+
+        await wallet.save();
+    }
 
 
     async createProfile(
@@ -38,25 +59,46 @@ export class UsersService {
         userId: string,
         body: UpdateProfileDto,
     ): Promise<User> {
-        const update = await this.userModel.findByIdAndUpdate(
-            userId,
-            { $set: body },
-            { new: true },
-        )
+        const currentUser = await this.userModel.findById(userId);
+        if (!currentUser) throw new NotFoundException('ไม่พบผู้ใช้งาน');
+
+        if (body.email && body.email !== currentUser.email) {
+            const exists = await this.userModel.findOne({
+                email: body.email,
+                _id: { $ne: userId }
+            });
+
+            if (exists) throw new ConflictException('อีเมลนี้มีผู้ใช้งานแล้ว');
+        }
+
+        const update = await this.userModel
+            .findByIdAndUpdate(
+                userId,
+                { $set: body },
+                { new: true },
+            )
             .select('-password -phone -role');
 
         if (!update) throw new NotFoundException('ไม่พบผู้ใช้งาน');
+
+        await this.createUserWalletIfNotExists(userId);
 
         try {
             await this.streamChatService.upsertUser({
                 id: `${userId}`,
                 name: `${update.name ?? ''} ${update.lastName ?? ''}`.trim(),
-                image: update.profileImage ?? undefined
+                image: update.profileImage ?? undefined,
             });
+
             console.log(`[GETSTREAM] upsert user in getStream ${userId} ${update.name} `);
+
         } catch (err) {
-            console.warn('[GETSTREAM] Failed to upsert Stream user:', err.message);
+            console.warn(
+                '[GETSTREAM] Failed to upsert Stream user:',
+                err.message
+            );
         }
+
         return update;
     }
 
@@ -92,22 +134,26 @@ export class UsersService {
 
     async getUserProfileMine(
         userId: string
-    ): Promise<User> {
+    ): Promise<any> {
+        const userObjId = new Types.ObjectId(userId);
+
         const user = await this.userModel
-            .findById(new Types.ObjectId(userId))
+            .findById(userObjId)
             .select('-password')
             .populate('subjects')
             .lean()
 
         if (!user) throw new NotFoundException('ไม่พบข้อมูลผู้ใช้');
 
-        const userWallet = await this.walletModel
-            .findOne({userId : user._id})
-            .lean()
+        const wallet = await this.walletModel
+            .findOne({ userId: userObjId, role: 'user' })
+            .select('availableBalance')
+            .lean();
 
-        user.point = userWallet?.availableBalance ?? 0;
-
-        return user;
+        return {
+            ...user,
+            wallet: wallet ?? null,
+        }
     }
 
 
@@ -151,7 +197,6 @@ export class UsersService {
 
         return user;
     }
-
 
 
 }

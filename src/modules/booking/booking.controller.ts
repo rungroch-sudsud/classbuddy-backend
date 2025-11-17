@@ -1,4 +1,11 @@
-import { Body, Controller, Get, Param, Post, UseGuards } from '@nestjs/common';
+import {
+    Body,
+    Controller,
+    Get,
+    Param,
+    Post,
+    UseGuards
+} from '@nestjs/common';
 import {
     ApiBearerAuth,
     ApiOperation,
@@ -11,12 +18,13 @@ import { JwtGuard } from '../auth/guard/auth.guard';
 import { BookingService } from './booking.service';
 import { CreateBookingDto } from './schemas/booking.zod.schema';
 
+
 @ApiTags('Booking')
 @ApiBearerAuth()
 @Controller('booking')
 @UseGuards(JwtGuard)
 export class BookingController {
-    constructor(private readonly bookingService: BookingService) {}
+    constructor(private readonly bookingService: BookingService) { }
 
     @Post(':slotId')
     @ApiParam({
