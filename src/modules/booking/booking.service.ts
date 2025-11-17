@@ -27,7 +27,7 @@ export class BookingService {
         @InjectModel(Slot.name) private slotModel: Model<Slot>,
     ) {}
 
-    private async _notifyBeforeClassStarts(booking: Booking) {
+    private async addNotifyBeforeClassStartsQueue(booking: Booking) {
         const now = dayjs();
 
         const secondsUntilClassStarts =
@@ -43,7 +43,7 @@ export class BookingService {
         });
     }
 
-    private async _checkParticipantsBeforeClassEnds(booking: Booking) {
+    private async addCheckParticipantsBeforeClassEndsQueue(booking: Booking) {
         const now = dayjs();
 
         const secondsUntilClassEnds =
@@ -59,6 +59,17 @@ export class BookingService {
             booking,
             { delay: secondsToMilliseconds(secondsToCheck) },
         );
+    }
+
+    private async addEndCallQueue(booking: Booking) {
+        const now = dayjs();
+
+        const secondsUntilClassEnds =
+            dayjs(booking.endTime).unix() - now.unix();
+
+        await this.bookingQueue.add(BullMQJob.END_CALL, booking, {
+            delay: secondsToMilliseconds(secondsUntilClassEnds),
+        });
     }
 
     async createBookingSlot(
@@ -107,9 +118,11 @@ export class BookingService {
         slot.subject = subjectObjId;
         await slot.save();
 
-        await this._notifyBeforeClassStarts(booking);
+        await this.addNotifyBeforeClassStartsQueue(booking);
 
-        await this._checkParticipantsBeforeClassEnds(booking);
+        await this.addCheckParticipantsBeforeClassEndsQueue(booking);
+
+        await this.addEndCallQueue(booking);
 
         return booking;
     }

@@ -13,6 +13,7 @@ import {
 } from 'src/shared/utils/shared.util';
 import { Booking } from '../schemas/booking.schema';
 import { SlotsService } from 'src/modules/slots/slots.service';
+import { VideoService } from 'src/modules/chat/video.service';
 
 @Processor('booking')
 export class BookingProcessor extends WorkerHost {
@@ -21,6 +22,7 @@ export class BookingProcessor extends WorkerHost {
         @InjectModel(Teacher.name) private teacherModel: Model<Teacher>,
         private readonly streamChatService: StreamChatService,
         private readonly slotsService: SlotsService,
+        private readonly videoService: VideoService,
     ) {
         super();
     }
@@ -163,6 +165,44 @@ export class BookingProcessor extends WorkerHost {
                 const errorMessage = getErrorMessage(error);
 
                 errorLog(logEntity, errorMessage);
+                return { success: false };
+            }
+        }
+
+        if (job.name === BullMQJob.END_CALL) {
+            const logEntity = 'QUEUE (END_CALL)';
+            try {
+                const data: Booking & { _id: string } = job.data;
+
+                const bookingId = data._id;
+
+                infoLog(
+                    logEntity,
+                    `กำลังปิด Call สำหรับคลาสเรียน bookingId : ${bookingId}`,
+                );
+
+                const booking = await this.bookingModel
+                    .findById(data._id)
+                    .lean();
+
+                if (!booking) {
+                    errorLog(logEntity, 'ไม่พบการจองดังกล่าว');
+                    return { succes: false };
+                }
+
+                await this.videoService.endCall(bookingId);
+
+                infoLog(
+                    logEntity,
+                    `จบ call สำหรับคลาสเรียน bookingId : ${bookingId} สำเร็จ!`,
+                );
+
+                return { success: true };
+            } catch (error: unknown) {
+                const errorMesage = getErrorMessage(error);
+
+                errorLog(logEntity, errorMesage);
+
                 return { success: false };
             }
         }

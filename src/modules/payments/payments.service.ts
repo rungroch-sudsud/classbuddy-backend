@@ -280,7 +280,7 @@ export class PaymentsService {
     ): Promise<void> {
         const session = await this.connection.startSession();
 
-        infoLog('BOOKING', 'กำลังสร้าง booking ด้วย wallet');
+        infoLog('BOOKING', 'กำลังชำระ booking ด้วย wallet');
 
         try {
             await session.withTransaction(async () => {
