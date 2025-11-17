@@ -5,24 +5,25 @@ import {
     Injectable,
     NotFoundException
 } from '@nestjs/common';
-import { InjectModel, InjectConnection } from '@nestjs/mongoose';
-import { Slot } from './schemas/slot.schema';
-import { Model, Types } from 'mongoose';
-import { Teacher } from '../teachers/schemas/teacher.schema';
-import { Wallet } from '../payments/schemas/wallet.schema';
-import { Booking } from '../booking/schemas/booking.schema';
-import { Connection } from 'mongoose';
+import { InjectConnection, InjectModel } from '@nestjs/mongoose';
 import dayjs from 'dayjs';
-import utc from 'dayjs/plugin/utc';
-import timezone from 'dayjs/plugin/timezone';
 import 'dayjs/locale/th';
-import { Role } from '../auth/role/role.enum';
-import { User } from '../users/schemas/user.schema';
+import timezone from 'dayjs/plugin/timezone';
+import utc from 'dayjs/plugin/utc';
+import { Connection, Model, Types } from 'mongoose';
 import { SlotStatus } from 'src/shared/enums/slot.enum';
+import { SocketEvent } from 'src/shared/enums/socket.enum';
+import { Role } from '../auth/role/role.enum';
+import { Booking } from '../booking/schemas/booking.schema';
+import { Wallet } from '../payments/schemas/wallet.schema';
+import { SocketService } from '../socket/socket.service';
+import { Teacher } from '../teachers/schemas/teacher.schema';
+import { User } from '../users/schemas/user.schema';
+import { Slot } from './schemas/slot.schema';
 import {
-    SingleSlotDto,
     DailyRecurringSlotDto,
-     WeeklyRecurringSlotDto
+    SingleSlotDto,
+    WeeklyRecurringSlotDto
 } from './schemas/slot.zod.schema';
 
 
@@ -40,6 +41,7 @@ export class SlotsService {
         @InjectModel(Wallet.name) private readonly walletModel: Model<Wallet>,
         @InjectModel(Booking.name) private readonly bookingModel: Model<Booking>,
         @InjectConnection() private readonly connection: Connection,
+        private readonly socketService : SocketService
     ) { }
 
 
@@ -239,6 +241,8 @@ export class SlotsService {
 
         const newSlots = await this.slotModel.bulkWrite(docs, { ordered: false });
 
+        this.socketService.emit(SocketEvent.TEACHER_SLOT_UPDATE, { teacherId })
+        
         return { success: true, count: newSlots.upsertedCount, data: newSlots };
     }
 
@@ -539,6 +543,9 @@ export class SlotsService {
             }
 
             await session.commitTransaction();
+
+            this.socketService.emit(SocketEvent.TEACHER_SLOT_UPDATE, { teacherId : slot.teacherId })
+
             return wallet
 
         } catch (err) {
@@ -680,6 +687,8 @@ export class SlotsService {
                 deletedCount += result.deletedCount ?? 0;
             }
         }
+
+        this.socketService.emit(SocketEvent.TEACHER_SLOT_UPDATE, { teacherId })
 
         return {
             deletedCount,
