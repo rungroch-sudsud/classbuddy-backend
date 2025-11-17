@@ -365,13 +365,6 @@ export class PaymentsService {
                 );
 
                 // 7 : สร้างแชทสำหรับครูและนักเรียน
-                const teacherId = booking.teacherId.toString();
-                await this.chatService.createOrGetChannel(studentId, teacherId);
-
-                // 8 : สร้าง video room สำหรับคลาสนี้
-                await this.videoService.createCallRoom(bookingId);
-
-                // 9: ส่งแจ้งเตือนไปหาคุณครู และ นักเรียน
                 const teacher = await this.teacherModel.findById(
                     booking.teacherId,
                 );
@@ -381,6 +374,15 @@ export class PaymentsService {
 
                 const teacherUserId = teacher.userId.toString();
 
+                await this.chatService.createOrGetChannel(
+                    studentId,
+                    teacherUserId,
+                );
+
+                // 8 : สร้าง video room สำหรับคลาสนี้
+                await this.videoService.createCallRoom(bookingId);
+
+                // 9: ส่งแจ้งเตือนไปหาคุณครู และ นักเรียน
                 await this.notificationService.sendNotification(studentId, {
                     recipientType: NotificationReceipientType.User,
                     message: `ชำระเงินสำเร็จแล้ว 🎉 สามารถตรวจสอบตารางเรียนของคุณได้ที่ตารางของฉัน`,
