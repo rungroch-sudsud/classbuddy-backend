@@ -24,13 +24,13 @@ export enum PaymentStatus {
 @Schema({ timestamps: true })
 export class Payment {
     @Prop({ type: Types.ObjectId, ref: 'User', required: true })
-    userId: string;
+    userId: Types.ObjectId;
 
     @Prop({ type: Types.ObjectId, ref: 'Teacher' })
-    teacherId?: string;
+    teacherId?: Types.ObjectId;
 
     @Prop({ type: Types.ObjectId, ref: 'Booking' })
-    bookingId?: string;
+    bookingId?: Types.ObjectId;
 
     @Prop()
     chargeId?: string;

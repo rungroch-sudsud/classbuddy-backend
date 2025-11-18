@@ -29,7 +29,7 @@ export class UsersService {
         });
 
         if (existingWallet) return;
-        
+
         const wallet = new this.walletModel({
             userId: userObjId,
             role: 'user',
@@ -141,6 +141,17 @@ export class UsersService {
             .findById(userObjId)
             .select('-password')
             .populate('subjects')
+            .populate({
+                path: 'bookmarks',
+                model: 'Teacher',
+                select: `name lastName subjects customSubjects averageRating
+                  reviewCount totalTeachingHours hourlyRate verifyStatus customSubjects`,
+                populate: {
+                    path: 'subjects',
+                    model: 'SubjectList',
+                    select: 'name'
+                },
+            })
             .lean()
 
         if (!user) throw new NotFoundException('ไม่พบข้อมูลผู้ใช้');
@@ -159,19 +170,19 @@ export class UsersService {
 
     async toggleBookmark(
         userId: string,
-        slotId: string
+        teacherId: string
     ): Promise<{ bookmarked: boolean; bookmarks: string[] }> {
         const user = await this.userModel.findById(userId);
         if (!user) throw new NotFoundException('ไม่พบผู้ใช้');
 
-        const index = user.bookmarks.indexOf(slotId);
+        const index = user.bookmarks.indexOf(teacherId);
         let bookmarked: boolean;
 
         if (index > -1) {
             user.bookmarks.splice(index, 1);
             bookmarked = false;
         } else {
-            user.bookmarks.push(slotId);
+            user.bookmarks.push(teacherId);
             bookmarked = true;
         }
 

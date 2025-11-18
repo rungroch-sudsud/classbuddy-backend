@@ -1,9 +1,10 @@
 import { BadRequestException, ConflictException, Injectable, NotFoundException } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
-import { Model, Types } from 'mongoose';
+import { FilterQuery, Model, Types } from 'mongoose';
 import { Teacher, TeacherDocument } from './schemas/teacher.schema';
 import { S3Service } from 'src/infra/s3/s3.service';
-import { CreateTeacherProfileDto, ReviewResponseDto, reviewTeacherDto, UpdateTeacherDto } from './schemas/teacher.zod.schema';
+// import { , reviewTeacherDto, UpdateTeacherDto } from './schemas/teacher.zod.schema';
+import { PaymentHistoryResponseDto, ReviewResponseDto, } from './schemas/teacher.response.zod';
 import { Slot } from '../slots/schemas/slot.schema';
 import { StreamChatService } from '../chat/stream-chat.service';
 import { User } from '../users/schemas/user.schema';
@@ -11,6 +12,8 @@ import { SocketService } from '../socket/socket.service';
 import { SubjectList } from '../subjects/schemas/subject.schema';
 import { Wallet } from '../payments/schemas/wallet.schema';
 import { PayoutLog } from '../payments/schemas/payout.schema';
+import { PaymentDocument } from '../payments/schemas/payment.schema';
+import { CreateTeacherDto, UpdateTeacherDto } from './dto/teacher.dto.zod';
 
 
 @Injectable()
@@ -42,7 +45,7 @@ export class TeachersService {
 
     async createTeacherProfile(
         userId: string,
-        body: CreateTeacherProfileDto
+        body: CreateTeacherDto
     ): Promise<any> {
         const exist = await this.findTeacher(userId);
         if (exist) throw new ConflictException('มีครูคนนี้อยู่ในระบบอยู่แล้ว');
@@ -70,20 +73,20 @@ export class TeachersService {
     }
 
 
-    async updatePayments(
-        userId: string,
-        body: UpdateTeacherDto
-    ): Promise<Teacher> {
-        const exist = await this.findTeacher(userId);
-        if (exist) throw new ConflictException('มีครูคนนี้อยู่ในระบบอยู่แล้ว');
+    // async updatePayments(
+    //     userId: string,
+    //     body: UpdateTeacherDto
+    // ): Promise<Teacher> {
+    //     const exist = await this.findTeacher(userId);
+    //     if (exist) throw new ConflictException('มีครูคนนี้อยู่ในระบบอยู่แล้ว');
 
-        const createTeacher = new this.teacherModel({
-            ...body,
-            userId: new Types.ObjectId(userId)
-        });
+    //     const createTeacher = new this.teacherModel({
+    //         ...body,
+    //         userId: new Types.ObjectId(userId)
+    //     });
 
-        return createTeacher.save();
-    }
+    //     return createTeacher.save();
+    // }
 
 
     async updateIdCardWithPerson(
@@ -300,6 +303,7 @@ export class TeachersService {
             .select(`
                      -idCardWithPerson -bankName
                      -bankAccountName -bankAccountNumber -recipientId
+                     -certificate
                      `)
             .populate([
                 { path: 'subjects' },
@@ -368,7 +372,7 @@ export class TeachersService {
     async addReview(
         teacherId: string,
         reviewerId: string,
-        body: reviewTeacherDto
+        body: any
     ): Promise<ReviewResponseDto> {
         const teacher = await this.teacherModel.findById(teacherId);
         if (!teacher) throw new NotFoundException('ไม่พบครู');
@@ -444,7 +448,7 @@ export class TeachersService {
         await teacher.save();
     }
 
-    async getTeacherWallet(teacherId: string): Promise<any> {
+    async getTeacherWallet(teacherId: string): Promise<Wallet> {
         const teacher = await this.findTeacher(teacherId);
         if (!teacher) throw new NotFoundException('ไม่พบครู');
 
@@ -466,13 +470,13 @@ export class TeachersService {
         teacherId: string,
         startDate?: string,
         endDate?: string
-    ): Promise<any> {
+    ): Promise<PaymentHistoryResponseDto> {
         const teacher = await this.findTeacher(teacherId)
         if (!teacher) throw new NotFoundException('ไม่พบครู');
 
         const teacherObjId = new Types.ObjectId(teacher._id);
 
-        const filter: any = {
+        const filter: FilterQuery<PaymentDocument> = {
             teacherId: teacherObjId,
             status: 'paid',
         };

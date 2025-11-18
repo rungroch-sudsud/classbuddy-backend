@@ -21,16 +21,12 @@ import {
 } from '@nestjs/swagger';
 import { JwtGuard } from '../auth/guard/auth.guard';
 import { CurrentUser } from 'src/shared/utils/currentUser';
-import {
-    CreateTeacherProfileDto,
-    reviewTeacherDto,
-    UpdateTeacherDto
-} from './schemas/teacher.zod.schema';
 import { TeachersService } from './teachers.service';
 import { UploadInterceptor } from 'src/shared/interceptors/upload.interceptor';
 import { ZodFilePipe, ZodFilesPipe } from 'src/shared/validators/zod.validation.pipe';
 import { UploadFileDto, UploadFilesDto } from 'src/shared/docs/upload.file.docs';
 import { FilesSchema, ImageFileSchema } from 'src/shared/validators/zod.schema';
+import { CreateTeacherDto, UpdateTeacherDto } from './dto/teacher.dto.zod';
 
 
 @ApiTags('Teachers')
@@ -43,11 +39,10 @@ export class TeachersController {
 
 
     @Post('')
-    @ApiBody({ type: CreateTeacherProfileDto })
     @UseGuards(JwtGuard)
     async createTeacherProfile(
         @CurrentUser() userId: string,
-        @Body() body: CreateTeacherProfileDto,
+        @Body() body: CreateTeacherDto,
     ) {
         const teacher = await this.teacherService.createTeacherProfile(userId, body);
 
@@ -157,7 +152,6 @@ export class TeachersController {
 
 
     @Patch('profile')
-    @ApiBody({ type: UpdateTeacherDto })
     @UseGuards(JwtGuard)
     async updateTeacherProfile(
         @CurrentUser() userId: string,
@@ -179,12 +173,12 @@ export class TeachersController {
     //Review Section
     @Post('review/:teacherId')
     @ApiOperation({ summary: 'นักเรียนที่เคยเรียนรีวิวครู' })
-    @ApiBody({ type: reviewTeacherDto })
+    // @ApiBody({ type: reviewTeacherDto })
     @UseGuards(JwtGuard)
     async addReview(
         @Param('teacherId') teacherId: string,
         @CurrentUser() reviewerId: string,
-        @Body() body: reviewTeacherDto,
+        @Body() body: any,
     ) {
         const review = await this.teacherService.addReview(teacherId, reviewerId, body);
 

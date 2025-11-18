@@ -79,13 +79,13 @@ export class UsersController {
   }
 
 
-  @Patch('bookmarks/:slotId')
+  @Patch('bookmarks/:teacherId')
   @UseGuards(JwtGuard)
   async toggleBookmark(
     @CurrentUser() userId: string,
-    @Param('slotId') slotId: string,
+    @Param('teacherId') teacherId: string,
   ) {
-    const booked = await this.usersService.toggleBookmark(userId, slotId);
+    const booked = await this.usersService.toggleBookmark(userId, teacherId);
 
     return {
       message: 'บันทึกข้อมูลเรียบร้อย',
