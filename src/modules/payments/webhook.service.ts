@@ -1,4 +1,9 @@
-import { BadRequestException, ConflictException, Injectable, InternalServerErrorException } from '@nestjs/common';
+import {
+    BadRequestException,
+    ConflictException,
+    Injectable,
+    InternalServerErrorException,
+} from '@nestjs/common';
 import { InjectModel, InjectConnection } from '@nestjs/mongoose';
 
 import { Payment, PaymentStatus, PaymentType } from './schemas/payment.schema';
@@ -14,9 +19,11 @@ import { StreamChatService } from '../chat/stream-chat.service';
 import { ChatService } from '../chat/chat.service';
 import { VideoService } from '../chat/video.service';
 import { NotificationsService } from '../notifications/notifications.service';
+import { EmailService } from 'src/infra/email/email.service';
+import { EmailTemplateID } from 'src/infra/email/email.type';
+import { envConfig } from 'src/configs/env.config';
 
 const Omise = require('omise');
-
 
 @Injectable()
 export class WebhookService {
@@ -34,13 +41,13 @@ export class WebhookService {
         private readonly notificationService: NotificationsService,
         private readonly streamChatService: StreamChatService,
         private readonly chatService: ChatService,
-        private readonly videoService: VideoService
+        private readonly videoService: VideoService,
+        private readonly emailService: EmailService,
     ) {
         const secretKey = process.env.OMISE_SECRET_KEY;
         const publicKey = process.env.OMISE_PUBLIC_KEY;
         this.omise = Omise({ secretKey, publicKey });
     }
-
 
     private async handleRecipientWebhook(evt: any) {
         try {
@@ -49,18 +56,24 @@ export class WebhookService {
             if (!recipient?.id) return;
 
             if (recipient.object !== 'recipient' || !recipient.verified) {
-                return console.warn(`[OMISE WEBHOOK] Recipient ${recipient.id} ยังไม่ verified`);
+                return console.warn(
+                    `[OMISE WEBHOOK] Recipient ${recipient.id} ยังไม่ verified`,
+                );
             }
 
             const recipientId = recipient.id;
             const teacher = await this.teacherModel.findOne({ recipientId });
 
             if (!teacher) {
-                return console.warn(`[OMISE WEBHOOK] ไม่พบ Teacher ที่มี recipientId: ${recipientId}`);
+                return console.warn(
+                    `[OMISE WEBHOOK] ไม่พบ Teacher ที่มี recipientId: ${recipientId}`,
+                );
             }
 
             if (teacher.verifyStatus === 'verified') {
-                return console.log(`[OMISE WEBHOOK] Teacher ${teacher.name} verified ไปเรียบร้อยแล้ว`);
+                return console.log(
+                    `[OMISE WEBHOOK] Teacher ${teacher.name} verified ไปเรียบร้อยแล้ว`,
+                );
             }
 
             teacher.verifyStatus = 'verified';
@@ -68,7 +81,10 @@ export class WebhookService {
             await teacher.save();
 
             const user = await this.userModel.findOne({ _id: teacher.userId });
-            if (!user) return console.warn(`[OMISE WEBHOOK] ไม่พบ User ที่มี ${teacher.userId}`);
+            if (!user)
+                return console.warn(
+                    `[OMISE WEBHOOK] ไม่พบ User ที่มี ${teacher.userId}`,
+                );
 
             user.role = Role.Teacher;
             await user.save();
@@ -80,33 +96,38 @@ export class WebhookService {
                     name: `${teacher.name ?? ''} ${teacher.lastName ?? ''}`.trim(),
                     image: user.profileImage ?? null,
                 });
-                console.log(`[GETSTREAM] upsert teacher ${teacherStreamId} successful`);
+                console.log(
+                    `[GETSTREAM] upsert teacher ${teacherStreamId} successful`,
+                );
             } catch (err) {
-                console.warn('[GETSTREAM] Failed to upsert teacher:', err.message);
+                console.warn(
+                    '[GETSTREAM] Failed to upsert teacher:',
+                    err.message,
+                );
             }
 
             await this.notificationService.sendNotification(teacher.userId, {
                 recipientType: 'Teacher',
                 message: `บัญชีของคุณได้รับการยืนยันตัวตนเรียบร้อยแล้ว`,
                 type: 'booking_paid',
-                meta: { recipientId, verifiedAt: teacher.verifiedAt }
+                meta: { recipientId, verifiedAt: teacher.verifiedAt },
             });
 
-            console.log(`[OMISE WEBHOOK] ${teacher.name} ${teacher.lastName} ${teacher._id} ถูกยืนยันสำเร็จจาก Omise`);
-
+            console.log(
+                `[OMISE WEBHOOK] ${teacher.name} ${teacher.lastName} ${teacher._id} ถูกยืนยันสำเร็จจาก Omise`,
+            );
         } catch (err) {
             console.error('[OMISE WEBHOOK] :', err);
             throw err;
         }
     }
 
-
     private async handleChargeWebhook(evt: any) {
         const chargeId = evt.data.id;
         const charge = await this.omise.charges.retrieve(chargeId);
         const status = charge.status as PaymentStatus;
         const { bookingId, userId } = charge.metadata ?? {};
-        const amountTHB = Math.round((charge.amount ?? 0)) / 100;
+        const amountTHB = Math.round(charge.amount ?? 0) / 100;
 
         const bookingObjId = bookingId && new Types.ObjectId(bookingId);
         const userObjId = userId && new Types.ObjectId(userId);
@@ -121,7 +142,6 @@ export class WebhookService {
 
         try {
             await session.withTransaction(async () => {
-
                 const setNow: any = { status, raw: charge };
                 if (status === 'successful') setNow.paidAt = new Date();
 
@@ -156,7 +176,8 @@ export class WebhookService {
                     .findOne({ userId: userObjId, role: Role.User })
                     .session(session);
 
-                if (!wallet) throw new Error(`ไม่พบกระเป๋าเงินของ ${userObjId}`);
+                if (!wallet)
+                    throw new Error(`ไม่พบกระเป๋าเงินของ ${userObjId}`);
 
                 // 3️⃣ ตรวจ booking
                 const booking = await this.bookingModel
@@ -167,11 +188,15 @@ export class WebhookService {
                 if (booking.status === 'paid') return;
 
                 if (booking.status !== 'pending') {
-                    throw new ConflictException('Booking is not awaiting payment');
+                    throw new ConflictException(
+                        'Booking is not awaiting payment',
+                    );
                 }
 
                 if (booking.price !== amountTHB) {
-                    throw new Error(`ยอดเงินไม่ถูกต้องไม่ควรเกิดขึ้น ${booking.price} ได้รับ ${amountTHB}`);
+                    throw new Error(
+                        `ยอดเงินไม่ถูกต้องไม่ควรเกิดขึ้น ${booking.price} ได้รับ ${amountTHB}`,
+                    );
                 }
 
                 // 4️⃣ ตรวจยอดเงินคงเหลือ
@@ -209,17 +234,25 @@ export class WebhookService {
                     teacherId: booking.teacherId?.toString(),
                     studentId: booking.studentId?.toString(),
                 };
-
             });
 
-            if (postProcess.bookingId && postProcess.teacherId && postProcess.studentId) {
+            if (
+                postProcess.bookingId &&
+                postProcess.teacherId &&
+                postProcess.studentId
+            ) {
                 try {
                     const teacher = await this.teacherModel
                         .findById(postProcess.teacherId)
-                        .lean<Teacher & { userId: Types.ObjectId }>();
+                        .populate('user')
+                        .lean<
+                            Teacher & { userId: Types.ObjectId; user: User }
+                        >();
 
                     if (!teacher) {
-                        throw new Error(`[WEBHOOK] Teacher not found for ${postProcess.teacherId}`);
+                        throw new Error(
+                            `[WEBHOOK] Teacher not found for ${postProcess.teacherId}`,
+                        );
                     }
 
                     await this.chatService.createOrGetChannel(
@@ -227,25 +260,50 @@ export class WebhookService {
                         teacher.userId.toString(),
                     );
 
-                    await this.videoService.createCallRoom(postProcess.bookingId);
-                    console.log(`[STREAM VIDEO] Created video call room for booking ${postProcess.bookingId}`);
+                    await this.videoService.createCallRoom(
+                        postProcess.bookingId,
+                    );
+                    console.log(
+                        `[STREAM VIDEO] Created video call room for booking ${postProcess.bookingId}`,
+                    );
 
-                    await this.notificationService.sendNotification(postProcess.studentId, {
-                        recipientType: 'User',
-                        message: `ชำระเงินสำเร็จแล้ว 🎉 สามารถตรวจสอบตารางเรียนของคุณได้ที่ตารางของฉัน`,
-                        type: 'booking_paid',
-                        // meta: { bookingId: postProcess.bookingId },
-                    });
+                    await this.notificationService.sendNotification(
+                        postProcess.studentId,
+                        {
+                            recipientType: 'User',
+                            message: `ชำระเงินสำเร็จแล้ว 🎉 สามารถตรวจสอบตารางเรียนของคุณได้ที่ตารางของฉัน`,
+                            type: 'booking_paid',
+                            // meta: { bookingId: postProcess.bookingId },
+                        },
+                    );
 
-                    await this.notificationService.sendNotification(teacher.userId.toString(), {
-                        recipientType: 'Teacher',
-                        message: `มีนักเรียนจองตารางเรียนกับคุณแล้ว ✨ ตรวจสอบรายละเอียดการสอน`,
-                        type: 'booking_paid',
-                        // meta: { bookingId: postProcess.bookingId },
-                    });
+                    await this.notificationService.sendNotification(
+                        teacher.userId.toString(),
+                        {
+                            recipientType: 'Teacher',
+                            message: `มีนักเรียนจองตารางเรียนกับคุณแล้ว ✨ ตรวจสอบรายละเอียดการสอน`,
+                            type: 'booking_paid',
+                            // meta: { bookingId: postProcess.bookingId },
+                        },
+                    );
 
+                    const teacherEmail = teacher.user.email;
+
+                    if (teacherEmail) {
+                        await this.emailService.sendEmail({
+                            mail_to: { email: teacherEmail },
+                            subject: 'การชำระเงิน',
+                            payload: {
+                                CHAT_URL: `${envConfig.frontEndUrl}/chat`,
+                            },
+                            template_uuid: EmailTemplateID.SUCCESSFUL_PAYMENT,
+                        });
+                    }
                 } catch (err) {
-                    console.warn('[GETSTREAM] Failed to create channel:', err.message);
+                    console.warn(
+                        '[GETSTREAM] Failed to create channel:',
+                        err.message,
+                    );
                 }
             }
         } catch (err) {
@@ -256,14 +314,15 @@ export class WebhookService {
         }
     }
 
-
     private async handleTransferWebhook(evt: any) {
         const transferId = evt.data.id;
         const transfer = await this.omise.transfers.retrieve(transferId);
 
         const { teacherId, walletId, payoutLogId } = transfer.metadata ?? {};
         const walletObjId = walletId ? new Types.ObjectId(walletId) : null;
-        const payoutLogObjId = payoutLogId ? new Types.ObjectId(payoutLogId) : null;
+        const payoutLogObjId = payoutLogId
+            ? new Types.ObjectId(payoutLogId)
+            : null;
 
         let status: 'processing' | 'sent' | 'paid' | 'failed' = 'processing';
         if (evt.key === 'transfer.send') status = 'sent';
@@ -277,7 +336,9 @@ export class WebhookService {
                     transferId: transfer.id,
                     status,
                     updatedAt: new Date(),
-                    ...(transfer.paid_at ? { transferredAt: new Date(transfer.paid_at) } : {}),
+                    ...(transfer.paid_at
+                        ? { transferredAt: new Date(transfer.paid_at) }
+                        : {}),
                 },
             },
             { upsert: false },
@@ -301,12 +362,13 @@ export class WebhookService {
         }
     }
 
-
     async handleOmiseWebhook(evt: any) {
         try {
             const objectType = evt?.data.object;
             const objectId = evt?.data.id;
-            console.log(`[OMISE WEBHOOK] ${evt.key} → ${objectType} (${objectId})`);
+            console.log(
+                `[OMISE WEBHOOK] ${evt.key} → ${objectType} (${objectId})`,
+            );
 
             if (!objectType || !objectId) {
                 console.warn('[OMISE WEBHOOK] Missing object info:', evt);
@@ -314,7 +376,6 @@ export class WebhookService {
             }
 
             switch (objectType) {
-
                 case 'charge':
                     await this.handleChargeWebhook(evt);
                     break;
@@ -325,14 +386,15 @@ export class WebhookService {
                     await this.handleRecipientWebhook(evt);
                     break;
                 default:
-                    console.log('[OMISE WEBHOOK] Recipient event received:', evt.data);
+                    console.log(
+                        '[OMISE WEBHOOK] Recipient event received:',
+                        evt.data,
+                    );
                     break;
             }
-
         } catch (err) {
             console.error('[OMISE WEBHOOK] Error processing :', err);
             throw new InternalServerErrorException('Webhook processing error');
         }
     }
-
 }

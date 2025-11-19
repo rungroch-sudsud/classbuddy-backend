@@ -1,40 +1,42 @@
+import { InjectQueue } from '@nestjs/bullmq';
 import {
     BadRequestException,
-    ConflictException,
     Injectable,
     NotFoundException,
     UnauthorizedException,
 } from '@nestjs/common';
-import { InjectModel, InjectConnection } from '@nestjs/mongoose';
+import { InjectConnection, InjectModel } from '@nestjs/mongoose';
+import { Queue } from 'bullmq';
+import { Connection, Model, Types } from 'mongoose';
+import { envConfig } from 'src/configs/env.config';
+import { EmailService } from 'src/infra/email/email.service';
+import { EmailTemplateID } from 'src/infra/email/email.type';
+import {
+    NotificationReceipientType,
+    NotificationType,
+} from 'src/shared/enums/notification.enum';
+import { SlotStatus } from 'src/shared/enums/slot.enum';
+import {
+    errorLog,
+    getErrorMessage,
+    infoLog,
+} from 'src/shared/utils/shared.util';
+import { Role } from '../auth/role/role.enum';
+import { Booking } from '../booking/schemas/booking.schema';
+import { ChatService } from '../chat/chat.service';
+import { VideoService } from '../chat/video.service';
+import { NotificationsService } from '../notifications/notifications.service';
+import { Slot } from '../slots/schemas/slot.schema';
+import { Teacher } from '../teachers/schemas/teacher.schema';
+import { User } from '../users/schemas/user.schema';
 import {
     Payment,
     PaymentMethod,
     PaymentStatus,
     PaymentType,
 } from './schemas/payment.schema';
-import { Model, Types, Connection } from 'mongoose';
-import { Wallet } from './schemas/wallet.schema';
-import { Booking } from '../booking/schemas/booking.schema';
-import { User } from '../users/schemas/user.schema';
-import { Teacher } from '../teachers/schemas/teacher.schema';
 import { PayoutLog } from './schemas/payout.schema';
-import { InjectQueue } from '@nestjs/bullmq';
-import { Queue } from 'bullmq';
-import {
-    errorLog,
-    getErrorMessage,
-    infoLog,
-} from 'src/shared/utils/shared.util';
-import { Slot } from '../slots/schemas/slot.schema';
-import { SlotStatus } from 'src/shared/enums/slot.enum';
-import { Role } from '../auth/role/role.enum';
-import { ChatService } from '../chat/chat.service';
-import { VideoService } from '../chat/video.service';
-import { NotificationsService } from '../notifications/notifications.service';
-import {
-    NotificationReceipientType,
-    NotificationType,
-} from 'src/shared/enums/notification.enum';
+import { Wallet } from './schemas/wallet.schema';
 
 const Omise = require('omise');
 
@@ -55,6 +57,7 @@ export class PaymentsService {
         private readonly chatService: ChatService,
         private readonly videoService: VideoService,
         private readonly notificationService: NotificationsService,
+        private readonly emailService: EmailService,
     ) {
         const secretKey = process.env.OMISE_SECRET_KEY;
         const publicKey = process.env.OMISE_PUBLIC_KEY;
@@ -364,9 +367,10 @@ export class PaymentsService {
                 );
 
                 // 7 : สร้างแชทสำหรับครูและนักเรียน
-                const teacher = await this.teacherModel.findById(
-                    booking.teacherId,
-                );
+                const teacher = await this.teacherModel
+                    .findById(booking.teacherId)
+                    .populate('user')
+                    .lean<Teacher & { user: User }>();
 
                 if (!teacher)
                     throw new NotFoundException('ไม่พบข้อมูลคุณครูของคลาสนี้');
@@ -393,6 +397,18 @@ export class PaymentsService {
                     message: `มีนักเรียนจองตารางเรียนกับคุณแล้ว ✨ ตรวจสอบรายละเอียดการสอน`,
                     type: NotificationType.BOOKING_PAID,
                 });
+
+                // 10 : ส่ง Email ไปหาครูและนักเรียน
+                const teacherEmail = teacher.user.email;
+
+                if (teacherEmail) {
+                    await this.emailService.sendEmail({
+                        mail_to: { email: teacherEmail },
+                        subject: 'การชำระเงิน',
+                        payload: { CHAT_URL: `${envConfig.frontEndUrl}/chat` },
+                        template_uuid: EmailTemplateID.SUCCESSFUL_PAYMENT,
+                    });
+                }
 
                 infoLog('BOOKING', 'ชำระตลาสเรียนด้วย Wallet สำเร็จ!');
             });

@@ -27,43 +27,39 @@ import { ChatModule } from './modules/chat/chat.module';
 import { ScheduleModule } from '@nestjs/schedule';
 import { SocketModule } from './modules/socket/socket.module';
 import { SubjectrequestsModule } from './modules/subjectrequests/subjectrequests.module';
-
+import { EmailService } from './infra/email/email.service';
 
 @Module({
-  imports: [
-    ConfigModule.forRoot({ isGlobal: true }),
-    ScheduleModule.forRoot(),
-    S3Module,
-    MongoDbModule,
-    RedisModule,
-    SmsModule,
-    UsersModule,
-    AuthModule,
-    SubjectsModule,
-    TeachersModule,
-    SlotsModule,
-    BookingModule,
-    PaymentsModule,
-    NotificationsModule,
-    AdminModule,
-    ChatModule,
-    SocketModule,
-    SubjectrequestsModule,
-  ],
-  controllers: [
-    WebhookController,
-    AppController,
-    SubjectsController,
-    TeachersController,
-    BookingController,
-    PaymentsController,
-    NotificationsController,
-
-  ],
-  providers: [
-    VideoService,
-    WebhookService, AppService],
-  exports: [],
+    imports: [
+        ConfigModule.forRoot({ isGlobal: true }),
+        ScheduleModule.forRoot(),
+        S3Module,
+        MongoDbModule,
+        RedisModule,
+        SmsModule,
+        UsersModule,
+        AuthModule,
+        SubjectsModule,
+        TeachersModule,
+        SlotsModule,
+        BookingModule,
+        PaymentsModule,
+        NotificationsModule,
+        AdminModule,
+        ChatModule,
+        SocketModule,
+        SubjectrequestsModule,
+    ],
+    controllers: [
+        WebhookController,
+        AppController,
+        SubjectsController,
+        TeachersController,
+        BookingController,
+        PaymentsController,
+        NotificationsController,
+    ],
+    providers: [VideoService, EmailService, WebhookService, AppService],
+    exports: [],
 })
-
-export class AppModule { }
+export class AppModule {}
