@@ -1,3 +1,4 @@
+// รายชื่อ email template ดูจาก link นี้ : https://dashboard.thaibulksms.com/email-template-management/?tab=custom
 export enum EmailTemplateID {
     SUCCESSFUL_PAYMENT = '25111913-3740-8f8a-a1b5-da0742dec042',
 }
