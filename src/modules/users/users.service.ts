@@ -144,15 +144,26 @@ export class UsersService {
             .populate({
                 path: 'bookmarks',
                 model: 'Teacher',
-                select: `name lastName subjects customSubjects averageRating
-                  reviewCount totalTeachingHours hourlyRate verifyStatus customSubjects`,
-                populate: {
-                    path: 'subjects',
-                    model: 'SubjectList',
-                    select: 'name'
-                },
+                select: `
+    name lastName subjects customSubjects
+    averageRating reviewCount totalTeachingHours
+    hourlyRate verifyStatus userId
+  `,
+                populate: [
+                    {
+                        path: 'subjects',
+                        model: 'SubjectList',
+                        select: 'name'
+                    },
+                    {
+                        path: 'userId',
+                        model: 'User',
+                        select: 'profileImage'
+                    }
+                ]
             })
-            .lean()
+
+            .lean();
 
         if (!user) throw new NotFoundException('ไม่พบข้อมูลผู้ใช้');
 
@@ -160,6 +171,20 @@ export class UsersService {
             .findOne({ userId: userObjId, role: 'user' })
             .select('availableBalance')
             .lean();
+
+        user.bookmarks = (user.bookmarks as any[]).map((bookmark: any) => {
+            const profileImage =
+                bookmark.userId && typeof bookmark.userId === 'object'
+                    ? bookmark.userId.profileImage
+                    : null;
+
+            const { userId, ...rest } = bookmark;
+
+            return {
+                ...rest,
+                profileImage,
+            };
+        });
 
         return {
             ...user,

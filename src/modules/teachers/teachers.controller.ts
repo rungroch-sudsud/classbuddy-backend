@@ -38,6 +38,65 @@ export class TeachersController {
     ) { }
 
 
+    @Get('')
+    @ApiQuery({
+        name: 'search',
+        required: false,
+        type: String,
+        description: 'คำค้นหา (เช่น ชื่อ, ทักษะ, วิชา)'
+    })
+    @ApiQuery({
+        name: 'sort',
+        required: false,
+        enum: ['rating', 'priceAsc', 'priceDesc'],
+        description: '(รวมเรียงราคาน้อย→มาก / มาก→น้อย)'
+    })
+    async getTeachersDefault(
+        @Query('search') search?: string,
+        @Query('sort') sort?: 'rating' | 'priceAsc' | 'priceDesc',
+        @Query('page') page = '1',
+        @Query('limit') limit = '10',
+    ) {
+        return this.teacherService.getTeachers(
+            search,
+            sort,
+            parseInt(page, 10),
+            parseInt(limit, 10),
+        );
+    }
+
+    @Get('all')
+    @ApiOperation({ summary: 'ดึงครูทั้งหมด สำหรับแอดมิน' })
+    async getAllTeachers() {
+        const getAll = await this.teacherService.getAllTeacher();
+        return {
+            message: 'ดึงข้อมูลคุณครูทั้งหมด',
+            data: getAll,
+        };
+    }
+
+    @Get('mine')
+    @UseGuards(JwtGuard)
+    async getMe(@CurrentUser() userId: string) {
+        const find = await this.teacherService.getTeacherProfileMine(userId);
+
+        return {
+            message: 'แสดงโปรไฟล์ของฉันสำเร็จ',
+            data: find,
+        };
+    }
+
+    @Get(':teacherId')
+    async getTeacherById(@Param('teacherId') teacherId: string) {
+        const find = await this.teacherService.getTeacherProfileById(teacherId);
+
+        return {
+            message: 'แสดงโปรไฟล์ครูสำเร็จ',
+            data: find,
+        };
+    }
+
+
     @Post('')
     @UseGuards(JwtGuard)
     async createTeacherProfile(
@@ -89,68 +148,6 @@ export class TeachersController {
     }
 
 
-    @Get('all')
-    @ApiOperation({ summary: 'ดึงครูทั้งหมด สำหรับแอดมิน' })
-    async getAllTeachers() {
-        const getAll = await this.teacherService.getAllTeacher();
-        return {
-            message: 'ดึงข้อมูลคุณครูทั้งหมด',
-            data: getAll,
-        };
-    }
-
-
-    @Get('')
-    @ApiQuery({
-        name: 'search',
-        required: false,
-        type: String,
-        description: 'คำค้นหา (เช่น ชื่อ, ทักษะ, วิชา)'
-    })
-    @ApiQuery({
-        name: 'sort',
-        required: false,
-        enum: ['rating', 'priceAsc', 'priceDesc'],
-        description: '(รวมเรียงราคาน้อย→มาก / มาก→น้อย)'
-    })
-    async getTeachersDefault(
-        @Query('search') search?: string,
-        @Query('sort') sort?: 'rating' | 'priceAsc' | 'priceDesc',
-        @Query('page') page = '1',
-        @Query('limit') limit = '10',
-    ) {
-        return this.teacherService.getTeachers(
-            search,
-            sort,
-            parseInt(page, 10),
-            parseInt(limit, 10),
-        );
-    }
-
-
-    @Get('mine')
-    @UseGuards(JwtGuard)
-    async getMe(@CurrentUser() userId: string) {
-        const find = await this.teacherService.getTeacherProfileMine(userId);
-
-        return {
-            message: 'แสดงโปรไฟล์ของฉันสำเร็จ',
-            data: find,
-        };
-    }
-
-
-    @Get(':teacherId')
-    async getTeacherById(@Param('teacherId') teacherId: string) {
-        const find = await this.teacherService.getTeacherProfileById(teacherId);
-
-        return {
-            message: 'แสดงโปรไฟล์ครูสำเร็จ',
-            data: find,
-        };
-    }
-
-
     @Patch('profile')
     @UseGuards(JwtGuard)
     async updateTeacherProfile(
@@ -169,11 +166,9 @@ export class TeachersController {
     }
 
 
-
     //Review Section
     @Post('review/:teacherId')
     @ApiOperation({ summary: 'นักเรียนที่เคยเรียนรีวิวครู' })
-    // @ApiBody({ type: reviewTeacherDto })
     @UseGuards(JwtGuard)
     async addReview(
         @Param('teacherId') teacherId: string,
@@ -203,6 +198,8 @@ export class TeachersController {
         };
     }
 
+
+    //Payment Section
     @Get('payment/history')
     @UseGuards(JwtGuard)
     async getPaymentHistory(
@@ -221,18 +218,5 @@ export class TeachersController {
             data: result,
         };
     }
-
-    // @Get('wallet/mine')
-    // @UseGuards(JwtGuard)
-    // async getTeacherWallet(
-    //     @CurrentUser() userId: string,
-    // ) {
-    //    const wallet = await this.teacherService.getTeacherWallet(userId);
-
-    //     return {
-    //         message: 'my wallet',
-    //         data: wallet
-    //     };
-    // }
 
 }

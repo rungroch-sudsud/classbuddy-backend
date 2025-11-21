@@ -517,7 +517,7 @@ export class TeachersService {
             totalTeacherNet,
             totalCommission,
             availableBalance: wallet.availableBalance,
-            processingBalance: wallet.lockedBalance
+            processingBalance: wallet.lockedBalance,
         };
     }
 

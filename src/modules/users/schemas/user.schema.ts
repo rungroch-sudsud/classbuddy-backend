@@ -55,6 +55,9 @@ export class User extends Document {
         trim: true,
     })
     profileImage?: string;
+
+    @Prop()
+    emailVerifiedAt: string;
 }
 
 export type UserDocument = User & Document;
