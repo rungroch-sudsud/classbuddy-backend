@@ -36,7 +36,10 @@ export class PostsService {
                 createdBy: student._id,
             });
 
-            infoLog(this.logEntity, `สร้างโพสต์หาคุณครูสำหรับ นักเรียน studentId : ${studentUserId} สำเร็จ!`)
+            infoLog(
+                this.logEntity,
+                `สร้างโพสต์หาคุณครูสำหรับ นักเรียน studentId : ${studentUserId} สำเร็จ!`,
+            );
 
             return {
                 data: newPost,
@@ -50,7 +53,7 @@ export class PostsService {
                 `ล้มเหลวะระหว่างสร้างโพสต์หาคุณครู -> ${errorMessage}`,
             );
 
-            return { data: null, message: 'ล้มเหลวระหว่างสร้างโพสต์หาคุณครู' };
+            throw error;
         }
     }
 }
