@@ -4,7 +4,7 @@ import { FilterQuery, Model, Types } from 'mongoose';
 import { Teacher, TeacherDocument } from './schemas/teacher.schema';
 import { S3Service } from 'src/infra/s3/s3.service';
 // import { , reviewTeacherDto, UpdateTeacherDto } from './schemas/teacher.zod.schema';
-import { PaymentHistoryResponseDto, ReviewResponseDto, } from './schemas/teacher.response.zod';
+import { CreateTeacherResponse, PaymentHistoryResponseDto, ReviewResponseDto, TeacherResponse, WalletResponse, } from './dto/teacher.response.zod';
 import { Slot } from '../slots/schemas/slot.schema';
 import { StreamChatService } from '../chat/stream-chat.service';
 import { User } from '../users/schemas/user.schema';
@@ -14,6 +14,7 @@ import { Wallet } from '../payments/schemas/wallet.schema';
 import { PayoutLog } from '../payments/schemas/payout.schema';
 import { PaymentDocument } from '../payments/schemas/payment.schema';
 import { CreateTeacherDto, UpdateTeacherDto } from './dto/teacher.dto.zod';
+import { toJSON } from 'src/shared/utils/normalizeDoc';
 
 
 @Injectable()
@@ -55,21 +56,20 @@ export class TeachersService {
 
         const userObjId = new Types.ObjectId(userId)
 
-        const teacher = new this.teacherModel({
+        const teacher = await new this.teacherModel({
             ...body,
-            userId: userObjId,
+            userId,
             name: user.name,
             lastName: user.lastName,
-        });
-        await teacher.save();
+        }).save();
 
-        const createWallet = new this.walletModel({
+        const wallet = await new this.walletModel({
             userId: teacher._id,
-            role: 'teacher'
-        });
-        await createWallet.save();
+            role: 'teacher',
+        }).save();
 
-        return { teacher, createWallet }
+        return { teacher, wallet }
+
     }
 
 

@@ -107,7 +107,7 @@ export const teacherBaseSchema = z.object({
   verifyStatus: z.enum(["draft", "pending", "process", "verified"]),
   recipientId: z.string().optional(),
   lastPayoutAt: z.date().optional(),
-});
+}).strict();
 
 
 

@@ -17,6 +17,7 @@ import { Wallet, WalletSchema } from '../payments/schemas/wallet.schema';
         ]),
         S3Module,
         ChatModule,
+        
     ],
     providers: [UsersService],
     controllers: [UsersController],

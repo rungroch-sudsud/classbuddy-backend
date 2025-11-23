@@ -1,4 +1,4 @@
-import { BadRequestException, Body, Controller, Patch, Post, UseGuards } from '@nestjs/common';
+import { BadRequestException, Body, Controller, Get, Patch, Post, Query, UseGuards } from '@nestjs/common';
 import { ApiBearerAuth, ApiBody, ApiTags } from '@nestjs/swagger';
 import { CurrentUser } from 'src/shared/utils/currentUser';
 import { ZodValidationPipe } from 'src/shared/validators/zod.validation.pipe';
@@ -126,9 +126,9 @@ export class AuthController {
     }
 
 
+    @Patch('change-password')
     @UseGuards(JwtGuard)
     @ApiBody({ type: ChangePasswordDto })
-    @Patch('change-password')
     async changePassword(
         @CurrentUser() userId: string,
         @Body() body: ChangePasswordDto
@@ -136,6 +136,21 @@ export class AuthController {
         await this.authService.changePassword(userId, body);
 
         return { message: 'เปลี่ยนรหัสผ่านสำเร็จ' };
+    }
+
+
+    //Verify Email
+    @Post('request-verify-email')
+    @UseGuards(JwtGuard)
+    async requestVerifyEmail(
+        @CurrentUser() userId: string,
+    ) {
+        return this.authService.requestVerifyEmail(userId);
+    }
+
+    @Get('verify-email')
+    async verifyEmail(@Query('token') token: string) {
+        return this.authService.verifyEmail(token);
     }
 
 }

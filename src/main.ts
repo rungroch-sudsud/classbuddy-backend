@@ -4,7 +4,7 @@ import { envConfig } from './configs/env.config';
 import { setupSwagger } from './infra/docs/swagger.config';
 import { ZodValidationPipe } from './shared/validators/zod.validation.pipe';
 import { json, urlencoded } from 'express';
-import { Logger, LogLevel } from '@nestjs/common';
+import { ClassSerializerInterceptor, Logger, LogLevel } from '@nestjs/common';
 
 async function bootstrap() {
   try {

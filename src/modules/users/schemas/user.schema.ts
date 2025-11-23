@@ -56,8 +56,14 @@ export class User extends Document {
     })
     profileImage?: string;
 
-    @Prop()
-    emailVerifiedAt: string;
+    @Prop({ default: null })
+    emailVerifiedAt: Date;
+
+    @Prop({ default: null })
+    emailVerifyToken: string | null;
+
+    @Prop({ default: null })
+    emailVerifyTokenExpires: Date | null;
 }
 
 export type UserDocument = User & Document;

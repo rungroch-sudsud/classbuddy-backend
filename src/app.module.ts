@@ -1,3 +1,4 @@
+import { EmailModule } from './infra/email/email.module';
 import { VideoService } from './modules/chat/video.service';
 import { WebhookService } from './modules/payments/webhook.service';
 import { WebhookController } from './modules/payments/webhook.controller';
@@ -28,9 +29,11 @@ import { ScheduleModule } from '@nestjs/schedule';
 import { SocketModule } from './modules/socket/socket.module';
 import { SubjectrequestsModule } from './modules/subjectrequests/subjectrequests.module';
 import { EmailService } from './infra/email/email.service';
+import { EmailTestController } from './infra/email/email.controller';
 
 @Module({
     imports: [
+        EmailModule,
         ConfigModule.forRoot({ isGlobal: true }),
         ScheduleModule.forRoot(),
         S3Module,
@@ -49,6 +52,7 @@ import { EmailService } from './infra/email/email.service';
         ChatModule,
         SocketModule,
         SubjectrequestsModule,
+        EmailModule
     ],
     controllers: [
         WebhookController,
@@ -58,8 +62,9 @@ import { EmailService } from './infra/email/email.service';
         BookingController,
         PaymentsController,
         NotificationsController,
+        EmailTestController
     ],
     providers: [VideoService, EmailService, WebhookService, AppService],
     exports: [],
 })
-export class AppModule {}
+export class AppModule { }

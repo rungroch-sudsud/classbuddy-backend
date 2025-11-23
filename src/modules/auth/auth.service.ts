@@ -10,6 +10,9 @@ import { StreamChatService } from '../chat/stream-chat.service';
 import { v4 as uuidv4 } from 'uuid';
 import Redis from 'ioredis';
 import * as bcrypt from 'bcrypt';
+import { EmailService } from 'src/infra/email/email.service';
+import { EmailTemplateID } from 'src/infra/email/email.type';
+import { envConfig } from 'src/configs/env.config';
 
 
 
@@ -19,6 +22,7 @@ export class AuthService {
         private readonly userService: UsersService,
         private readonly jwtService: JwtService,
         private readonly smsService: SmsService,
+        private readonly emailService: EmailService,
         private readonly streamChatService: StreamChatService,
         @Inject('REDIS_CLIENT') private readonly redis: Redis,
         @InjectModel(User.name) private readonly userModel: Model<User>,
@@ -356,5 +360,56 @@ export class AuthService {
 
         await user.save();
     }
+
+
+    //Verify Email
+    async requestVerifyEmail(userId: string) {
+        const user = await this.userModel.findById(userId);
+        if (!user) throw new BadRequestException('ไม่พบผู้ใช้งาน');
+
+        if (user.emailVerifiedAt) throw new BadRequestException('อีเมลนี้ถูกยืนยันแล้ว');
+
+        const email = user.email;
+        if (!email) throw new BadRequestException('ผู้ใช้นี้ไม่มีอีเมล');
+
+        const token = uuidv4();
+
+        user.emailVerifyToken = token;
+        user.emailVerifyTokenExpires = new Date(Date.now() + 1000 * 60 * 30);
+        await user.save();
+
+        const VERIFY_URL = `http://localhost:8080/auth/verify-email?token=${token}`;
+
+        // await this.emailService.sendEmail({
+        //     mail_to: { email },
+        //     subject: 'ยืนยันอีเมลผู้ใช้',
+        //     template_uuid: EmailTemplateID.VERIFY_EMAIL,
+        //     payload: {
+        //         VERIFY_URL: `${VERIFY_URL}`,
+        //     },
+        // });
+
+        return { message: 'ได้ส่งลิงก์ยืนยันอีเมลให้คุณแล้ว' };
+    }
+
+    async verifyEmail(token: string) {
+        const user = await this.userModel.findOne({
+            emailVerifyToken: token,
+            emailVerifyTokenExpires: { $gt: new Date() },
+        });
+
+        if (!user) {
+            throw new BadRequestException('ลิงก์ไม่ถูกต้องหรือหมดอายุ');
+        }
+
+        user.emailVerifiedAt = new Date();
+        user.emailVerifyToken = null;
+        user.emailVerifyTokenExpires = null;
+
+        await user.save();
+
+        return { message: 'ยืนยันอีเมลสำเร็จ' };
+    }
+
 
 }

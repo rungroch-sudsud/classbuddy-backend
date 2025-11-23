@@ -22,12 +22,14 @@ import { Wallet, WalletSchema } from './schemas/wallet.schema';
 import { WebhookController } from './webhook.controller';
 import { WebhookService } from './webhook.service';
 import { EmailService } from 'src/infra/email/email.service';
+import { EmailModule } from 'src/infra/email/email.module';
 
 @Module({
     imports: [
         ConfigModule,
         ChatModule,
         NotificationsModule,
+        EmailModule,
         MongooseModule.forFeature([
             { name: Wallet.name, schema: WalletSchema },
             { name: Payment.name, schema: PaymentSchema },
@@ -59,7 +61,6 @@ import { EmailService } from 'src/infra/email/email.service';
     controllers: [PaymentsController, WebhookController],
     providers: [
         PaymentsService,
-        EmailService,
         WebhookService,
         PayoutProcessor,
         PayoutScheduler,
