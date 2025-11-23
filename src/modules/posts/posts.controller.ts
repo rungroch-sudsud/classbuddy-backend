@@ -1,9 +1,14 @@
-import { Body, Controller, Post, UseGuards } from '@nestjs/common';
+import { Body, Controller, Param, Post, UseGuards } from '@nestjs/common';
 import { CreatePostDto } from './dto/create-post.dto';
 import { PostsService } from './posts.service';
 import { CurrentUser } from 'src/shared/utils/currentUser';
 import { JwtGuard } from '../auth/guard/auth.guard';
-import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
+import {
+    ApiBearerAuth,
+    ApiOperation,
+    ApiParam,
+    ApiTags,
+} from '@nestjs/swagger';
 
 @ApiTags('Posts')
 @Controller('posts')
@@ -14,10 +19,21 @@ export class PostsController {
     @Post()
     @ApiOperation({ summary: 'สร้างโพสสำหรับนักเรียนหาคุณครู' })
     @UseGuards(JwtGuard)
-    create(
+    createPost(
         @Body() createPostDto: CreatePostDto,
         @CurrentUser() userId: string,
     ) {
         return this.postsService.createPost(createPostDto, userId);
+    }
+
+    @Post('/:postId')
+    @ApiOperation({ summary: 'สร้างคำเสนอของคุณครูให้กับโพสต์นักเรียน' })
+    @UseGuards(JwtGuard)
+    createProposal(
+        @Body() createPostDto: CreatePostDto,
+        @CurrentUser() userId: string,
+        @Param('postId') postId: string,
+    ) {
+        return this.postsService.createProposal(createPostDto, userId, postId);
     }
 }
