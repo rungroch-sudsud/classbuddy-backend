@@ -28,6 +28,7 @@ import { ScheduleModule } from '@nestjs/schedule';
 import { SocketModule } from './modules/socket/socket.module';
 import { SubjectrequestsModule } from './modules/subjectrequests/subjectrequests.module';
 import { EmailService } from './infra/email/email.service';
+import { PostsModule } from './modules/posts/posts.module';
 
 @Module({
     imports: [
@@ -48,6 +49,7 @@ import { EmailService } from './infra/email/email.service';
         AdminModule,
         ChatModule,
         SocketModule,
+        PostsModule,
         SubjectrequestsModule,
     ],
     controllers: [
