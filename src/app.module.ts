@@ -30,6 +30,8 @@ import { SocketModule } from './modules/socket/socket.module';
 import { SubjectrequestsModule } from './modules/subjectrequests/subjectrequests.module';
 import { EmailService } from './infra/email/email.service';
 import { EmailTestController } from './infra/email/email.controller';
+import { PostsModule } from './modules/posts/posts.module';
+
 
 @Module({
     imports: [
@@ -51,6 +53,7 @@ import { EmailTestController } from './infra/email/email.controller';
         AdminModule,
         ChatModule,
         SocketModule,
+        PostsModule,
         SubjectrequestsModule,
         EmailModule
     ],
