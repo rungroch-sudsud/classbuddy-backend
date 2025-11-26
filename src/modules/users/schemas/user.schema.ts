@@ -59,11 +59,11 @@ export class User extends Document {
     @Prop({ default: null })
     emailVerifiedAt: Date;
 
-    @Prop({ default: null })
-    emailVerifyToken: string | null;
+    @Prop({ type: String })
+    emailVerifyToken?: string;
 
-    @Prop({ default: null })
-    emailVerifyTokenExpires: Date | null;
+    @Prop({ type: Date })
+    emailVerifyTokenExpires?: Date;
 }
 
 export type UserDocument = User & Document;

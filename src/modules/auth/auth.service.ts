@@ -12,7 +12,6 @@ import Redis from 'ioredis';
 import * as bcrypt from 'bcrypt';
 import { EmailService } from 'src/infra/email/email.service';
 import { EmailTemplateID } from 'src/infra/email/email.type';
-import { envConfig } from 'src/configs/env.config';
 
 
 
@@ -378,16 +377,20 @@ export class AuthService {
         user.emailVerifyTokenExpires = new Date(Date.now() + 1000 * 60 * 30);
         await user.save();
 
-        const VERIFY_URL = `http://localhost:8080/auth/verify-email?token=${token}`;
+        const baseUrl = process.env.VERIFY_URL;
+        if (!baseUrl) throw new Error("VERIFICATION_BASE_URL is not set");
+        
+        const VERIFY_URL = `${baseUrl}?token=${token}`;
+        // console.log('verify', VERIFY_URL)
 
-        // await this.emailService.sendEmail({
-        //     mail_to: { email },
-        //     subject: 'ยืนยันอีเมลผู้ใช้',
-        //     template_uuid: EmailTemplateID.VERIFY_EMAIL,
-        //     payload: {
-        //         VERIFY_URL: `${VERIFY_URL}`,
-        //     },
-        // });
+        await this.emailService.sendEmail({
+            mail_to: { email },
+            subject: 'ยืนยันอีเมลผู้ใช้',
+            template_uuid: EmailTemplateID.SUCCESSFUL_PAYMENT,
+            payload: {
+                VERIFY_URL: `${VERIFY_URL}`,
+            },
+        });
 
         return { message: 'ได้ส่งลิงก์ยืนยันอีเมลให้คุณแล้ว' };
     }
@@ -403,8 +406,8 @@ export class AuthService {
         }
 
         user.emailVerifiedAt = new Date();
-        user.emailVerifyToken = null;
-        user.emailVerifyTokenExpires = null;
+        user.emailVerifyToken = '';
+        user.emailVerifyTokenExpires = new Date();
 
         await user.save();
 
