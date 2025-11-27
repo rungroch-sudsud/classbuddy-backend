@@ -10,6 +10,10 @@ import {
     infoLog,
 } from 'src/shared/utils/shared.util';
 import { Teacher } from '../teachers/schemas/teacher.schema';
+import dayjs from "dayjs";
+import "dayjs/locale/th";
+
+dayjs.locale("th");
 
 @Injectable()
 export class PostsService {
@@ -90,7 +94,10 @@ export class PostsService {
             .lean();
 
         posts.forEach(post => {
-            post.proposals = post.proposals.map((proposal: any) => {
+            const p = post as any;
+            p.createdAt = dayjs(p.createdAt).format("D MMMM YYYY");
+
+            p.proposals = p.proposals.map((proposal: any) => {
                 const teacher = proposal.teacherId;
 
                 const profileImage =
@@ -109,7 +116,7 @@ export class PostsService {
             });
         });
 
-        const total = await this.postModel.countDocuments();
+      const total = await this.postModel.countDocuments({ closedAt: null });
 
         return {
             items: posts,
