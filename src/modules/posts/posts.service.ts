@@ -116,7 +116,7 @@ export class PostsService {
             });
         });
 
-      const total = await this.postModel.countDocuments({ closedAt: null });
+        const total = await this.postModel.countDocuments({ closedAt: null });
 
         return {
             items: posts,
@@ -214,7 +214,16 @@ export class PostsService {
 
         if (!post) throw new Error('ไม่พบโพสต์นี้หรือถูกปิดแล้ว');
 
-        return post
+        const p = post as any;
+
+        return {
+            ...p,
+            createdAt: dayjs(p.createdAt).format("D MMMM YYYY"),
+            proposals: p.proposals?.map((x: any) => ({
+                ...x,
+                createdAt: dayjs(x.createdAt).format("D MMMM YYYY HH:mm"),
+            })) ?? []
+        };
     }
 
 
