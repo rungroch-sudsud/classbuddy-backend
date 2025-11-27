@@ -28,6 +28,13 @@ export class PostsController {
         return this.postsService.getAll(page);
     }
 
+    @Get('/:postId')
+    async getPostById(
+        @Param('postId') postId: string,
+    ) {
+        return this.postsService.getPostById(postId);
+    }
+
 
     @Patch(':postId')
     @UseGuards(JwtGuard)

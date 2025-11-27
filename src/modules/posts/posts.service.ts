@@ -71,7 +71,7 @@ export class PostsService {
         const skip = (page - 1) * limit;
 
         const posts = await this.postModel
-            .find({ closedAt: null }) 
+            .find({ closedAt: null })
             .skip(skip)
             .limit(limit)
             .populate({
@@ -184,6 +184,30 @@ export class PostsService {
         }
 
         await this.postModel.deleteOne({ _id: postId });
+    }
+
+    async getPostById(
+        postId: string
+    ): Promise<any> {
+        const post = await this.postModel
+            .findOne({ _id: postId, closedAt: null })
+            .populate({
+                path: 'createdBy',
+                select: 'name lastName profileImage role'
+            })
+            .populate({
+                path: 'proposals.teacherId',
+                select: 'name lastName userId verifyStatus',
+                populate: {
+                    path: 'userId',
+                    select: 'profileImage',
+                },
+            })
+            .lean();
+
+        if (!post) throw new Error('ไม่พบโพสต์นี้หรือถูกปิดแล้ว');
+
+        return post
     }
 
 
