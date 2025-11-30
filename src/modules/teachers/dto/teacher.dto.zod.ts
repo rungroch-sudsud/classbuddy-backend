@@ -23,7 +23,7 @@ export const CreateTeacherProfileSchema = z.object({
     bio: z
         .string()
         .min(150, 'bio ต้องมีขั้นต่ำ 150 ตัวอักษร')
-        .max(500, 'bio ต้องไม่เกิน 500 ตัวอักษร')
+        .max(1000, 'bio ต้องไม่เกิน 1000 ตัวอักษร')
         .optional(),
 
     subjects: z
@@ -88,7 +88,7 @@ export const UpdateTeacherSchema = z.object({
     bio: z
         .string()
         .min(150, 'bio ต้องมีขั้นต่ำ 150 ตัวอักษร')
-        .max(500, 'bio ต้องไม่เกิน 500 ตัวอักษร')
+        .max(1000, 'bio ต้องไม่เกิน 1000 ตัวอักษร')
         .optional(),
 
     subjects: z
