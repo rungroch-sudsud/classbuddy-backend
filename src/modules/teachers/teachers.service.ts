@@ -261,10 +261,8 @@ export class TeachersService {
     async getTeacherProfileMine(
         teacherId: string
     ): Promise<Record<string, any>> {
-        console.log("raw id ->", teacherId)
         const teacher = await this.findTeacher(teacherId);
         if (!teacher) throw new NotFoundException('ไม่พบข้อมูลผู้ใช้');
-        console.log("teacher obj ->", teacher._id)
 
         await teacher.populate([
             { path: 'subjects' },
