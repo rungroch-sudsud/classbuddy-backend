@@ -13,7 +13,7 @@ import { SubjectList } from '../subjects/schemas/subject.schema';
 import { Wallet } from '../payments/schemas/wallet.schema';
 import { PayoutLog } from '../payments/schemas/payout.schema';
 import { PaymentDocument } from '../payments/schemas/payment.schema';
-import { CreateTeacherDto, UpdateTeacherDto } from './dto/teacher.dto.zod';
+import { CreateTeacherProfileDto, UpdateTeacherDto } from './dto/teacher.dto.zod';
 import { toJSON } from 'src/shared/utils/normalizeDoc';
 
 
@@ -46,7 +46,7 @@ export class TeachersService {
 
     async createTeacherProfile(
         userId: string,
-        body: CreateTeacherDto
+        body: CreateTeacherProfileDto
     ): Promise<any> {
         const exist = await this.findTeacher(userId);
         if (exist) throw new ConflictException('มีครูคนนี้อยู่ในระบบอยู่แล้ว');
@@ -56,12 +56,13 @@ export class TeachersService {
 
         const userObjId = new Types.ObjectId(userId)
 
-        const teacher = await new this.teacherModel({
+        const teacher = new this.teacherModel({
             ...body,
-            userId,
+            userId: userObjId,
             name: user.name,
             lastName: user.lastName,
-        }).save();
+        });
+        await teacher.save();
 
         const wallet = await new this.walletModel({
             userId: teacher._id,
@@ -96,9 +97,9 @@ export class TeachersService {
         const teacher = await this.findTeacher(userId)
         if (!teacher) throw new NotFoundException('ไม่พบครูในระบบ');
 
-        if (teacher.verifyStatus === 'verified') {
-            throw new BadRequestException('บัญชีได้รับการยืนยันแล้ว ไม่สามารถอัปโหลดบัตรประชาชนได้');
-        }
+        // if (teacher.verifyStatus === 'verified') {
+        //     throw new BadRequestException('บัญชีได้รับการยืนยันแล้ว ไม่สามารถอัปโหลดบัตรประชาชนได้');
+        // }
 
         const filePath = `teacher/${userId}/id-card-with-person`;
         const publicFileUrl = await this.s3Service.uploadPublicReadFile(
@@ -125,9 +126,9 @@ export class TeachersService {
         const teacher = await this.findTeacher(userId)
         if (!teacher) throw new NotFoundException('ไม่พบครูในระบบ');
 
-        if (teacher.verifyStatus === 'verified') {
-            throw new BadRequestException('บัญชีได้รับการยืนยันแล้ว ไม่สามารถอัปโหลดบัตรประชาชนได้');
-        }
+        // if (teacher.verifyStatus === 'verified') {
+        //     throw new BadRequestException('บัญชีได้รับการยืนยันแล้ว ไม่สามารถอัปโหลดบัตรประชาชนได้');
+        // }
 
         const filePath = `teacher/${userId}/certificate`;
 
@@ -260,8 +261,10 @@ export class TeachersService {
     async getTeacherProfileMine(
         teacherId: string
     ): Promise<Record<string, any>> {
+        console.log("raw id ->", teacherId)
         const teacher = await this.findTeacher(teacherId);
         if (!teacher) throw new NotFoundException('ไม่พบข้อมูลผู้ใช้');
+        console.log("teacher obj ->", teacher._id)
 
         await teacher.populate([
             { path: 'subjects' },

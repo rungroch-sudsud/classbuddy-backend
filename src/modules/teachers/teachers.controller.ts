@@ -26,7 +26,7 @@ import { UploadInterceptor } from 'src/shared/interceptors/upload.interceptor';
 import { ZodFilePipe, ZodFilesPipe } from 'src/shared/validators/zod.validation.pipe';
 import { UploadFileDto, UploadFilesDto } from 'src/shared/docs/upload.file.docs';
 import { FilesSchema, ImageFileSchema } from 'src/shared/validators/zod.schema';
-import { CreateTeacherDto, UpdateTeacherDto } from './dto/teacher.dto.zod';
+import { CreateTeacherProfileDto, UpdateTeacherDto } from './dto/teacher.dto.zod';
 
 
 @ApiTags('Teachers')
@@ -79,7 +79,7 @@ export class TeachersController {
     @UseGuards(JwtGuard)
     async getMe(@CurrentUser() userId: string) {
         const find = await this.teacherService.getTeacherProfileMine(userId);
-
+        console.log("auth -> ", userId)
         return {
             message: 'แสดงโปรไฟล์ของฉันสำเร็จ',
             data: find,
@@ -101,7 +101,7 @@ export class TeachersController {
     @UseGuards(JwtGuard)
     async createTeacherProfile(
         @CurrentUser() userId: string,
-        @Body() body: CreateTeacherDto,
+        @Body() body: CreateTeacherProfileDto,
     ) {
         const teacher = await this.teacherService.createTeacherProfile(userId, body);
 
