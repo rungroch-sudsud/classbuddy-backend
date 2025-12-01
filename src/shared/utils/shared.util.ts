@@ -1,6 +1,7 @@
 import { isAxiosError } from 'axios';
 import dayjs from 'dayjs';
 import { MongoServerError } from 'mongodb';
+import mongoose, { Types } from 'mongoose';
 
 function isErrorObject(error: unknown): error is Error {
     return error instanceof Error;
@@ -51,4 +52,8 @@ export function errorLog(
     console.error(
         `[${entity}] -> ${message} (${when.format('DD/MM/YYYY HH:mm')})`,
     );
+}
+
+export function createObjectId(id: string): Types.ObjectId {
+    return new mongoose.Types.ObjectId(id);
 }

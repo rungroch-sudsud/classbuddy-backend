@@ -2,6 +2,7 @@ import { BullModule } from '@nestjs/bullmq';
 import { Module } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { MongooseModule } from '@nestjs/mongoose';
+import { EmailModule } from 'src/infra/email/email.module';
 import { Booking, BookingSchema } from '../booking/schemas/booking.schema';
 import { ChatModule } from '../chat/chat.module';
 import { NotificationsModule } from '../notifications/notifications.module';
@@ -21,8 +22,6 @@ import { PayoutLog, PayoutLogSchema } from './schemas/payout.schema';
 import { Wallet, WalletSchema } from './schemas/wallet.schema';
 import { WebhookController } from './webhook.controller';
 import { WebhookService } from './webhook.service';
-import { EmailService } from 'src/infra/email/email.service';
-import { EmailModule } from 'src/infra/email/email.module';
 
 @Module({
     imports: [

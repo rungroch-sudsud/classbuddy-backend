@@ -1,13 +1,26 @@
-import { Controller, Post, Body, Param, Req, HttpCode, UnauthorizedException } from '@nestjs/common';
-import { WebhookService } from './webhook.service';
+import {
+    Body,
+    Controller,
+    HttpCode,
+    Param,
+    Post,
+    Req,
+    UnauthorizedException,
+} from '@nestjs/common';
+import { InjectModel } from '@nestjs/mongoose';
 import type { Request } from 'express';
-import * as crypto from 'crypto';
+import { Model } from 'mongoose';
+import { User } from '../users/schemas/user.schema';
+import { WebhookService } from './webhook.service';
+import { SmsService } from 'src/infra/sms/sms.service';
 
 @Controller('webhooks')
 export class WebhookController {
     constructor(
         private readonly webHookService: WebhookService,
-    ) { }
+        private readonly smsService: SmsService,
+        @InjectModel(User.name) private userModel: Model<User>,
+    ) {}
 
     @Post('omise/:token')
     @HttpCode(200)
@@ -15,11 +28,12 @@ export class WebhookController {
         @Param('token') token: string,
         @Req() req: Request,
         @Body() body: any,
-    ):Promise<{ received: boolean }> {
-
+    ): Promise<{ received: boolean }> {
         const expected = process.env.OMISE_WEBHOOK_TOKEN;
         if (expected && token !== expected) {
-            throw new UnauthorizedException('[WebHook] Omise webhook Token ไม่ถูกต้อง');
+            throw new UnauthorizedException(
+                '[WebHook] Omise webhook Token ไม่ถูกต้อง',
+            );
         }
 
         // const signature = req.headers['x-omise-signature'] as string;
@@ -39,4 +53,34 @@ export class WebhookController {
         return { received: true };
     }
 
+    @Post('get-stream')
+    @HttpCode(200)
+    async handleGetStream(
+        @Body() body: Record<string, any>,
+    ): Promise<{ received: boolean }> {
+        const eventType: string = body.type;
+
+        if (eventType === 'message.new') {
+            const message: string = body.message.text;
+            const senderUserId: User['_id'] = body.user.id;
+
+            const receiver = body.members.find(
+                (member) => member.user_id !== senderUserId,
+            );
+
+            const receiverUserId: string = receiver.user_id;
+
+            const receiverInfo = await this.userModel
+                .findById(receiverUserId)
+                .lean();
+
+            const receiverPhoneNumber: string | undefined = receiverInfo?.phone;
+
+            if (receiverPhoneNumber) {
+                await this.smsService.sendSms(receiverPhoneNumber, message);
+            }
+        }
+
+        return { received: true };
+    }
 }
