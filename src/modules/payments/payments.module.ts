@@ -1,8 +1,10 @@
+import { HttpModule } from '@nestjs/axios';
 import { BullModule } from '@nestjs/bullmq';
 import { Module } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { MongooseModule } from '@nestjs/mongoose';
 import { EmailModule } from 'src/infra/email/email.module';
+import { SmsService } from 'src/infra/sms/sms.service';
 import { Booking, BookingSchema } from '../booking/schemas/booking.schema';
 import { ChatModule } from '../chat/chat.module';
 import { NotificationsModule } from '../notifications/notifications.module';
@@ -25,6 +27,7 @@ import { WebhookService } from './webhook.service';
 
 @Module({
     imports: [
+        HttpModule,
         ConfigModule,
         ChatModule,
         NotificationsModule,
@@ -59,6 +62,7 @@ import { WebhookService } from './webhook.service';
     ],
     controllers: [PaymentsController, WebhookController],
     providers: [
+        SmsService,
         PaymentsService,
         WebhookService,
         PayoutProcessor,

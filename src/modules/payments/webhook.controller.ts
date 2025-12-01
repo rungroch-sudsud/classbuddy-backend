@@ -7,20 +7,12 @@ import {
     Req,
     UnauthorizedException,
 } from '@nestjs/common';
-import { InjectModel } from '@nestjs/mongoose';
 import type { Request } from 'express';
-import { Model } from 'mongoose';
-import { User } from '../users/schemas/user.schema';
 import { WebhookService } from './webhook.service';
-import { SmsService } from 'src/infra/sms/sms.service';
 
 @Controller('webhooks')
 export class WebhookController {
-    constructor(
-        private readonly webHookService: WebhookService,
-        private readonly smsService: SmsService,
-        @InjectModel(User.name) private userModel: Model<User>,
-    ) {}
+    constructor(private readonly webHookService: WebhookService) {}
 
     @Post('omise/:token')
     @HttpCode(200)
@@ -58,36 +50,7 @@ export class WebhookController {
     async handleGetStream(
         @Body() body: Record<string, any>,
     ): Promise<{ received: boolean }> {
-        const eventType: string = body.type;
-
-        if (eventType === 'message.new') {
-            const message: string = body.message.text;
-            const senderUserId: User['_id'] = body.user.id;
-
-            const receiver = body.members.find(
-                (member) => member.user_id !== senderUserId,
-            );
-
-            const receiverUserId: string = receiver.user_id;
-
-            const receiverInfo = await this.userModel
-                .findById(receiverUserId)
-                .lean();
-
-            const receiverPhoneNumber: string | undefined = receiverInfo?.phone;
-
-            const formattedMessage: string = `
-            มีนักเรียนส่งข้อความถึงคุณ : ${message} \n
-            คลิก : https://classbuddy.online/chat เพื่อดูรายละเอียด
-            `;
-
-            if (receiverPhoneNumber) {
-                await this.smsService.sendSms(
-                    receiverPhoneNumber,
-                    formattedMessage,
-                );
-            }
-        }
+        await this.webHookService.handleGetStreamWebhook(body);
 
         return { received: true };
     }

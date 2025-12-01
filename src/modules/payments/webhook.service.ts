@@ -22,6 +22,7 @@ import { NotificationsService } from '../notifications/notifications.service';
 import { EmailService } from 'src/infra/email/email.service';
 import { EmailTemplateID } from 'src/infra/email/email.type';
 import { envConfig } from 'src/configs/env.config';
+import { SmsService } from 'src/infra/sms/sms.service';
 
 const Omise = require('omise');
 
@@ -39,6 +40,7 @@ export class WebhookService {
         @InjectModel(Slot.name) private slotModel: Model<any>,
         @InjectModel(PayoutLog.name) private payoutLogModel: Model<any>,
         private readonly notificationService: NotificationsService,
+        private readonly smsService: SmsService,
         private readonly streamChatService: StreamChatService,
         private readonly chatService: ChatService,
         private readonly videoService: VideoService,
@@ -395,6 +397,37 @@ export class WebhookService {
         } catch (err) {
             console.error('[OMISE WEBHOOK] Error processing :', err);
             throw new InternalServerErrorException('Webhook processing error');
+        }
+    }
+
+    async handleGetStreamWebhook(body: any) {
+        const eventType: string = body.type;
+
+        if (eventType === 'message.new') {
+            const message: string = body.message.text;
+            const senderUserId: User['_id'] = body.user.id;
+
+            const receiver = body.members.find(
+                (member) => member.user_id !== senderUserId,
+            );
+
+            const receiverUserId: string = receiver.user_id;
+
+            const receiverInfo = await this.userModel.findById(receiverUserId);
+
+            const receiverPhoneNumber: string | undefined = receiverInfo?.phone;
+
+            const formattedMessage: string = `
+            มีนักเรียนส่งข้อความถึงคุณ : ${message} \n
+            คลิก : https://classbuddy.online/chat เพื่อดูรายละเอียด
+            `;
+
+            if (receiverPhoneNumber) {
+                await this.smsService.sendSms(
+                    receiverPhoneNumber,
+                    formattedMessage,
+                );
+            }
         }
     }
 }
