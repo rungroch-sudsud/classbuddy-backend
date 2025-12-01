@@ -76,8 +76,16 @@ export class WebhookController {
 
             const receiverPhoneNumber: string | undefined = receiverInfo?.phone;
 
+            const formattedMessage: string = `
+            มีนักเรียนส่งข้อความถึงคุณ : ${message} \n
+            คลิก : https://classbuddy.online/chat เพื่อดูรายละเอียด
+            `;
+
             if (receiverPhoneNumber) {
-                await this.smsService.sendSms(receiverPhoneNumber, message);
+                await this.smsService.sendSms(
+                    receiverPhoneNumber,
+                    formattedMessage,
+                );
             }
         }
 
