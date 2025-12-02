@@ -1,28 +1,27 @@
 import {
-    BadRequestException,
     ConflictException,
     Injectable,
     InternalServerErrorException,
 } from '@nestjs/common';
-import { InjectModel, InjectConnection } from '@nestjs/mongoose';
+import { InjectConnection, InjectModel } from '@nestjs/mongoose';
 
-import { Payment, PaymentStatus, PaymentType } from './schemas/payment.schema';
-import { Model, Types, Connection } from 'mongoose';
-import { Wallet } from './schemas/wallet.schema';
-import { Booking } from '../booking/schemas/booking.schema';
-import { User } from '../users/schemas/user.schema';
-import { Teacher } from '../teachers/schemas/teacher.schema';
-import { Slot } from '../slots/schemas/slot.schema';
-import { PayoutLog } from './schemas/payout.schema';
-import { Role } from '../auth/role/role.enum';
-import { StreamChatService } from '../chat/stream-chat.service';
-import { ChatService } from '../chat/chat.service';
-import { VideoService } from '../chat/video.service';
-import { NotificationsService } from '../notifications/notifications.service';
+import { Connection, Model, Types } from 'mongoose';
+import { envConfig } from 'src/configs/env.config';
 import { EmailService } from 'src/infra/email/email.service';
 import { EmailTemplateID } from 'src/infra/email/email.type';
-import { envConfig } from 'src/configs/env.config';
 import { SmsService } from 'src/infra/sms/sms.service';
+import { Role } from '../auth/role/role.enum';
+import { Booking } from '../booking/schemas/booking.schema';
+import { ChatService } from '../chat/chat.service';
+import { StreamChatService } from '../chat/stream-chat.service';
+import { VideoService } from '../chat/video.service';
+import { NotificationsService } from '../notifications/notifications.service';
+import { Slot } from '../slots/schemas/slot.schema';
+import { Teacher } from '../teachers/schemas/teacher.schema';
+import { User } from '../users/schemas/user.schema';
+import { Payment, PaymentStatus } from './schemas/payment.schema';
+import { PayoutLog } from './schemas/payout.schema';
+import { Wallet } from './schemas/wallet.schema';
 
 const Omise = require('omise');
 
@@ -417,8 +416,7 @@ export class WebhookService {
 
             const receiverPhoneNumber: string | undefined = receiverInfo?.phone;
 
-            const formattedMessage: string = 
-            `มีนักเรียนส่งข้อความถึงคุณ : ${message} \n คลิก : https://classbuddy.online/chat เพื่อดูรายละเอียด`;
+            const formattedMessage: string = `มีนักเรียนส่งข้อความถึงคุณ : ${message} \n คลิก : https://classbuddy.online/chat เพื่อดูรายละเอียด`;
 
             if (receiverPhoneNumber) {
                 await this.smsService.sendSms(
