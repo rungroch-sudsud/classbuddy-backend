@@ -1,10 +1,21 @@
-import { BadRequestException, ConflictException, Injectable, NotFoundException } from '@nestjs/common';
+import {
+    BadRequestException,
+    ConflictException,
+    Injectable,
+    NotFoundException,
+} from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { FilterQuery, Model, Types } from 'mongoose';
 import { Teacher, TeacherDocument } from './schemas/teacher.schema';
 import { S3Service } from 'src/infra/s3/s3.service';
 // import { , reviewTeacherDto, UpdateTeacherDto } from './schemas/teacher.zod.schema';
-import { CreateTeacherResponse, PaymentHistoryResponseDto, ReviewResponseDto, TeacherResponse, WalletResponse, } from './dto/teacher.response.zod';
+import {
+    CreateTeacherResponse,
+    PaymentHistoryResponseDto,
+    ReviewResponseDto,
+    TeacherResponse,
+    WalletResponse,
+} from './dto/teacher.response.zod';
 import { Slot } from '../slots/schemas/slot.schema';
 import { StreamChatService } from '../chat/stream-chat.service';
 import { User } from '../users/schemas/user.schema';
@@ -13,9 +24,12 @@ import { SubjectList } from '../subjects/schemas/subject.schema';
 import { Wallet } from '../payments/schemas/wallet.schema';
 import { PayoutLog } from '../payments/schemas/payout.schema';
 import { PaymentDocument } from '../payments/schemas/payment.schema';
-import { CreateTeacherProfileDto, UpdateTeacherDto } from './dto/teacher.dto.zod';
+import {
+    CreateTeacherProfileDto,
+    UpdateTeacherDto,
+} from './dto/teacher.dto.zod';
 import { toJSON } from 'src/shared/utils/normalizeDoc';
-
+import { createObjectId } from 'src/shared/utils/shared.util';
 
 @Injectable()
 export class TeachersService {
@@ -28,11 +42,13 @@ export class TeachersService {
         @InjectModel(Slot.name) private slotModel: Model<Slot>,
         @InjectModel(SubjectList.name) private subjectModel: Model<SubjectList>,
         @InjectModel(Wallet.name) private walletModel: Model<Wallet>,
-        @InjectModel(PayoutLog.name) private payoutLogModel: Model<PayoutLog>
-    ) { }
+        @InjectModel(PayoutLog.name) private payoutLogModel: Model<PayoutLog>,
+    ) {}
 
     private async findTeacher(userId: string): Promise<TeacherDocument | null> {
-        return this.teacherModel.findOne({ userId: new Types.ObjectId(userId) });
+        return this.teacherModel.findOne({
+            userId: new Types.ObjectId(userId),
+        });
     }
 
     private checkIfVerificationComplete(teacher: Teacher): boolean {
@@ -43,10 +59,9 @@ export class TeachersService {
         );
     }
 
-
     async createTeacherProfile(
         userId: string,
-        body: CreateTeacherProfileDto
+        body: CreateTeacherProfileDto,
     ): Promise<any> {
         const exist = await this.findTeacher(userId);
         if (exist) throw new ConflictException('มีครูคนนี้อยู่ในระบบอยู่แล้ว');
@@ -54,7 +69,18 @@ export class TeachersService {
         const user = await this.userModel.findById(userId);
         if (!user) throw new NotFoundException('ไม่พบผู้ใช้งาน');
 
-        const userObjId = new Types.ObjectId(userId)
+        user.name = body.name;
+        user.lastName = body.lastName;
+        user.email = body.email;
+        user.age = body.age;
+        user.nickName = body.nickName;
+        user.subjects = body.subjects.map((subjectId) =>
+            createObjectId(subjectId),
+        );
+
+        await user.save();
+
+        const userObjId = new Types.ObjectId(userId);
 
         const teacher = new this.teacherModel({
             ...body,
@@ -62,6 +88,7 @@ export class TeachersService {
             name: user.name,
             lastName: user.lastName,
         });
+
         await teacher.save();
 
         const wallet = await new this.walletModel({
@@ -69,10 +96,8 @@ export class TeachersService {
             role: 'teacher',
         }).save();
 
-        return { teacher, wallet }
-
+        return { teacher, wallet };
     }
-
 
     // async updatePayments(
     //     userId: string,
@@ -89,12 +114,11 @@ export class TeachersService {
     //     return createTeacher.save();
     // }
 
-
     async updateIdCardWithPerson(
         userId: string,
         file: Express.Multer.File,
     ): Promise<string> {
-        const teacher = await this.findTeacher(userId)
+        const teacher = await this.findTeacher(userId);
         if (!teacher) throw new NotFoundException('ไม่พบครูในระบบ');
 
         // if (teacher.verifyStatus === 'verified') {
@@ -118,12 +142,11 @@ export class TeachersService {
         return publicFileUrl;
     }
 
-
     async updateCertificate(
         userId: string,
         files: Express.Multer.File[],
     ): Promise<string[]> {
-        const teacher = await this.findTeacher(userId)
+        const teacher = await this.findTeacher(userId);
         if (!teacher) throw new NotFoundException('ไม่พบครูในระบบ');
 
         // if (teacher.verifyStatus === 'verified') {
@@ -133,7 +156,9 @@ export class TeachersService {
         const filePath = `teacher/${userId}/certificate`;
 
         const publicFileUrls = await Promise.all(
-            files.map(file => this.s3Service.uploadPublicReadFile(file, filePath)),
+            files.map((file) =>
+                this.s3Service.uploadPublicReadFile(file, filePath),
+            ),
         );
 
         teacher.certificate = publicFileUrls;
@@ -146,7 +171,6 @@ export class TeachersService {
 
         return publicFileUrls;
     }
-
 
     async getAllTeacher(): Promise<Teacher[]> {
         const teachers = await this.teacherModel
@@ -172,7 +196,6 @@ export class TeachersService {
             };
         });
     }
-
 
     async getTeachers(
         search?: string,
@@ -219,11 +242,13 @@ export class TeachersService {
                 .find(query)
                 .populate('userId', '_id profileImage')
                 .populate('subjects', 'name')
-                .select(`
+                .select(
+                    `
                         -idCardWithPerson -bankName -certificate
                      -bankAccountName -bankAccountNumber -recipientId
                      -reviews 
-                     `)
+                     `,
+                )
                 .sort(sortOption)
                 .skip(skip)
                 .limit(limit)
@@ -244,9 +269,9 @@ export class TeachersService {
                     ...teacher,
                     userId,
                     profileImage,
-                    isOnline
+                    isOnline,
                 };
-            })
+            }),
         );
 
         return {
@@ -257,9 +282,8 @@ export class TeachersService {
         };
     }
 
-
     async getTeacherProfileMine(
-        teacherId: string
+        teacherId: string,
     ): Promise<Record<string, any>> {
         const teacher = await this.findTeacher(teacherId);
         if (!teacher) throw new NotFoundException('ไม่พบข้อมูลผู้ใช้');
@@ -269,9 +293,10 @@ export class TeachersService {
             { path: 'userId', select: '_id profileImage' },
         ]);
 
-        const wallet = await this.walletModel.findOne({
-            userId: teacher._id
-        })
+        const wallet = await this.walletModel
+            .findOne({
+                userId: teacher._id,
+            })
             .select('-role');
 
         const teacherObj = teacher.toObject();
@@ -287,13 +312,12 @@ export class TeachersService {
             userId,
             profileImage,
             wallet,
-            isOnline
+            isOnline,
         };
     }
 
-
     async getTeacherProfileById(
-        teacherId: string
+        teacherId: string,
     ): Promise<Record<string, any>> {
         if (!Types.ObjectId.isValid(teacherId)) {
             throw new BadRequestException('รหัสของครูไม่ถูกต้อง');
@@ -301,11 +325,13 @@ export class TeachersService {
 
         const teacher = await this.teacherModel
             .findById(new Types.ObjectId(teacherId))
-            .select(`
+            .select(
+                `
                      -idCardWithPerson -bankName
                      -bankAccountName -bankAccountNumber -recipientId
                      -certificate
-                     `)
+                     `,
+            )
             .populate([
                 { path: 'subjects' },
                 { path: 'userId', select: '_id profileImage' },
@@ -325,10 +351,9 @@ export class TeachersService {
             ...teacher,
             userId,
             profileImage,
-            isOnline
+            isOnline,
         };
     }
-
 
     async updateTeacherProfile(
         userId: string,
@@ -340,12 +365,11 @@ export class TeachersService {
             updateData['customSubjects'] = customSubjects.trim();
         }
 
-        const updated = await this.teacherModel
-            .findOneAndUpdate(
-                { userId: new Types.ObjectId(userId) },
-                { $set: updateData },
-                { new: true }
-            )
+        const updated = await this.teacherModel.findOneAndUpdate(
+            { userId: new Types.ObjectId(userId) },
+            { $set: updateData },
+            { new: true },
+        );
 
         if (!updated) throw new NotFoundException('ไม่พบข้อมูลครู');
 
@@ -359,39 +383,45 @@ export class TeachersService {
                     name: `${updated.name ?? ''} ${updated.lastName ?? ''}`.trim(),
                     image,
                 });
-                console.log(`[getStream] upsert verified teacher_${userId} successful`);
+                console.log(
+                    `[getStream] upsert verified teacher_${userId} successful`,
+                );
             } catch (err) {
-                console.warn('[getStream] Failed to upsert teacher:', err.message);
+                console.warn(
+                    '[getStream] Failed to upsert teacher:',
+                    err.message,
+                );
             }
         }
 
         return updated;
     }
 
-
     //Revice Section
     async addReview(
         teacherId: string,
         reviewerId: string,
-        body: any
+        body: any,
     ): Promise<ReviewResponseDto> {
         const teacher = await this.teacherModel.findById(teacherId);
         if (!teacher) throw new NotFoundException('ไม่พบครู');
 
         const alreadyReviewed = teacher.reviews.find(
-            (r) => r.reviewerId.toString() === reviewerId
+            (r) => r.reviewerId.toString() === reviewerId,
         );
-        if (alreadyReviewed) throw new BadRequestException('คุณได้รีวิวครูคนนี้ไปแล้ว');
+        if (alreadyReviewed)
+            throw new BadRequestException('คุณได้รีวิวครูคนนี้ไปแล้ว');
 
-        const reviewrObjId = new Types.ObjectId(reviewerId)
+        const reviewrObjId = new Types.ObjectId(reviewerId);
 
         const hasStudy = await this.slotModel.findOne({
             teacherId: teacher._id,
             bookedBy: reviewrObjId,
-            status: 'studied'
-        })
+            status: 'studied',
+        });
 
-        if (!hasStudy) throw new BadRequestException('คุณยังไม่เคยเรียนกับครูคนนี้')
+        if (!hasStudy)
+            throw new BadRequestException('คุณยังไม่เคยเรียนกับครูคนนี้');
 
         teacher.reviews.push({
             reviewerId: reviewrObjId,
@@ -404,7 +434,6 @@ export class TeachersService {
         const count = teacher.reviews.length;
         const avg = total / count;
 
-
         teacher.averageRating = Number(avg.toFixed(1));
         teacher.reviewCount = count;
         teacher.satisfactionRate = Math.round((avg / 5) * 100);
@@ -415,19 +444,15 @@ export class TeachersService {
             averageRating: teacher.averageRating,
             reviewCount: teacher.reviewCount,
             satisfactionRate: teacher.satisfactionRate,
-        }
+        };
     }
 
-
-    async deleteReview(
-        teacherId: string,
-        reviewerId: string
-    ): Promise<void> {
+    async deleteReview(teacherId: string, reviewerId: string): Promise<void> {
         const teacher = await this.teacherModel.findById(teacherId);
         if (!teacher) throw new NotFoundException('ไม่พบครู');
 
         const reviewIndex = teacher.reviews.findIndex(
-            (r) => r.reviewerId.toString() === reviewerId
+            (r) => r.reviewerId.toString() === reviewerId,
         );
         if (reviewIndex === -1) {
             throw new NotFoundException('ไม่พบรีวิวของคุณในครูคนนี้');
@@ -439,7 +464,9 @@ export class TeachersService {
             const total = teacher.reviews.reduce((sum, r) => sum + r.rating, 0);
             teacher.reviewCount = teacher.reviews.length;
             teacher.averageRating = total / teacher.reviewCount;
-            teacher.satisfactionRate = Math.round((teacher.averageRating / 5) * 100);
+            teacher.satisfactionRate = Math.round(
+                (teacher.averageRating / 5) * 100,
+            );
         } else {
             teacher.reviewCount = 0;
             teacher.averageRating = 0;
@@ -454,7 +481,7 @@ export class TeachersService {
         if (!teacher) throw new NotFoundException('ไม่พบครู');
 
         const wallet = await this.walletModel.findOne({
-            userId: teacher._id
+            userId: teacher._id,
         });
 
         if (!wallet) throw new NotFoundException('ไม่พบ wallet');
@@ -464,15 +491,14 @@ export class TeachersService {
         }
 
         return wallet;
-
     }
 
     async getPaymentHistory(
         teacherId: string,
         startDate?: string,
-        endDate?: string
+        endDate?: string,
     ): Promise<PaymentHistoryResponseDto> {
-        const teacher = await this.findTeacher(teacherId)
+        const teacher = await this.findTeacher(teacherId);
         if (!teacher) throw new NotFoundException('ไม่พบครู');
 
         const teacherObjId = new Types.ObjectId(teacher._id);
@@ -486,20 +512,22 @@ export class TeachersService {
             filter.transferredAt = {};
 
             if (startDate)
-                filter.transferredAt.$gte = new Date(`${startDate}T00:00:00.000Z`);
+                filter.transferredAt.$gte = new Date(
+                    `${startDate}T00:00:00.000Z`,
+                );
 
             if (endDate)
-                filter.transferredAt.$lte = new Date(`${endDate}T23:59:59.999Z`);
+                filter.transferredAt.$lte = new Date(
+                    `${endDate}T23:59:59.999Z`,
+                );
         }
 
         const wallet = await this.walletModel.findOne({
-            userId: teacherObjId
+            userId: teacherObjId,
         });
-        if (!wallet) throw new BadRequestException('ไม่พบ wallet')
+        if (!wallet) throw new BadRequestException('ไม่พบ wallet');
 
-        const payoutLogs = await this.payoutLogModel
-            .find(filter)
-            .lean();
+        const payoutLogs = await this.payoutLogModel.find(filter).lean();
 
         let totalPayoutAmount = 0;
         let totalTeacherNet = 0;
@@ -521,5 +549,4 @@ export class TeachersService {
             processingBalance: wallet.lockedBalance,
         };
     }
-
 }
