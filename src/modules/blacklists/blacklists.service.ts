@@ -14,11 +14,8 @@ export class BlacklistsService {
         @InjectConnection() private readonly connection: Connection,
     ) {}
 
-    private _getEvidenceFilePath(
-        blackListId: string,
-        evidenceFileName: string,
-    ): string {
-        const filePath = `blacklists/${blackListId}/evidences/${evidenceFileName}`;
+    private _getEvidenceFilePath(blackListId: string): string {
+        const filePath = `blacklists/${blackListId}/evidences`;
 
         return filePath;
     }
@@ -48,7 +45,6 @@ export class BlacklistsService {
                     evidences.map((evidence) => {
                         const evidenceFilePath = this._getEvidenceFilePath(
                             newBlackList._id.toString(),
-                            evidence.filename,
                         );
 
                         const evidenceUrl = this.s3Service.uploadPublicReadFile(
