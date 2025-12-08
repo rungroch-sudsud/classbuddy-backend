@@ -13,6 +13,8 @@ export function UploadInterceptor(
     storage: memoryStorage(),
     limits: { fileSize: fileSizeMB * 1024 * 1024 },
     fileFilter: (req, file, callback) => {
+      return callback(null, true);
+      
       const isImage = file.mimetype.match(/^image\/(jpeg|png|webp)$/);
       const isPdf = file.mimetype === 'application/pdf';
 
