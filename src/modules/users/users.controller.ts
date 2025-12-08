@@ -56,7 +56,7 @@ export class UsersController {
   @UploadInterceptor('file', 1, 5)
   async uploadProfileImage(
     @CurrentUser() userId: string,
-    @UploadedFile(new ZodFilePipe(ImageFileSchema)) file: Express.Multer.File,
+    @UploadedFile() file: Express.Multer.File,
   ) {
     const update = await this.usersService.updateProfileImage(userId, file);
 
