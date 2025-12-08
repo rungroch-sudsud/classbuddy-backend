@@ -31,7 +31,7 @@ import { SubjectrequestsModule } from './modules/subjectrequests/subjectrequests
 import { EmailService } from './infra/email/email.service';
 import { EmailTestController } from './infra/email/email.controller';
 import { PostsModule } from './modules/posts/posts.module';
-
+import { BlacklistsModule } from './modules/blacklists/blacklists.module';
 
 @Module({
     imports: [
@@ -55,7 +55,8 @@ import { PostsModule } from './modules/posts/posts.module';
         SocketModule,
         PostsModule,
         SubjectrequestsModule,
-        EmailModule
+        EmailModule,
+        BlacklistsModule,
     ],
     controllers: [
         WebhookController,
@@ -65,9 +66,9 @@ import { PostsModule } from './modules/posts/posts.module';
         BookingController,
         PaymentsController,
         NotificationsController,
-        EmailTestController
+        EmailTestController,
     ],
     providers: [VideoService, EmailService, WebhookService, AppService],
     exports: [],
 })
-export class AppModule { }
+export class AppModule {}
