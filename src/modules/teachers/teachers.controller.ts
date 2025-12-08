@@ -9,7 +9,7 @@ import {
     Query,
     UploadedFile,
     UploadedFiles,
-    UseGuards
+    UseGuards,
 } from '@nestjs/common';
 import {
     ApiBearerAuth,
@@ -17,39 +17,44 @@ import {
     ApiConsumes,
     ApiOperation,
     ApiQuery,
-    ApiTags
+    ApiTags,
 } from '@nestjs/swagger';
 import { JwtGuard } from '../auth/guard/auth.guard';
 import { CurrentUser } from 'src/shared/utils/currentUser';
 import { TeachersService } from './teachers.service';
 import { UploadInterceptor } from 'src/shared/interceptors/upload.interceptor';
-import { ZodFilePipe, ZodFilesPipe } from 'src/shared/validators/zod.validation.pipe';
-import { UploadFileDto, UploadFilesDto } from 'src/shared/docs/upload.file.docs';
+import {
+    ZodFilePipe,
+    ZodFilesPipe,
+} from 'src/shared/validators/zod.validation.pipe';
+import {
+    UploadFileDto,
+    UploadFilesDto,
+} from 'src/shared/docs/upload.file.docs';
 import { FilesSchema, ImageFileSchema } from 'src/shared/validators/zod.schema';
-import { CreateTeacherProfileDto, UpdateTeacherDto } from './dto/teacher.dto.zod';
-
+import {
+    CreateTeacherProfileDto,
+    UpdateTeacherDto,
+} from './dto/teacher.dto.zod';
 
 @ApiTags('Teachers')
 @ApiBearerAuth()
 @Controller('teachers')
 export class TeachersController {
-    constructor(
-        private readonly teacherService: TeachersService
-    ) { }
-
+    constructor(private readonly teacherService: TeachersService) {}
 
     @Get('')
     @ApiQuery({
         name: 'search',
         required: false,
         type: String,
-        description: 'คำค้นหา (เช่น ชื่อ, ทักษะ, วิชา)'
+        description: 'คำค้นหา (เช่น ชื่อ, ทักษะ, วิชา)',
     })
     @ApiQuery({
         name: 'sort',
         required: false,
         enum: ['rating', 'priceAsc', 'priceDesc'],
-        description: '(รวมเรียงราคาน้อย→มาก / มาก→น้อย)'
+        description: '(รวมเรียงราคาน้อย→มาก / มาก→น้อย)',
     })
     async getTeachersDefault(
         @Query('search') search?: string,
@@ -79,7 +84,7 @@ export class TeachersController {
     @UseGuards(JwtGuard)
     async getMe(@CurrentUser() userId: string) {
         const find = await this.teacherService.getTeacherProfileMine(userId);
-        console.log("auth -> ", userId)
+        console.log('auth -> ', userId);
         return {
             message: 'แสดงโปรไฟล์ของฉันสำเร็จ',
             data: find,
@@ -96,21 +101,22 @@ export class TeachersController {
         };
     }
 
-
     @Post('')
     @UseGuards(JwtGuard)
     async createTeacherProfile(
         @CurrentUser() userId: string,
         @Body() body: CreateTeacherProfileDto,
     ) {
-        const teacher = await this.teacherService.createTeacherProfile(userId, body);
+        const teacher = await this.teacherService.createTeacherProfile(
+            userId,
+            body,
+        );
 
         return {
             message: 'สร้างบัญชีผู้ใช้สำหรับครูสำเร็จ',
             data: teacher,
         };
     }
-
 
     @Post('profile/id-card-with-person')
     @ApiBody({ type: UploadFileDto })
@@ -119,16 +125,18 @@ export class TeachersController {
     @UploadInterceptor('file', 1, 10)
     async uploadIdCardWithPersonImage(
         @CurrentUser() userId: string,
-        @UploadedFile(new ZodFilePipe(ImageFileSchema)) file: Express.Multer.File,
+        @UploadedFile() file: Express.Multer.File,
     ) {
-        const update = await this.teacherService.updateIdCardWithPerson(userId, file);
+        const update = await this.teacherService.updateIdCardWithPerson(
+            userId,
+            file,
+        );
 
         return {
             message: 'อัพเดทข้อมูลสำเร็จ',
             data: update,
         };
     }
-
 
     @Post('profile/certificate')
     @ApiBody({ type: UploadFilesDto })
@@ -137,16 +145,19 @@ export class TeachersController {
     @UploadInterceptor('files', 3, 10, ['image', 'pdf'])
     async uploadCertificate(
         @CurrentUser() userId: string,
-        @UploadedFiles(new ZodFilesPipe(FilesSchema)) files: Express.Multer.File[],
+        @UploadedFiles()
+        files: Express.Multer.File[],
     ) {
-        const update = await this.teacherService.updateCertificate(userId, files);
+        const update = await this.teacherService.updateCertificate(
+            userId,
+            files,
+        );
 
         return {
             message: 'อัพเดทข้อมูลสำเร็จ',
             data: update,
         };
     }
-
 
     @Patch('profile')
     @UseGuards(JwtGuard)
@@ -156,7 +167,7 @@ export class TeachersController {
     ) {
         const updated = await this.teacherService.updateTeacherProfile(
             userId,
-            body
+            body,
         );
 
         return {
@@ -164,7 +175,6 @@ export class TeachersController {
             data: updated,
         };
     }
-
 
     //Review Section
     @Post('review/:teacherId')
@@ -175,14 +185,17 @@ export class TeachersController {
         @CurrentUser() reviewerId: string,
         @Body() body: any,
     ) {
-        const review = await this.teacherService.addReview(teacherId, reviewerId, body);
+        const review = await this.teacherService.addReview(
+            teacherId,
+            reviewerId,
+            body,
+        );
 
         return {
             message: 'รีวิวครูคนนี้สำเร็จ',
             data: review,
         };
     }
-
 
     @Delete('review/:teacherId')
     @UseGuards(JwtGuard)
@@ -194,10 +207,9 @@ export class TeachersController {
 
         return {
             message: 'ลบรีวิวเรียบร้อยแล้ว',
-            data: null
+            data: null,
         };
     }
-
 
     //Payment Section
     @Get('payment/history')
@@ -218,5 +230,4 @@ export class TeachersController {
             data: result,
         };
     }
-
 }
