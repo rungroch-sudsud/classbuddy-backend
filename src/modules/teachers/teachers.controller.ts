@@ -19,23 +19,18 @@ import {
     ApiQuery,
     ApiTags,
 } from '@nestjs/swagger';
-import { JwtGuard } from '../auth/guard/auth.guard';
-import { CurrentUser } from 'src/shared/utils/currentUser';
-import { TeachersService } from './teachers.service';
-import { UploadInterceptor } from 'src/shared/interceptors/upload.interceptor';
-import {
-    ZodFilePipe,
-    ZodFilesPipe,
-} from 'src/shared/validators/zod.validation.pipe';
 import {
     UploadFileDto,
     UploadFilesDto,
 } from 'src/shared/docs/upload.file.docs';
-import { FilesSchema, ImageFileSchema } from 'src/shared/validators/zod.schema';
+import { UploadInterceptor } from 'src/shared/interceptors/upload.interceptor';
+import { CurrentUser } from 'src/shared/utils/currentUser';
+import { JwtGuard } from '../auth/guard/auth.guard';
 import {
     CreateTeacherProfileDto,
     UpdateTeacherDto,
 } from './dto/teacher.dto.zod';
+import { TeachersService } from './teachers.service';
 
 @ApiTags('Teachers')
 @ApiBearerAuth()
