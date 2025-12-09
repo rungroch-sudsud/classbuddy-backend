@@ -1,9 +1,26 @@
 import { createZodDto } from 'nestjs-zod';
-import {
-    UpdateProfileDto,
-    UpdateProfileSchema,
-} from 'src/modules/users/schemas/user.zod.schema';
+import { UpdateProfileSchema } from 'src/modules/users/schemas/user.zod.schema';
+import { BUSINESS_CONFIG } from 'src/shared/configs/business.config';
 import { z } from 'zod';
+
+export const HourlyRateSchema = z
+    .number({ message: 'กรุณากรอกค่าตอบแทนต่อชั่วโมง' })
+    .min(BUSINESS_CONFIG.MINIMUM_HOURLY_RATE, {
+        message: `ราคาขั้นต่ำ ${BUSINESS_CONFIG.MINIMUM_HOURLY_RATE} บาท`,
+    })
+    .max(BUSINESS_CONFIG.MAXIMUM_HOURLY_RATE, {
+        message: `ราคาขั้นสูงสุด ${BUSINESS_CONFIG.MAXIMUM_HOURLY_RATE} บาท`,
+    });
+
+export const SubjectDetailSchema = z.object({
+    subjectId: z.string().min(1, { message: 'กรุณาเลือกวิชา' }),
+    detail: z
+        .string()
+        .min(250, { message: 'กรุณากรอกรายละเอียดวิชาอย่างต่ำ 250 ตัวอักษร' }),
+    hourlyRate: HourlyRateSchema,
+});
+
+export type SubjectDetail = z.infer<typeof SubjectDetailSchema>;
 
 const objectIdSchema = z
     .string()
@@ -35,11 +52,6 @@ export const CreateTeacherProfileSchema = z
             .max(100, 'id วิชาต้องไม่เกิน 100 ตัวอักษร'),
 
         customSubjects: z.string().min(2).max(50).optional().nullable(),
-
-        hourlyRate: z
-            .number()
-            .min(200, 'ค่าต่อชั่วโมงต้องไม่ต่ำกว่า 200 บาท')
-            .max(3000, 'ค่าต่อชั่วโมงต้องไม่เกิน 3000 บาท'),
 
         educationHistory: z.array(EducationSchema).optional(),
 
@@ -77,6 +89,10 @@ export const CreateTeacherProfileSchema = z
             .min(10, 'เลขบัญชีต้องมีอย่างน้อย 10 หลัก')
             .max(14, 'เลขบัญชีต้องไม่เกิน 14 ตัวอักษร')
             .optional(),
+
+        subjectDetails: z
+            .array(SubjectDetailSchema)
+            .min(1, { message: 'กรุณากรอกรายละเอียดวิชาให้ครบ' }),
     })
     .merge(
         UpdateProfileSchema.pick({
@@ -103,11 +119,9 @@ export const UpdateTeacherSchema = z.object({
 
     customSubjects: z.string().min(2).max(50).optional().nullable(),
 
-    hourlyRate: z
-        .number()
-        .min(200, 'ค่าต่อชั่วโมงต้องไม่ต่ำกว่า 200 บาท')
-        .max(3000, 'ค่าต่อชั่วโมงต้องไม่เกิน 3000 บาท')
-        .optional(),
+    subjectDetails: z
+        .array(SubjectDetailSchema)
+        .min(1, { message: 'กรุณากรอกรายละเอียดวิชาให้ครบ' }),
 
     educationHistory: z.array(EducationSchema).optional(),
 

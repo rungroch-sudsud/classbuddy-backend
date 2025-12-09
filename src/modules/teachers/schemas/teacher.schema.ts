@@ -1,7 +1,9 @@
-import { Schema, Prop, SchemaFactory } from '@nestjs/mongoose';
-import mongoose, { HydratedDocument, Types } from 'mongoose';
+import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
+import { HydratedDocument, Types } from 'mongoose';
 import { SubjectList } from 'src/modules/subjects/schemas/subject.schema';
 import { User } from 'src/modules/users/schemas/user.schema';
+import { BUSINESS_CONFIG } from 'src/shared/configs/business.config';
+import { SubjectDetail } from '../dto/teacher.dto.zod';
 
 @Schema({ timestamps: true })
 export class Teacher {
@@ -46,15 +48,21 @@ export class Teacher {
     @Prop({ min: 0, max: 80, required: true })
     experience?: number;
 
-    @Prop({
-        min: 200,
-        max: 3000,
-        required: true,
-    })
-    hourlyRate: number;
-
     @Prop({ min: 0, default: 0 })
     averageRating?: number;
+
+    @Prop([
+        {
+            subjectId: { type: Types.ObjectId },
+            detail: { type: String, minLength: 250 },
+            hourlyRate: {
+                type: Number,
+                minLength: BUSINESS_CONFIG.MINIMUM_HOURLY_RATE,
+                maxLegnth: BUSINESS_CONFIG.MAXIMUM_HOURLY_RATE,
+            },
+        },
+    ])
+    subjectDetails: Array<SubjectDetail>;
 
     @Prop({ min: 0, default: 0 })
     reviewCount?: number;
@@ -140,8 +148,6 @@ export class Teacher {
 
 export type TeacherDocument = HydratedDocument<Teacher>;
 export const TeacherSchema = SchemaFactory.createForClass(Teacher);
-
-
 
 TeacherSchema.virtual('user', {
     ref: 'User',
