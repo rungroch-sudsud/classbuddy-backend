@@ -12,8 +12,12 @@ import 'dayjs/locale/th';
 import { isValidObjectId, Model, Types } from 'mongoose';
 import { BullMQJob } from 'src/shared/enums/bull-mq.enum';
 import { SlotStatus } from 'src/shared/enums/slot.enum';
-import { secondsToMilliseconds } from 'src/shared/utils/shared.util';
+import {
+    createObjectId,
+    secondsToMilliseconds,
+} from 'src/shared/utils/shared.util';
 import { Slot } from '../slots/schemas/slot.schema';
+import { getSlotDuartionHours } from '../slots/utils/slot.util';
 import { Teacher } from '../teachers/schemas/teacher.schema';
 import { Booking } from './schemas/booking.schema';
 import { CreateBookingDto, MySlotResponse } from './schemas/booking.zod.schema';
@@ -27,7 +31,7 @@ export class BookingService {
         @InjectModel(Slot.name) private slotModel: Model<Slot>,
     ) {}
 
-    private async addNotifyBeforeClassStartsQueue(booking: Booking) {
+    private async _addNotifyBeforeClassStartsQueue(booking: Booking) {
         const now = dayjs();
 
         const secondsUntilClassStarts =
@@ -43,7 +47,7 @@ export class BookingService {
         });
     }
 
-    private async addCheckParticipantsBeforeClassEndsQueue(booking: Booking) {
+    private async _addCheckParticipantsBeforeClassEndsQueue(booking: Booking) {
         const now = dayjs();
 
         const secondsUntilClassEnds =
@@ -61,7 +65,7 @@ export class BookingService {
         );
     }
 
-    private async addEndCallQueue(booking: Booking) {
+    private async _addEndCallQueue(booking: Booking) {
         const now = dayjs();
 
         const secondsUntilClassEnds =
@@ -86,6 +90,22 @@ export class BookingService {
 
         const slot = await this.slotModel.findById(slotId);
         if (!slot) throw new NotFoundException('ไม่พบ slot ที่ต้องการจอง');
+
+        const teacherId: Types.ObjectId = createObjectId(slot.teacherId);
+        const teacher = await this.teacherModel.findById(teacherId);
+        if (!teacher) throw new NotFoundException('ไม่พบคุณครูดังกล่าว');
+
+        const selectedSubjectDetail = teacher.subjectDetails.find(
+            (sd) => sd.subjectId.toString() === subjectObjId.toString(),
+        );
+        if (!selectedSubjectDetail)
+            throw new NotFoundException('ไม่พบรายละเอียดของวิชาดังกล่าว');
+
+        const durationHours: number = getSlotDuartionHours(slot);
+        const price: number = durationHours * selectedSubjectDetail.hourlyRate;
+
+        slot.price = price;
+        await slot.save();
 
         const existingBooking = await this.bookingModel.findOne({
             slotId: slot._id,
@@ -118,11 +138,11 @@ export class BookingService {
         slot.subject = subjectObjId;
         await slot.save();
 
-        await this.addNotifyBeforeClassStartsQueue(booking);
+        await this._addNotifyBeforeClassStartsQueue(booking);
 
-        await this.addCheckParticipantsBeforeClassEndsQueue(booking);
+        await this._addCheckParticipantsBeforeClassEndsQueue(booking);
 
-        await this.addEndCallQueue(booking);
+        await this._addEndCallQueue(booking);
 
         return booking;
     }

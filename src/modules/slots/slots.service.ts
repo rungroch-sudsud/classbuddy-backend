@@ -57,9 +57,8 @@ export class SlotsService {
         const teacherObjId = teacher._id;
         const docs: any[] = [];
 
-        const hasDailyRecurring = !!body.repeatDailyForDays;
-        const hasWeeklyRecurring = !!body.repeatWeeklyForWeeks;
-        const teacherHourlyRate: number = 200; // TODO : Get this from selected subject's hourly rate
+        const hasDailyRecurring = Boolean(body.repeatDailyForDays);
+        const hasWeeklyRecurring = Boolean(body.repeatWeeklyForWeeks);
 
         const hasSingle =
             !hasDailyRecurring &&
@@ -116,7 +115,6 @@ export class SlotsService {
             const durationHours =
                 (endDateObj.getTime() - startDateObj.getTime()) /
                 (1000 * 60 * 60);
-            const price = teacherHourlyRate * durationHours;
 
             docs.push({
                 insertOne: {
@@ -124,8 +122,8 @@ export class SlotsService {
                         teacherId: teacherObjId,
                         date: body.date,
                         startTime: startDateObj,
+                        price: null,
                         endTime: endDateObj,
-                        price,
                         status: 'available',
                         bookedBy: null,
                     },
@@ -191,7 +189,6 @@ export class SlotsService {
                 const durationHours =
                     (endDateObj.getTime() - startDateObj.getTime()) /
                     (1000 * 60 * 60);
-                const price = teacherHourlyRate * durationHours;
 
                 docs.push({
                     insertOne: {
@@ -199,8 +196,8 @@ export class SlotsService {
                             teacherId: teacherObjId,
                             date: currentDate.format('YYYY-MM-DD'),
                             startTime: startDateObj,
+                            price: null,
                             endTime: endDateObj,
-                            price,
                             status: 'available',
                             bookedBy: null,
                         },
@@ -263,7 +260,6 @@ export class SlotsService {
                 const durationHours =
                     (endDateObj.getTime() - startDateObj.getTime()) /
                     (1000 * 60 * 60);
-                const price = teacherHourlyRate * durationHours;
 
                 docs.push({
                     insertOne: {
@@ -271,8 +267,8 @@ export class SlotsService {
                             teacherId: teacherObjId,
                             date: currentDate.format('YYYY-MM-DD'),
                             startTime: startDateObj,
+                            price: null,
                             endTime: endDateObj,
-                            price,
                             status: 'available',
                             bookedBy: null,
                         },
