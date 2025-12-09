@@ -6,30 +6,26 @@ import {
 } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { FilterQuery, Model, Types } from 'mongoose';
-import { Teacher, TeacherDocument } from './schemas/teacher.schema';
 import { S3Service } from 'src/infra/s3/s3.service';
+import { Teacher, TeacherDocument } from './schemas/teacher.schema';
 // import { , reviewTeacherDto, UpdateTeacherDto } from './schemas/teacher.zod.schema';
-import {
-    CreateTeacherResponse,
-    PaymentHistoryResponseDto,
-    ReviewResponseDto,
-    TeacherResponse,
-    WalletResponse,
-} from './dto/teacher.response.zod';
-import { Slot } from '../slots/schemas/slot.schema';
+import { createObjectId } from 'src/shared/utils/shared.util';
 import { StreamChatService } from '../chat/stream-chat.service';
-import { User } from '../users/schemas/user.schema';
+import { PaymentDocument } from '../payments/schemas/payment.schema';
+import { PayoutLog } from '../payments/schemas/payout.schema';
+import { Wallet } from '../payments/schemas/wallet.schema';
+import { Slot } from '../slots/schemas/slot.schema';
 import { SocketService } from '../socket/socket.service';
 import { SubjectList } from '../subjects/schemas/subject.schema';
-import { Wallet } from '../payments/schemas/wallet.schema';
-import { PayoutLog } from '../payments/schemas/payout.schema';
-import { PaymentDocument } from '../payments/schemas/payment.schema';
+import { User } from '../users/schemas/user.schema';
 import {
     CreateTeacherProfileDto,
     UpdateTeacherDto,
 } from './dto/teacher.dto.zod';
-import { toJSON } from 'src/shared/utils/normalizeDoc';
-import { createObjectId } from 'src/shared/utils/shared.util';
+import {
+    PaymentHistoryResponseDto,
+    ReviewResponseDto,
+} from './dto/teacher.response.zod';
 
 @Injectable()
 export class TeachersService {
