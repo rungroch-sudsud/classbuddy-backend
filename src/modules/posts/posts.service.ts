@@ -2,6 +2,7 @@ import {
     BadRequestException,
     ForbiddenException,
     Injectable,
+    InternalServerErrorException,
     NotFoundException,
 } from '@nestjs/common';
 import {
@@ -283,6 +284,26 @@ export class PostsService {
             },
             { new: true },
         );
+
+        if (!updatedPost)
+            throw new InternalServerErrorException('ล้มเหลวระหว่างส่งคำเสนอ');
+
+        const student = await this.userModel.findById(updatedPost.createdBy);
+        if (!student)
+            throw new NotFoundException('ไม่พบข้อมูลนักเรียนดังกล่าว');
+
+        const builder = new SmsMessageBuilder();
+
+        builder
+            .addText('มีคุณครูเสนอสอนโพสของคุณ 1 ท่าน')
+            .newLine()
+            .addText(
+                `รายละเอียด : https://www.classbuddy.online/job-board/${updatedPost._id.toString()}`,
+            );
+            
+        const message = builder.getMessage();
+
+        await this.smsService.sendSms(student.phone, message);
 
         return updatedPost;
     }
