@@ -250,9 +250,11 @@ export class PostsService {
         userId: string,
         body: CreateProposalDto,
     ): Promise<any> {
-        const teacher = await this.teacherModel.findOne({
-            userId: new Types.ObjectId(userId),
-        });
+        const teacher = await this.teacherModel
+            .findOne({
+                userId: new Types.ObjectId(userId),
+            })
+            .lean();
 
         if (!teacher) throw new BadRequestException('ไม่มีครูคนนี้');
 
@@ -260,14 +262,16 @@ export class PostsService {
             throw new ForbiddenException('บัญชึของคุณยังไม่ได้รับการยืนยัน');
         }
 
-        const exist = await this.postModel.exists({
-            _id: postId,
-            'proposals.teacherId': teacher._id,
-        });
+        const exist = await this.postModel
+            .exists({
+                _id: postId,
+                'proposals.teacherId': teacher._id,
+            })
+            .lean();
 
         if (exist) throw new BadRequestException('คุณได้เสนอไปแล้ว');
 
-        return await this.postModel.findByIdAndUpdate(
+        const updatedPost = await this.postModel.findByIdAndUpdate(
             postId,
             {
                 $push: {
@@ -279,5 +283,7 @@ export class PostsService {
             },
             { new: true },
         );
+
+        return updatedPost;
     }
 }
