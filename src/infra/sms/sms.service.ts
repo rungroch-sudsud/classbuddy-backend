@@ -38,10 +38,20 @@ export class SmsService {
         }
     }
 
-    async sendSms(phone: string, message: string) {
+    private _formatPhoneNumbers(phoneNumbers: string | Array<string>): string {
+        const formattedPhones: string = Array.isArray(phoneNumbers)
+            ? phoneNumbers.join(',')
+            : phoneNumbers;
+
+        return formattedPhones;
+    }
+
+    async sendSms(phones: string | string[], message: string) {
         try {
+            const formattedPhones = this._formatPhoneNumbers(phones);
+
             const body = qs.stringify({
-                msisdn: phone, // เบอร์ปลายทาง
+                msisdn: formattedPhones, // เบอร์ปลายทาง
                 sender: 'ClassBuddy', // ใช้ sender ที่อนุมัติแล้ว
                 message,
             });
