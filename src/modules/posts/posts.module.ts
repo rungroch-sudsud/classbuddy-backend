@@ -5,6 +5,7 @@ import { User, UserSchema } from '../users/schemas/user.schema';
 import { PostsController } from './posts.controller';
 import { PostsService } from './posts.service';
 import { Post, PostSchema } from './schemas/post.schema';
+import { SmsModule } from 'src/infra/sms/sms.module';
 
 @Module({
     imports: [
@@ -13,6 +14,7 @@ import { Post, PostSchema } from './schemas/post.schema';
             { name: Post.name, schema: PostSchema },
             { name: Teacher.name, schema: TeacherSchema },
         ]),
+        SmsModule,
     ],
     controllers: [PostsController],
     providers: [PostsService],

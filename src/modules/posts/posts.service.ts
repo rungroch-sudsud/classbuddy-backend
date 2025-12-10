@@ -1,5 +1,14 @@
-import { BadRequestException, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
-import { CreatePostDto, CreateProposalDto, UpdatePostDto } from './dto/post.dto';
+import {
+    BadRequestException,
+    ForbiddenException,
+    Injectable,
+    NotFoundException,
+} from '@nestjs/common';
+import {
+    CreatePostDto,
+    CreateProposalDto,
+    UpdatePostDto,
+} from './dto/post.dto';
 import { InjectModel } from '@nestjs/mongoose';
 import { User } from '../users/schemas/user.schema';
 import { Model, Types } from 'mongoose';
@@ -10,10 +19,12 @@ import {
     infoLog,
 } from 'src/shared/utils/shared.util';
 import { Teacher } from '../teachers/schemas/teacher.schema';
-import dayjs from "dayjs";
-import "dayjs/locale/th";
+import dayjs from 'dayjs';
+import 'dayjs/locale/th';
+import { SmsService } from 'src/infra/sms/sms.service';
+import { SmsMessageBuilder } from 'src/infra/sms/builders/sms-builder.builder';
 
-dayjs.locale("th");
+dayjs.locale('th');
 
 @Injectable()
 export class PostsService {
@@ -22,13 +33,12 @@ export class PostsService {
     constructor(
         @InjectModel(User.name) private readonly userModel: Model<User>,
         @InjectModel(Post.name) private readonly postModel: Model<Post>,
-        @InjectModel(Teacher.name) private readonly teacherModel: Model<Teacher>,
-    ) { }
+        @InjectModel(Teacher.name)
+        private readonly teacherModel: Model<Teacher>,
+        private readonly smsService: SmsService,
+    ) {}
 
-    async createPost(
-        createPostDto: CreatePostDto,
-        studentUserId: string
-    ) {
+    async createPost(createPostDto: CreatePostDto, studentUserId: string) {
         try {
             infoLog(
                 this.logEntity,
@@ -37,12 +47,31 @@ export class PostsService {
 
             const student = await this.userModel.findById(studentUserId);
 
-            if (!student) throw new NotFoundException('ไม่พบข้อมูลนักเรียนดังกล่าว');
+            if (!student)
+                throw new NotFoundException('ไม่พบข้อมูลนักเรียนดังกล่าว');
 
             const newPost = await this.postModel.create({
                 detail: createPostDto.detail,
                 createdBy: student._id,
             });
+
+            const users = await this.userModel.find({});
+            const userPhones: Array<string> = users.map((user) => user.phone);
+
+            const builder = new SmsMessageBuilder();
+
+            builder
+                .addText('มีโพสประกาศหาคุณครู 1 รายการ')
+                .newLine()
+                .addText(`รายละเอียด : ${newPost.detail}`)
+                .newLine()
+                .addText(
+                    `ดูรายละเอียดได้ที่ : https://www.classbuddy.online/job-board`,
+                );
+
+            const message = builder.getMessage();
+
+            await this.smsService.sendSms(userPhones, message);
 
             infoLog(
                 this.logEntity,
@@ -65,10 +94,7 @@ export class PostsService {
         }
     }
 
-
-    async getAll(
-        page: number = 1,
-    ): Promise<any> {
+    async getAll(page: number = 1): Promise<any> {
         const limit = 8;
 
         if (page < 1) page = 1;
@@ -80,7 +106,7 @@ export class PostsService {
             .limit(limit)
             .populate({
                 path: 'createdBy',
-                select: 'name lastName profileImage role'
+                select: 'name lastName profileImage role',
             })
             .populate({
                 path: 'proposals.teacherId',
@@ -93,9 +119,9 @@ export class PostsService {
             .sort({ createdAt: -1 })
             .lean();
 
-        posts.forEach(post => {
+        posts.forEach((post) => {
             const p = post as any;
-            p.createdAt = dayjs(p.createdAt).format("D MMMM YYYY");
+            p.createdAt = dayjs(p.createdAt).format('D MMMM YYYY');
 
             p.proposals = p.proposals.map((proposal: any) => {
                 const teacher = proposal.teacherId;
@@ -129,7 +155,6 @@ export class PostsService {
         };
     }
 
-
     async updatePost(
         userId: string,
         postId: string,
@@ -146,22 +171,19 @@ export class PostsService {
             throw new BadRequestException('ไม่มีการแก้ไข');
         }
 
-        if (post.closedAt) throw new BadRequestException('โพสต์นี้ถูกปิดไปแล้ว');
+        if (post.closedAt)
+            throw new BadRequestException('โพสต์นี้ถูกปิดไปแล้ว');
 
         const updated = await this.postModel.findByIdAndUpdate(
             postId,
             { $set: body },
-            { new: true }
+            { new: true },
         );
 
         return updated;
     }
 
-
-    async closePost(
-        userId: string,
-        postId: string
-    ): Promise<void> {
+    async closePost(userId: string, postId: string): Promise<void> {
         const post = await this.postModel.findById(postId);
         if (!post) throw new NotFoundException('ไม่มีโพสต์นี้');
 
@@ -169,20 +191,17 @@ export class PostsService {
             throw new ForbiddenException('คุณไม่มีสิทธิ์แก้ไขโพสต์นี้');
         }
 
-        if (post.closedAt) throw new BadRequestException('โพสต์นี้ถูกปิดไปแล้ว');
+        if (post.closedAt)
+            throw new BadRequestException('โพสต์นี้ถูกปิดไปแล้ว');
 
         await this.postModel.findByIdAndUpdate(
             postId,
             { $set: { closedAt: new Date() } },
-            { new: true }
+            { new: true },
         );
     }
 
-
-    async deletePost(
-        userId: string,
-        postId: string
-    ): Promise<void> {
+    async deletePost(userId: string, postId: string): Promise<void> {
         const post = await this.postModel.findById(postId);
         if (!post) throw new NotFoundException('ไม่มีโพสต์นี้');
 
@@ -193,14 +212,12 @@ export class PostsService {
         await this.postModel.deleteOne({ _id: postId });
     }
 
-    async getPostById(
-        postId: string
-    ): Promise<any> {
+    async getPostById(postId: string): Promise<any> {
         const post = await this.postModel
             .findOne({ _id: postId, closedAt: null })
             .populate({
                 path: 'createdBy',
-                select: 'name lastName profileImage role'
+                select: 'name lastName profileImage role',
             })
             .populate({
                 path: 'proposals.teacherId',
@@ -218,23 +235,23 @@ export class PostsService {
 
         return {
             ...p,
-            createdAt: dayjs(p.createdAt).format("D MMMM YYYY"),
-            proposals: p.proposals?.map((x: any) => ({
-                ...x,
-                createdAt: dayjs(x.createdAt).format("D MMMM YYYY HH:mm"),
-            })) ?? []
+            createdAt: dayjs(p.createdAt).format('D MMMM YYYY'),
+            proposals:
+                p.proposals?.map((x: any) => ({
+                    ...x,
+                    createdAt: dayjs(x.createdAt).format('D MMMM YYYY HH:mm'),
+                })) ?? [],
         };
     }
-
 
     //Teacher Section
     async addProposal(
         postId: string,
         userId: string,
-        body: CreateProposalDto
+        body: CreateProposalDto,
     ): Promise<any> {
         const teacher = await this.teacherModel.findOne({
-            userId: new Types.ObjectId(userId)
+            userId: new Types.ObjectId(userId),
         });
 
         if (!teacher) throw new BadRequestException('ไม่มีครูคนนี้');
@@ -260,8 +277,7 @@ export class PostsService {
                     },
                 },
             },
-            { new: true }
+            { new: true },
         );
     }
-
 }
