@@ -1,7 +1,7 @@
 import { Module } from '@nestjs/common';
 import { MongooseModule } from '@nestjs/mongoose';
 import { S3Module } from 'src/infra/s3/s3.module';
-import { SmsService } from '../../infra/sms/sms.service';
+import { SmsModule } from 'src/infra/sms/sms.module';
 import { ChatModule } from '../chat/chat.module';
 import { PayoutLog, PayoutLogSchema } from '../payments/schemas/payout.schema';
 import { Wallet, WalletSchema } from '../payments/schemas/wallet.schema';
@@ -12,8 +12,6 @@ import { User, UserSchema } from '../users/schemas/user.schema';
 import { Teacher, TeacherSchema } from './schemas/teacher.schema';
 import { TeachersController } from './teachers.controller';
 import { TeachersService } from './teachers.service';
-import { HttpService } from '@nestjs/axios';
-import { SmsModule } from 'src/infra/sms/sms.module';
 
 @Module({
     imports: [
