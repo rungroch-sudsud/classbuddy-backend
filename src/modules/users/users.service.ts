@@ -1,4 +1,9 @@
-import { BadRequestException, ConflictException, Injectable, NotFoundException } from '@nestjs/common';
+import {
+    BadRequestException,
+    ConflictException,
+    Injectable,
+    NotFoundException,
+} from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model, Types } from 'mongoose';
 import { User } from './schemas/user.schema';
@@ -7,15 +12,14 @@ import { S3Service } from 'src/infra/s3/s3.service';
 import { StreamChatService } from '../chat/stream-chat.service';
 import { Wallet } from '../payments/schemas/wallet.schema';
 
-
 @Injectable()
 export class UsersService {
     constructor(
         @InjectModel(User.name) private userModel: Model<User>,
         @InjectModel(Wallet.name) private walletModel: Model<Wallet>,
         private readonly s3Service: S3Service,
-        private readonly streamChatService: StreamChatService
-    ) { }
+        private readonly streamChatService: StreamChatService,
+    ) {}
 
     private async createUserWalletIfNotExists(userId: string): Promise<void> {
         const user = await this.userModel.findById(userId);
@@ -38,45 +42,32 @@ export class UsersService {
         await wallet.save();
     }
 
-
-    async createProfile(
-        phone: string,
-        passwordHash: string
-    ): Promise<any> {
+    async createProfile(phone: string, passwordHash: string): Promise<any> {
         return this.userModel.create({
             phone,
             password: passwordHash,
         });
     }
 
-
     async findByPhone(phone: string): Promise<any> {
         return this.userModel.findOne({ phone }).exec();
     }
 
-
-    async updateProfile(
-        userId: string,
-        body: UpdateProfileDto,
-    ): Promise<User> {
+    async updateProfile(userId: string, body: UpdateProfileDto): Promise<User> {
         const currentUser = await this.userModel.findById(userId);
         if (!currentUser) throw new NotFoundException('ไม่พบผู้ใช้งาน');
 
         if (body.email && body.email !== currentUser.email) {
             const exists = await this.userModel.findOne({
                 email: body.email,
-                _id: { $ne: userId }
+                _id: { $ne: userId },
             });
 
             if (exists) throw new ConflictException('อีเมลนี้มีผู้ใช้งานแล้ว');
         }
 
         const update = await this.userModel
-            .findByIdAndUpdate(
-                userId,
-                { $set: body },
-                { new: true },
-            )
+            .findByIdAndUpdate(userId, { $set: body }, { new: true })
             .select('-password -phone -role');
 
         if (!update) throw new NotFoundException('ไม่พบผู้ใช้งาน');
@@ -90,18 +81,18 @@ export class UsersService {
                 image: update.profileImage ?? undefined,
             });
 
-            console.log(`[GETSTREAM] upsert user in getStream ${userId} ${update.name} `);
-
+            console.log(
+                `[GETSTREAM] upsert user in getStream ${userId} ${update.name} `,
+            );
         } catch (err) {
             console.warn(
                 '[GETSTREAM] Failed to upsert Stream user:',
-                err.message
+                err.message,
             );
         }
 
         return update;
     }
-
 
     async updateProfileImage(
         userId: string,
@@ -109,6 +100,8 @@ export class UsersService {
     ): Promise<string> {
         const user = await this.userModel.findById(userId);
         if (!user) throw new NotFoundException('ไม่พบผู้ใช้งาน');
+
+        console.log('file', file);
 
         const filePath = `users/${userId}/profile-image`;
         const publicFileUrl = await this.s3Service.uploadPublicReadFile(
@@ -131,10 +124,7 @@ export class UsersService {
         return publicFileUrl;
     }
 
-
-    async getUserProfileMine(
-        userId: string
-    ): Promise<any> {
+    async getUserProfileMine(userId: string): Promise<any> {
         const userObjId = new Types.ObjectId(userId);
 
         const user = await this.userModel
@@ -153,14 +143,14 @@ export class UsersService {
                     {
                         path: 'subjects',
                         model: 'SubjectList',
-                        select: 'name'
+                        select: 'name',
                     },
                     {
                         path: 'userId',
                         model: 'User',
-                        select: 'profileImage'
-                    }
-                ]
+                        select: 'profileImage',
+                    },
+                ],
             })
 
             .lean();
@@ -189,13 +179,12 @@ export class UsersService {
         return {
             ...user,
             wallet: wallet ?? null,
-        }
+        };
     }
-
 
     async toggleBookmark(
         userId: string,
-        teacherId: string
+        teacherId: string,
     ): Promise<{ bookmarked: boolean; bookmarks: string[] }> {
         const user = await this.userModel.findById(userId);
         if (!user) throw new NotFoundException('ไม่พบผู้ใช้');
@@ -216,10 +205,9 @@ export class UsersService {
         return { bookmarked, bookmarks: user.bookmarks };
     }
 
-
     async updatePasswordByPhone(
         phone: string,
-        newHashedPassword: string
+        newHashedPassword: string,
     ): Promise<any> {
         const user = await this.userModel.findOneAndUpdate(
             { phone },
@@ -233,6 +221,4 @@ export class UsersService {
 
         return user;
     }
-
-
 }
