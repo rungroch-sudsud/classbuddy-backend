@@ -305,14 +305,12 @@ export class PaymentsService {
             };
 
             // 1 : สร้าง wallet สำหรับนักเรียน หากยังไม่มี
-            let studentWallet = await this.walletModel.findOne(
-                {
+            let studentWallet = await this.walletModel
+                .findOne({
                     userId: studentId,
                     role: Role.User,
-                },
-
-                { session },
-            );
+                })
+                .session(session);
 
             if (!studentWallet) {
                 studentWallet = await this.walletModel.insertOne(newWallet);
