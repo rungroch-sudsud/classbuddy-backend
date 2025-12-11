@@ -94,7 +94,10 @@ export class TeachersService {
             role: 'teacher',
         }).save();
 
-        await this.smsService.sendSms('0611752168', 'มีคุณครูสมัครมา 1 อัตรา');
+        await this.smsService.sendSms(
+            ['0611752168', '0853009999'],
+            'มีคุณครูสมัครมา 1 อัตรา',
+        );
 
         return { teacher, wallet };
     }

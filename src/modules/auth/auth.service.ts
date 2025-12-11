@@ -134,7 +134,7 @@ export class AuthService {
         const user = await this.userService.createProfile(phone, hashed);
 
         await this.smsService.sendSms(
-            '0611752168',
+            ['0611752168', '0853009999'],
             'มีผู้ใช้งานสมัครมา 1 ท่าน',
         );
 
