@@ -58,7 +58,8 @@ export const CreateTeacherProfileSchema = z
             .string()
             .url('กรุณากรอกลิงก์วิดีโอที่ถูกต้อง')
             .max(500, 'ลิงก์วิดีโอยาวเกินไป')
-            .optional(),
+            .optional()
+            .nullable(),
 
         bankName: z
             .string()
@@ -127,7 +128,8 @@ export const UpdateTeacherSchema = z.object({
         .string()
         .url('กรุณากรอกลิงก์วิดีโอที่ถูกต้อง')
         .max(500, 'ลิงก์วิดีโอยาวเกินไป')
-        .optional(),
+        .optional()
+        .nullable(),
 
     bankName: z
         .string()
