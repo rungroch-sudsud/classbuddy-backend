@@ -11,12 +11,14 @@ import { UpdateProfileDto } from './schemas/user.zod.schema';
 import { S3Service } from 'src/infra/s3/s3.service';
 import { StreamChatService } from '../chat/stream-chat.service';
 import { Wallet } from '../payments/schemas/wallet.schema';
+import { Teacher } from '../teachers/schemas/teacher.schema';
 
 @Injectable()
 export class UsersService {
     constructor(
         @InjectModel(User.name) private userModel: Model<User>,
         @InjectModel(Wallet.name) private walletModel: Model<Wallet>,
+        @InjectModel(Teacher.name) private teacherModel: Model<Teacher>,
         private readonly s3Service: S3Service,
         private readonly streamChatService: StreamChatService,
     ) {}
@@ -69,6 +71,11 @@ export class UsersService {
         const update = await this.userModel
             .findByIdAndUpdate(userId, { $set: body }, { new: true })
             .select('-password -phone -role');
+
+        await this.teacherModel.findOneAndUpdate(
+            { userId },
+            { $set: { name: body.name, lastName: body.lastName } },
+        );
 
         if (!update) throw new NotFoundException('ไม่พบผู้ใช้งาน');
 
