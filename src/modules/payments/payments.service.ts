@@ -313,7 +313,9 @@ export class PaymentsService {
                 .session(session);
 
             if (!studentWallet) {
-                studentWallet = await this.walletModel.insertOne(newWallet);
+                studentWallet = await this.walletModel.insertOne(newWallet, {
+                    session,
+                });
             }
 
             await session.withTransaction(async () => {
