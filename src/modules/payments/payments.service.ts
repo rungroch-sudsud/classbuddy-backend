@@ -305,21 +305,18 @@ export class PaymentsService {
             };
 
             // 1 : สร้าง wallet สำหรับนักเรียน หากยังไม่มี
-            const studentWallet = await this.walletModel.findOneAndUpdate(
+            let studentWallet = await this.walletModel.findOne(
                 {
                     userId: studentId,
                     role: Role.User,
                 },
-                {
-                    $setOnInsert: newWallet,
-                },
-                { new: true, upsert: true, session },
+
+                { session },
             );
 
-            if (!studentWallet)
-                throw new InternalServerErrorException(
-                    'ล้มเหลวระหว่างสร้าง wallet นักเรียนหากนักเรียนยังไม่มี wallet',
-                );
+            if (!studentWallet) {
+                studentWallet = await this.walletModel.insertOne(newWallet);
+            }
 
             await session.withTransaction(async () => {
                 const currentUserDidNotBookThisClass =
