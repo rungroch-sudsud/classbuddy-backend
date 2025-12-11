@@ -12,6 +12,7 @@ import { S3Service } from 'src/infra/s3/s3.service';
 import { StreamChatService } from '../chat/stream-chat.service';
 import { Wallet } from '../payments/schemas/wallet.schema';
 import { Teacher } from '../teachers/schemas/teacher.schema';
+import { createObjectId } from 'src/shared/utils/shared.util';
 
 @Injectable()
 export class UsersService {
@@ -72,12 +73,12 @@ export class UsersService {
             .findByIdAndUpdate(userId, { $set: body }, { new: true })
             .select('-password -phone -role');
 
+        if (!update) throw new NotFoundException('ไม่พบผู้ใช้งาน');
+
         await this.teacherModel.findOneAndUpdate(
-            { userId },
+            { userId: createObjectId(userId) },
             { $set: { name: body.name, lastName: body.lastName } },
         );
-
-        if (!update) throw new NotFoundException('ไม่พบผู้ใช้งาน');
 
         await this.createUserWalletIfNotExists(userId);
 
