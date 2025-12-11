@@ -10,7 +10,8 @@ import { StreamClient } from '@stream-io/node-sdk';
 import { Booking } from '../booking/schemas/booking.schema';
 import { Slot } from '../slots/schemas/slot.schema';
 import { Teacher } from '../teachers/schemas/teacher.schema';
-import { getErrorMessage } from 'src/shared/utils/shared.util';
+import { getErrorMessage, infoLog } from 'src/shared/utils/shared.util';
+import { createObjectId } from '../../shared/utils/shared.util';
 
 @Injectable()
 export class VideoService {
@@ -72,6 +73,11 @@ export class VideoService {
             await this.slotModel.updateOne(
                 { _id: booking.slotId },
                 { $set: { callRoomId } },
+            );
+
+            infoLog(
+                'Video Service',
+                `สร้าง callroom สำหรับ bookingId ${bookingId} สำเร็จ`,
             );
 
             return {

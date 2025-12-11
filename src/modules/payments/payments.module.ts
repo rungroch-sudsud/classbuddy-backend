@@ -24,6 +24,7 @@ import { PayoutLog, PayoutLogSchema } from './schemas/payout.schema';
 import { Wallet, WalletSchema } from './schemas/wallet.schema';
 import { WebhookController } from './webhook.controller';
 import { WebhookService } from './webhook.service';
+import { VideoProcessor } from '../chat/processors/video.processor';
 
 @Module({
     imports: [
@@ -59,6 +60,9 @@ import { WebhookService } from './webhook.service';
         BullModule.registerQueue({
             name: 'payout',
         }),
+        BullModule.registerQueue({
+            name: 'video',
+        }),
     ],
     controllers: [PaymentsController, WebhookController],
     providers: [
@@ -66,6 +70,7 @@ import { WebhookService } from './webhook.service';
         PaymentsService,
         WebhookService,
         PayoutProcessor,
+        VideoProcessor,
         PayoutScheduler,
     ],
     exports: [PaymentsService, MongooseModule],

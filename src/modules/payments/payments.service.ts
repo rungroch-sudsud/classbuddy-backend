@@ -2,6 +2,7 @@ import { InjectQueue } from '@nestjs/bullmq';
 import {
     BadRequestException,
     Injectable,
+    InternalServerErrorException,
     NotFoundException,
     UnauthorizedException,
 } from '@nestjs/common';
@@ -37,6 +38,7 @@ import {
 } from './schemas/payment.schema';
 import { PayoutLog } from './schemas/payout.schema';
 import { Wallet } from './schemas/wallet.schema';
+import { BullMQJob } from 'src/shared/enums/bull-mq.enum';
 
 const Omise = require('omise');
 
@@ -46,6 +48,7 @@ export class PaymentsService {
 
     constructor(
         @InjectConnection() private readonly connection: Connection,
+        @InjectQueue('video') private videoQueue: Queue,
         @InjectModel(Payment.name) private paymentModel: Model<any>,
         @InjectModel(Wallet.name) private walletModel: Model<Wallet>,
         @InjectModel(User.name) private userModel: Model<any>,
@@ -285,15 +288,40 @@ export class PaymentsService {
         infoLog('BOOKING', 'กำลังชำระ booking ด้วย wallet');
 
         try {
+            const booking = await this.bookingModel
+                .findById(bookingId)
+                .session(session);
+
+            if (!booking) throw new NotFoundException('ไม่พบคลาสดังกล่าว');
+
+            const studentId = booking.studentId.toString();
+
+            const newWallet = {
+                userId: studentId,
+                role: Role.User,
+                availableBalance: 0,
+                pendingBalance: 0,
+                lockedBalance: 0,
+            };
+
+            // 1 : สร้าง wallet สำหรับนักเรียน หากยังไม่มี
+            const studentWallet = await this.walletModel.findOneAndUpdate(
+                {
+                    userId: studentId,
+                    role: Role.User,
+                },
+                {
+                    $setOnInsert: newWallet,
+                },
+                { new: true, upsert: true, session },
+            );
+
+            if (!studentWallet)
+                throw new InternalServerErrorException(
+                    'ล้มเหลวระหว่างสร้าง wallet นักเรียนหากนักเรียนยังไม่มี wallet',
+                );
+
             await session.withTransaction(async () => {
-                const booking = await this.bookingModel
-                    .findById(bookingId)
-                    .session(session);
-
-                if (!booking) throw new NotFoundException('ไม่พบคลาสดังกล่าว');
-
-                const studentId = booking.studentId.toString();
-
                 const currentUserDidNotBookThisClass =
                     currentUserId !== studentId;
 
@@ -302,25 +330,13 @@ export class PaymentsService {
                         'คุณไม่มีสิทธิ์ชำระเงินแทนนักเรียนดังกล่าว',
                     );
 
-                // 1 : ตรวจสอบยอดเงินของนักเรียนว่าพอหรือไม่
-                // TODO: ลองใช้ findOneAndUpdate กับ $setOnInsert แล้วบัค เลยใช้วิธีนี้ไปก่อน เดี๋ยวมา Optimize
-                let studentWallet = await this.walletModel.findOne({
-                    userId: studentId,
-                    role: Role.User,
-                });
-
-                if (!studentWallet) {
-                    studentWallet = await this.walletModel.insertOne({
-                        userId: studentId,
-                        role: Role.User,
-                        availableBalance: 0,
-                        pendingBalance: 0,
-                        lockedBalance: 0,
-                    });
-                }
-
                 const notEnoughBalance =
                     studentWallet.availableBalance < booking.price;
+
+                infoLog(
+                    'PAYMENT',
+                    `${notEnoughBalance ? 'yes' : 'no'} ${studentWallet.availableBalance}`,
+                );
 
                 if (notEnoughBalance)
                     throw new BadRequestException(
@@ -382,10 +398,7 @@ export class PaymentsService {
                     teacherUserId,
                 );
 
-                // 8 : สร้าง video room สำหรับคลาสนี้
-                await this.videoService.createCallRoom(bookingId);
-
-                // 9: ส่งแจ้งเตือนไปหาคุณครู และ นักเรียน
+                // 8: ส่งแจ้งเตือนไปหาคุณครู และ นักเรียน
                 await this.notificationService.sendNotification(studentId, {
                     recipientType: NotificationReceipientType.User,
                     message: `ชำระเงินสำเร็จแล้ว 🎉 สามารถตรวจสอบตารางเรียนของคุณได้ที่ตารางของฉัน`,
@@ -398,19 +411,26 @@ export class PaymentsService {
                     type: NotificationType.BOOKING_PAID,
                 });
 
-                // 10 : ส่ง Email ไปหาครูและนักเรียน
+                // 9 : ส่ง Email ไปหาครูและนักเรียน
                 const teacherEmail = teacher.user.email;
 
                 if (teacherEmail) {
                     await this.emailService.sendEmail({
                         mail_to: { email: teacherEmail },
                         subject: 'การชำระเงิน',
-                        payload: { CHAT_URL: `${envConfig.frontEndUrl}/chat` },
+                        payload: {
+                            CHAT_URL: `${envConfig.frontEndUrl}/chat`,
+                        },
                         template_uuid: EmailTemplateID.SUCCESSFUL_PAYMENT,
                     });
                 }
 
                 infoLog('BOOKING', 'ชำระตลาสเรียนด้วย Wallet สำเร็จ!');
+            });
+
+            // 10 : ส่ง Queue สร้างห้องสำหรับ class เรียนเนื่องจากค่อนข้างใช้เวลา
+            await this.videoQueue.add(BullMQJob.CREATE_CALLROOM, {
+                bookingId: booking._id,
             });
         } catch (error: unknown) {
             const errorMessage = getErrorMessage(error);
