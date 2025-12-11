@@ -4,8 +4,6 @@ import { AppModule } from './app.module';
 import { envConfig } from './configs/env.config';
 import { setupSwagger } from './infra/docs/swagger.config';
 import { ZodValidationPipe } from './shared/validators/zod.validation.pipe';
-import { ClassSerializerInterceptor, Logger, LogLevel } from '@nestjs/common';
-
 
 async function bootstrap() {
     try {

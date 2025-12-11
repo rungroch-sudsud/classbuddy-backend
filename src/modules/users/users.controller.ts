@@ -46,6 +46,7 @@ export class UsersController {
         @CurrentUser() userId: string,
         @UploadedFile() file: Express.Multer.File,
     ) {
+        console.log('hit controller');
         const update = await this.usersService.updateProfileImage(userId, file);
 
         return {
