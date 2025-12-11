@@ -307,7 +307,7 @@ export class PaymentsService {
             // 1 : สร้าง wallet สำหรับนักเรียน หากยังไม่มี
             const studentWallet = await this.walletModel.findOneAndUpdate(
                 {
-                    userId: studentId,
+                    userId: booking.studentId,
                     role: Role.User,
                 },
                 {
