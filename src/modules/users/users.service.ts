@@ -101,8 +101,6 @@ export class UsersService {
         const user = await this.userModel.findById(userId);
         if (!user) throw new NotFoundException('ไม่พบผู้ใช้งาน');
 
-        console.log('file', file);
-
         const filePath = `users/${userId}/profile-image`;
         const publicFileUrl = await this.s3Service.uploadPublicReadFile(
             file,
