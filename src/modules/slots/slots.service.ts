@@ -343,7 +343,8 @@ export class SlotsService {
         });
 
         return sorted.map(({ startTime, endTime, date, booking, ...rest }) => {
-            const teacher: any = booking.teacher;
+            const teacher: any = booking.teacherId;
+            console.log('teacher', teacher);
             const startLocal = dayjs.utc(startTime).tz('Asia/Bangkok');
             const endLocal = dayjs.utc(endTime).tz('Asia/Bangkok');
 
