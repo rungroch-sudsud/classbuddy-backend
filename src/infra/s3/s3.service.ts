@@ -4,87 +4,83 @@ import { config } from 'dotenv';
 
 config();
 
-
 const BUCKET_NAME = 'not-along-bucket';
 const DIGITAL_OCEAN_REGION = 'sgp1';
 
-
-
 @Injectable()
 export class S3Service {
-  private readonly s3Client: S3;
+    private readonly s3Client: S3;
 
-  constructor() {
-    this.s3Client = new S3({
-      forcePathStyle: false,
-      endpoint: `https://${DIGITAL_OCEAN_REGION}.digitaloceanspaces.com`,
-      region: 'us-east-1',
-      credentials: {
-        accessKeyId: process.env.DIGITAL_OCEAN_SPACES_KEY!,
-        secretAccessKey: process.env.DIGITAL_OCEAN_SPACES_SECRET!,
-      },
-    });
-  }
-
-  async uploadFile(
-    file: Express.Multer.File,
-    filePath: string,
-    fileName: string | undefined = undefined,
-  ): Promise<string> {
-    const filePathWithFileName = `${filePath}/${fileName ?? file.originalname}`;
-
-    const input = {
-      Body: file.buffer,
-      Bucket: BUCKET_NAME,
-      Key: filePathWithFileName,
-    };
-
-    const command = new PutObjectCommand(input);
-
-    const response = await this.s3Client.send(command);
-
-    if (response.$metadata.httpStatusCode !== HttpStatus.OK) {
-      throw new Error('Failed to upload file');
+    constructor() {
+        this.s3Client = new S3({
+            forcePathStyle: false,
+            endpoint: `https://${DIGITAL_OCEAN_REGION}.digitaloceanspaces.com`,
+            region: 'us-east-1',
+            credentials: {
+                accessKeyId: process.env.DIGITAL_OCEAN_SPACES_KEY!,
+                secretAccessKey: process.env.DIGITAL_OCEAN_SPACES_SECRET!,
+            },
+        });
     }
 
-    return filePathWithFileName;
-  }
+    async uploadFile(
+        file: Express.Multer.File,
+        filePath: string,
+        fileName: string | undefined = undefined,
+    ): Promise<string> {
+        const filePathWithFileName = `${filePath}/${fileName ?? file.originalname}`;
 
-  async uploadPublicReadFile(
-    file: Express.Multer.File,
-    filePath: string,
-    fileName: string | undefined = undefined,
-  ): Promise<string> {
-    const filePathWithFileName = await this.uploadFile(
-      file,
-      filePath,
-      fileName,
-    );
+        const input = {
+            Body: file.buffer,
+            Bucket: BUCKET_NAME,
+            Key: filePathWithFileName,
+        };
 
-    await this.grantPublicRead(filePathWithFileName);
+        const command = new PutObjectCommand(input);
 
-    return this.getPublicFileUrl(filePathWithFileName);
-  }
+        const response = await this.s3Client.send(command);
 
-  async grantPublicRead(filePath: string): Promise<void> {
-    const command = new PutObjectAclCommand({
-      Bucket: BUCKET_NAME,
-      Key: filePath,
-      ACL: 'public-read',
-    });
+        if (response.$metadata.httpStatusCode !== HttpStatus.OK) {
+            throw new Error('Failed to upload file');
+        }
 
-    const response = await this.s3Client.send(command);
-
-    if (response.$metadata.httpStatusCode !== HttpStatus.OK) {
-      throw new Error('Failed to grant public read');
+        return filePathWithFileName;
     }
-  }
 
-  getPublicFileUrl(
-    filePathWithFileName: string,
-    isViaCdn: boolean = true,
-  ): string {
-    return `https://${BUCKET_NAME}.${DIGITAL_OCEAN_REGION}${isViaCdn && '.cdn'}.digitaloceanspaces.com/${filePathWithFileName}`;
-  }
+    async uploadPublicReadFile(
+        file: Express.Multer.File,
+        filePath: string,
+        fileName: string | undefined = undefined,
+    ): Promise<string> {
+        const filePathWithFileName = await this.uploadFile(
+            file,
+            filePath,
+            fileName,
+        );
+
+        await this.grantPublicRead(filePathWithFileName);
+
+        return this.getPublicFileUrl(filePathWithFileName);
+    }
+
+    async grantPublicRead(filePath: string): Promise<void> {
+        const command = new PutObjectAclCommand({
+            Bucket: BUCKET_NAME,
+            Key: filePath,
+            ACL: 'public-read',
+        });
+
+        const response = await this.s3Client.send(command);
+
+        if (response.$metadata.httpStatusCode !== HttpStatus.OK) {
+            throw new Error('Failed to grant public read');
+        }
+    }
+
+    getPublicFileUrl(
+        filePathWithFileName: string,
+        isViaCdn: boolean = true,
+    ): string {
+        return `https://${BUCKET_NAME}.${DIGITAL_OCEAN_REGION}${isViaCdn && '.cdn'}.digitaloceanspaces.com/${filePathWithFileName}`;
+    }
 }
-

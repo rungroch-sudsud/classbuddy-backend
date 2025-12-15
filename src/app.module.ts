@@ -63,7 +63,6 @@ import { PostsModule } from './modules/posts/posts.module';
         SubjectsController,
         TeachersController,
         BookingController,
-        PaymentsController,
         NotificationsController,
         EmailTestController
     ],

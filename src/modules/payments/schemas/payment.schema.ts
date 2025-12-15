@@ -12,6 +12,7 @@ export enum PaymentType {
 export enum PaymentMethod {
     WALLET = 'wallet',
     PROMPTPAY = 'promptpay',
+    BANK_TRANSFER = 'bank-transfer',
 }
 
 export enum PaymentStatus {
@@ -43,6 +44,9 @@ export class Payment {
 
     @Prop({ default: PaymentMethod.PROMPTPAY })
     method: string;
+
+    @Prop({ type: String, default: null })
+    easySlipTransRef?: string;
 
     @Prop({
         required: true,

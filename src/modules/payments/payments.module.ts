@@ -25,6 +25,11 @@ import { Wallet, WalletSchema } from './schemas/wallet.schema';
 import { WebhookController } from './webhook.controller';
 import { WebhookService } from './webhook.service';
 import { VideoProcessor } from '../chat/processors/video.processor';
+import { WalletStrategy } from './strategies/wallet.strategy';
+import { PaymentStrategyFactory } from './strategies/payment-strategy.factory';
+import { PaymentStrategy } from './strategies/payment-strategy.interface';
+import { EasySlipService } from './easy-slip.service';
+import { BankTransferStrategy } from './strategies/bank-transfer.strategy';
 
 @Module({
     imports: [
@@ -66,8 +71,17 @@ import { VideoProcessor } from '../chat/processors/video.processor';
     ],
     controllers: [PaymentsController, WebhookController],
     providers: [
+        EasySlipService,
         SmsService,
         PaymentsService,
+        WalletStrategy,
+        BankTransferStrategy,
+        {
+            provide: PaymentStrategyFactory,
+            useFactory: (...strategies: PaymentStrategy[]) =>
+                new PaymentStrategyFactory(strategies),
+            inject: [WalletStrategy, BankTransferStrategy],
+        },
         WebhookService,
         PayoutProcessor,
         VideoProcessor,

@@ -536,19 +536,20 @@ export class SlotsService {
             );
 
             // Wallet Section
-            const wallet = await this.walletModel
+            const teacherWallet = await this.walletModel
                 .findOne({ userId: teacher._id })
                 .session(session);
 
-            if (!wallet) throw new NotFoundException('ไม่พบกระเป๋าเงินของครู');
+            if (!teacherWallet)
+                throw new NotFoundException('ไม่พบกระเป๋าเงินของครู');
 
-            if (wallet.pendingBalance < slot.price) {
+            if (teacherWallet.pendingBalance < slot.price) {
                 throw new BadRequestException('ยอดเงินในกระเป๋าไม่ถูกต้อง');
             }
 
-            wallet.pendingBalance -= slot.price;
-            wallet.availableBalance += slot.price;
-            await wallet.save({ session });
+            teacherWallet.pendingBalance -= slot.price;
+            teacherWallet.availableBalance += slot.price;
+            await teacherWallet.save({ session });
 
             // Teaching Counter Section
             const durationHours =
@@ -587,7 +588,7 @@ export class SlotsService {
                 teacherId: slot.teacherId,
             });
 
-            return wallet;
+            return teacherWallet;
         } catch (err) {
             await session.abortTransaction();
             throw err;

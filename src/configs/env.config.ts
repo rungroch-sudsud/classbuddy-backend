@@ -14,4 +14,7 @@ export const envConfig = {
         secretKey: process.env.THAIBULKSMS_API_SECRET,
         emailSenderName: process.env.THAIBULK_EMAIL_SENDER_NAME,
     },
+    easySlip: {
+        authToken: process.env.EASY_SLIP_AUTH_TOKEN,
+    },
 };
