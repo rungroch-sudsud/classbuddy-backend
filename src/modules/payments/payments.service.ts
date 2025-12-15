@@ -19,6 +19,7 @@ import {
 import { PayoutLog } from './schemas/payout.schema';
 import { Wallet } from './schemas/wallet.schema';
 import { PaymentStrategyFactory } from './strategies/payment-strategy.factory';
+import { SmsService } from 'src/infra/sms/sms.service';
 
 const Omise = require('omise');
 
@@ -36,6 +37,7 @@ export class PaymentsService {
         @InjectModel(PayoutLog.name) private payoutLogModel: Model<any>,
         @InjectQueue('payout') private PayoutQueue: Queue,
         private readonly strategyFactory: PaymentStrategyFactory,
+        private readonly smsService: SmsService,
     ) {
         const secretKey = process.env.OMISE_SECRET_KEY;
         const publicKey = process.env.OMISE_PUBLIC_KEY;
@@ -263,5 +265,10 @@ export class PaymentsService {
         const strategy = this.strategyFactory.getStrategy(method);
 
         await strategy.pay({ bookingId, currentUserId, receiptFile });
+
+        await this.smsService.sendSms(
+            ['0611752168', '0853009999'],
+            'มีนักเรียนชำระค่าเรียน 1 ท่าน',
+        );
     }
 }
