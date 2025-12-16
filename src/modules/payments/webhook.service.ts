@@ -2,6 +2,7 @@ import {
     ConflictException,
     Injectable,
     InternalServerErrorException,
+    NotFoundException,
 } from '@nestjs/common';
 import { InjectConnection, InjectModel } from '@nestjs/mongoose';
 
@@ -22,6 +23,8 @@ import { User } from '../users/schemas/user.schema';
 import { Payment, PaymentStatus } from './schemas/payment.schema';
 import { PayoutLog } from './schemas/payout.schema';
 import { Wallet } from './schemas/wallet.schema';
+import { MemberResponse } from '@stream-io/node-sdk';
+import { createObjectId } from 'src/shared/utils/shared.util';
 
 const Omise = require('omise');
 
@@ -411,9 +414,7 @@ export class WebhookService {
             );
 
             const receiverUserId: string = receiver.user_id;
-
             const receiverInfo = await this.userModel.findById(receiverUserId);
-
             const receiverPhoneNumber: string | undefined = receiverInfo?.phone;
 
             const formattedMessage: string = `มีนักเรียนส่งข้อความถึงคุณ : ${message} \n คลิก : https://classbuddy.online/chat เพื่อดูรายละเอียด`;
@@ -424,6 +425,29 @@ export class WebhookService {
                     formattedMessage,
                 );
             }
+        }
+
+        if (eventType === 'channel.created') {
+            const channelId: string = body.channel.id;
+
+            const teacherUserId = channelId.split('teac_').at(1);
+            if (!teacherUserId)
+                throw new NotFoundException('ไม่พบข้อมูล Id ของคุณครู');
+
+            const teacher = await this.userModel.exists({
+                _id: createObjectId(teacherUserId),
+            });
+
+            if (!teacher) throw new NotFoundException('ไม่พบข้อมูลคุณครู');
+
+            await this.chatService.sendChatMessage({
+                channelId,
+                senderUserId: teacherUserId,
+                message: `[แจ้งเตือนด้านความปลอดภัย 🔐]
+Class Buddy ไม่อนุญาตให้แลกเปลี่ยนข้อมูลส่วนตัว
+หรือนัดเจอ/คุยนอกแพลตฟอร์มทุกกรณี
+เพื่อปกป้องความปลอดภัยของทั้งครูและนักเรียน ขอบคุณค่ะ/ครับ `,
+            });
         }
     }
 }
