@@ -326,7 +326,7 @@ export class TeachersService {
             throw new BadRequestException('รหัสของครูไม่ถูกต้อง');
         }
 
-        const teacher = await this.teacherModel
+        let teacher = await this.teacherModel
             .findById(new Types.ObjectId(teacherId))
             .select(
                 `
@@ -338,13 +338,27 @@ export class TeachersService {
             .populate([
                 { path: 'subjects' },
                 { path: 'userId', select: '_id profileImage' },
+                {
+                    path: 'reviews',
+                    populate: {
+                        path: 'reviewerId',
+                        select: 'name lastName profileImage',
+                    },
+                },
             ])
-            .lean();
+            .lean<Omit<Teacher, 'reviews'> & { reviews: any }>();
 
         if (!teacher) throw new NotFoundException('ไม่พบข้อมูลผู้ใช้');
 
+        teacher.reviews = teacher.reviews.map((review) => {
+            const { reviewerId, ...rest } = review;
+
+            return { reviewer: reviewerId, ...rest };
+        });
         const userId = teacher.userId?._id ?? null;
         const profileImage = (teacher.userId as any)?.profileImage ?? null;
+
+        console.log('teacher', teacher);
 
         const isOnline = userId
             ? this.socketService.isOnline(userId.toString())

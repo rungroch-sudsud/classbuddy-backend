@@ -1,7 +1,14 @@
-import { Schema, Prop, SchemaFactory } from '@nestjs/mongoose';
-import mongoose, { HydratedDocument, Types } from 'mongoose';
+import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
+import { HydratedDocument, Types } from 'mongoose';
 import { SubjectList } from 'src/modules/subjects/schemas/subject.schema';
 import { User } from 'src/modules/users/schemas/user.schema';
+
+export type Review = {
+    reviewerId: Types.ObjectId;
+    rating: number;
+    comment?: string;
+    createdAt: Date;
+};
 
 @Schema({ timestamps: true })
 export class Teacher {
@@ -109,12 +116,7 @@ export class Teacher {
         ],
         default: [],
     })
-    reviews: {
-        reviewerId: Types.ObjectId;
-        rating: number;
-        comment?: string;
-        createdAt: Date;
-    }[];
+    reviews: Review[];
 
     @Prop({ maxlength: 20 })
     bankName?: string;
@@ -140,8 +142,6 @@ export class Teacher {
 
 export type TeacherDocument = HydratedDocument<Teacher>;
 export const TeacherSchema = SchemaFactory.createForClass(Teacher);
-
-
 
 TeacherSchema.virtual('user', {
     ref: 'User',
