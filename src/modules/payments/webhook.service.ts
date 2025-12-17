@@ -417,14 +417,14 @@ export class WebhookService {
             const receiverInfo = await this.userModel.findById(receiverUserId);
             const receiverPhoneNumber: string | undefined = receiverInfo?.phone;
 
-            const formattedMessage: string = `มีนักเรียนส่งข้อความถึงคุณ : ${message} \n คลิก : https://classbuddy.online/chat เพื่อดูรายละเอียด`;
+            // const formattedMessage: string = `มีนักเรียนส่งข้อความถึงคุณ : ${message} \n คลิก : https://classbuddy.online/chat เพื่อดูรายละเอียด`;
 
-            if (receiverPhoneNumber) {
-                await this.smsService.sendSms(
-                    receiverPhoneNumber,
-                    formattedMessage,
-                );
-            }
+            // if (receiverPhoneNumber) {
+            //     await this.smsService.sendSms(
+            //         receiverPhoneNumber,
+            //         formattedMessage,
+            //     );
+            // }
         }
 
         if (eventType === 'channel.created') {
