@@ -402,8 +402,14 @@ export class TeachersService {
                     name: `${updated.name ?? ''} ${updated.lastName ?? ''}`.trim(),
                     image,
                 });
+
                 console.log(
                     `[getStream] upsert verified teacher_${userId} successful`,
+                );
+
+                this.smsService.sendSms(
+                    ['0611752168', '0853009999'],
+                    'มีคุณครู update profile 1 ท่าน',
                 );
             } catch (err) {
                 console.warn(
@@ -467,7 +473,7 @@ export class TeachersService {
 
         if (teacherPhone) {
             const smsBuilder = new SmsMessageBuilder();
-            
+
             smsBuilder
                 .addText('มีนักเรียนรีวิวการสอนของท่าน 1 อัตรา')
                 .newLine()
