@@ -27,6 +27,8 @@ import {
     ReviewResponseDto,
 } from './dto/teacher.response.zod';
 import { SmsService } from 'src/infra/sms/sms.service';
+import { SmsMessageBuilder } from 'src/infra/sms/builders/sms-builder.builder';
+import { envConfig } from 'src/configs/env.config';
 
 @Injectable()
 export class TeachersService {
@@ -456,6 +458,27 @@ export class TeachersService {
         teacher.satisfactionRate = Math.round((avg / 5) * 100);
 
         await teacher.save();
+
+        // ส่ง SMS แจ้งคุณครูว่ามีนักเรียนรีวิวแล้ว
+        const teacherUserInfo = await this.userModel
+            .findById(teacher.userId)
+            .lean();
+        const teacherPhone = teacherUserInfo?.phone;
+
+        if (teacherPhone) {
+            const smsBuilder = new SmsMessageBuilder();
+            
+            smsBuilder
+                .addText('มีนักเรียนรีวิวการสอนของท่าน 1 อัตรา')
+                .newLine()
+                .addText(
+                    `รายละเอียด : ${envConfig.frontEndUrl}/teacher-profile/${teacherId}`,
+                );
+
+            const smsMessage = smsBuilder.getMessage();
+
+            await this.smsService.sendSms(teacherPhone, smsMessage);
+        }
 
         return {
             averageRating: teacher.averageRating,
