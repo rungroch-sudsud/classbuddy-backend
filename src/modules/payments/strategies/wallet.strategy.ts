@@ -9,6 +9,7 @@ import { PaymentStrategy } from './payment-strategy.interface';
 import { InjectConnection, InjectModel } from '@nestjs/mongoose';
 import { Connection, Model } from 'mongoose';
 import {
+    createObjectId,
     errorLog,
     getErrorMessage,
     infoLog,
@@ -76,7 +77,7 @@ export class WalletStrategy implements PaymentStrategy {
             const studentId = booking.studentId.toString();
 
             const newWallet = {
-                userId: studentId,
+                userId: createObjectId(studentId),
                 role: Role.User,
                 availableBalance: 0,
                 pendingBalance: 0,
