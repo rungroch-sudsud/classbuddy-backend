@@ -9,7 +9,7 @@ import { InjectConnection, InjectModel } from '@nestjs/mongoose';
 import { Connection, Model, Types } from 'mongoose';
 import { envConfig } from 'src/configs/env.config';
 import { EmailService } from 'src/infra/email/email.service';
-import { EmailTemplateID } from 'src/infra/email/email.type';
+import { EmailTemplateID, SendEmailPayload } from 'src/infra/email/email.type';
 import { SmsService } from 'src/infra/sms/sms.service';
 import { Role } from '../auth/role/role.enum';
 import { Booking } from '../booking/schemas/booking.schema';
@@ -37,7 +37,7 @@ export class WebhookService {
         @InjectModel(Payment.name) private paymentModel: Model<any>,
         @InjectModel(Wallet.name) private walletModel: Model<any>,
         @InjectModel(Booking.name) private bookingModel: Model<any>,
-        @InjectModel(User.name) private userModel: Model<any>,
+        @InjectModel(User.name) private userModel: Model<User>,
         @InjectModel(Teacher.name) private teacherModel: Model<any>,
         @InjectModel(Slot.name) private slotModel: Model<any>,
         @InjectModel(PayoutLog.name) private payoutLogModel: Model<any>,
@@ -98,7 +98,7 @@ export class WebhookService {
                 await this.streamChatService.upsertUser({
                     id: teacherStreamId,
                     name: `${teacher.name ?? ''} ${teacher.lastName ?? ''}`.trim(),
-                    image: user.profileImage ?? null,
+                    image: user.profileImage ?? '',
                 });
                 console.log(
                     `[GETSTREAM] upsert teacher ${teacherStreamId} successful`,
@@ -416,8 +416,9 @@ export class WebhookService {
             const receiverUserId: string = receiver.user_id;
             const receiverInfo = await this.userModel.findById(receiverUserId);
             const receiverPhoneNumber: string | undefined = receiverInfo?.phone;
+            const receiverEmail: string | undefined = receiverInfo?.email;
 
-            // const formattedMessage: string = `มีนักเรียนส่งข้อความถึงคุณ : ${message} \n คลิก : https://classbuddy.online/chat เพื่อดูรายละเอียด`;
+            const formattedMessage: string = `มีนักเรียนส่งข้อความถึงคุณ : ${message} \n คลิก : https://classbuddy.online/chat เพื่อดูรายละเอียด`;
 
             // if (receiverPhoneNumber) {
             //     await this.smsService.sendSms(
@@ -425,6 +426,24 @@ export class WebhookService {
             //         formattedMessage,
             //     );
             // }
+
+            if (receiverEmail) {
+                const sendEmailPayload: SendEmailPayload = {
+                    subject: 'มีนักเรียนส่งข้อความถึงคุณ',
+                    template_uuid: EmailTemplateID.NEW_MESSAGE,
+                    mail_from: {
+                        email: envConfig.thaiBulk.emailSenderName!,
+                    },
+                    mail_to: {
+                        email: receiverEmail,
+                    },
+                    payload: {
+                        MESSAGE: formattedMessage,
+                    },
+                };
+
+                await this.emailService.sendEmail(sendEmailPayload);
+            }
         }
 
         if (eventType === 'channel.created') {
