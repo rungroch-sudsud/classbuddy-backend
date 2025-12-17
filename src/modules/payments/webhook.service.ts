@@ -420,30 +420,30 @@ export class WebhookService {
 
             const formattedMessage: string = `มีนักเรียนส่งข้อความถึงคุณ : ${message} \n คลิก : https://classbuddy.online/chat เพื่อดูรายละเอียด`;
 
-            // if (receiverPhoneNumber) {
-            //     await this.smsService.sendSms(
-            //         receiverPhoneNumber,
-            //         formattedMessage,
-            //     );
-            // }
-
-            if (receiverEmail) {
-                const sendEmailPayload: SendEmailPayload = {
-                    subject: 'มีนักเรียนส่งข้อความถึงคุณ',
-                    template_uuid: EmailTemplateID.NEW_MESSAGE,
-                    mail_from: {
-                        email: envConfig.thaiBulk.emailSenderName!,
-                    },
-                    mail_to: {
-                        email: receiverEmail,
-                    },
-                    payload: {
-                        MESSAGE: formattedMessage,
-                    },
-                };
-
-                await this.emailService.sendEmail(sendEmailPayload);
+            if (receiverPhoneNumber) {
+                await this.smsService.sendSms(
+                    receiverPhoneNumber,
+                    formattedMessage,
+                );
             }
+
+            // if (receiverEmail) {
+            //     const sendEmailPayload: SendEmailPayload = {
+            //         subject: 'มีนักเรียนส่งข้อความถึงคุณ',
+            //         template_uuid: EmailTemplateID.NEW_MESSAGE,
+            //         mail_from: {
+            //             email: envConfig.thaiBulk.emailSenderName!,
+            //         },
+            //         mail_to: {
+            //             email: receiverEmail,
+            //         },
+            //         payload: {
+            //             MESSAGE: formattedMessage,
+            //         },
+            //     };
+
+            //     await this.emailService.sendEmail(sendEmailPayload);
+            // }
         }
 
         if (eventType === 'channel.created') {
