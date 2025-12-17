@@ -4,6 +4,7 @@ config();
 
 export const envConfig = {
     port: process.env.PORT,
+    nodeEnv: process.env.NODE_ENV,
     mongoDb: {
         MONGO_DB: process.env.MONGO_DB,
     },

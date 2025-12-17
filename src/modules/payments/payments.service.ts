@@ -220,7 +220,6 @@ export class PaymentsService {
                         bankAccountNumber: teacher.bankAccountNumber,
                         bankAccountName: teacher.bankAccountName,
                     });
-                    console.log(payoutLog.teacherNet);
                 }
 
                 queued++;

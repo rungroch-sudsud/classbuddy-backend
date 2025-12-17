@@ -79,7 +79,7 @@ export class TeachersController {
     @UseGuards(JwtGuard)
     async getMe(@CurrentUser() userId: string) {
         const find = await this.teacherService.getTeacherProfileMine(userId);
-        console.log('auth -> ', userId);
+
         return {
             message: 'แสดงโปรไฟล์ของฉันสำเร็จ',
             data: find,

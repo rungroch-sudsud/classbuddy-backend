@@ -2,6 +2,7 @@ import { isAxiosError } from 'axios';
 import dayjs from 'dayjs';
 import { MongoServerError } from 'mongodb';
 import mongoose, { Types } from 'mongoose';
+import { envConfig } from 'src/configs/env.config';
 
 function isErrorObject(error: unknown): error is Error {
     return error instanceof Error;
@@ -41,6 +42,18 @@ export function infoLog(
 ) {
     console.log(
         `[${entity}] -> ${message} (${when.format('DD/MM/YYYY HH:mm')})`,
+    );
+}
+
+export function devLog(
+    entity: string,
+    message: string,
+    when: dayjs.Dayjs = dayjs(),
+) {
+    if (envConfig.nodeEnv !== 'dev') return;
+
+    console.log(
+        `[DEV] [${entity}] -> ${message} (${when.format('DD/MM/YYYY HH:mm')})`,
     );
 }
 
