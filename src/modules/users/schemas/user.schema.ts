@@ -64,6 +64,9 @@ export class User extends Document {
 
     @Prop({ type: Date })
     emailVerifyTokenExpires?: Date;
+
+    @Prop({ type: String, default: null })
+    expoPushToken: string | null;
 }
 
 export type UserDocument = User & Document;

@@ -2,6 +2,7 @@ import {
     BadRequestException,
     ConflictException,
     Injectable,
+    InternalServerErrorException,
     NotFoundException,
 } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
@@ -12,7 +13,12 @@ import { S3Service } from 'src/infra/s3/s3.service';
 import { StreamChatService } from '../chat/stream-chat.service';
 import { Wallet } from '../payments/schemas/wallet.schema';
 import { Teacher } from '../teachers/schemas/teacher.schema';
-import { createObjectId } from 'src/shared/utils/shared.util';
+import {
+    createObjectId,
+    errorLog,
+    getErrorMessage,
+    infoLog,
+} from 'src/shared/utils/shared.util';
 
 @Injectable()
 export class UsersService {
@@ -226,5 +232,35 @@ export class UsersService {
         }
 
         return user;
+    }
+
+    async syncUserExpoPushToken(
+        userId: string,
+        pushToken: string,
+    ): Promise<void> {
+        try {
+            const user = await this.userModel.findById(userId);
+
+            if (!user) throw new NotFoundException('ไม่พบข้อมูล user ดังกล่าว');
+
+            user.expoPushToken = pushToken;
+            await user.save();
+
+            infoLog(
+                'USER SERVICE',
+                `อัปเดต expo push token สำหรับ userId : ${userId} สำเร็จ!`,
+            );
+        } catch (error: unknown) {
+            const errorMessage = getErrorMessage(error);
+
+            errorLog(
+                'USER SERVICE',
+                `ล้มเหลวระหว่าง update expo push token -> ${errorMessage}`,
+            );
+
+            throw new InternalServerErrorException(
+                'ล้มเหลวระหว่าง update expo push token',
+            );
+        }
     }
 }

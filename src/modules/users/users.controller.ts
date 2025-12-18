@@ -15,6 +15,7 @@ import { CurrentUser } from 'src/shared/utils/currentUser';
 import { JwtGuard } from '../auth/guard/auth.guard';
 import { UpdateProfileDto } from './schemas/user.zod.schema';
 import { UsersService } from './users.service';
+import { SyncPushTokenDto } from './dto/sync-push-token.dto';
 
 @ApiTags('Users')
 @ApiBearerAuth()
@@ -34,6 +35,24 @@ export class UsersController {
         return {
             message: 'อัพเดทข้อมูลของฉันสำเร็จ',
             data: user,
+        };
+    }
+
+    @Patch('expo-push-token')
+    @UseGuards(JwtGuard)
+    @ApiBody({ type: SyncPushTokenDto })
+    async syncCurrentUserExpoPushToken(
+        @CurrentUser() userId: string,
+        @Body() body: SyncPushTokenDto,
+    ) {
+        await this.usersService.syncUserExpoPushToken(
+            userId,
+            body.expoPushToken,
+        );
+
+        return {
+            message: 'อัพเดตข้อมูล push token สำเร็จ',
+            data: null,
         };
     }
 
