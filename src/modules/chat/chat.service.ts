@@ -1,6 +1,7 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
+import { infoLog } from 'src/shared/utils/shared.util';
 import { Message } from 'stream-chat';
 import { User } from '../users/schemas/user.schema';
 import { StreamChatService } from './stream-chat.service';
@@ -11,6 +12,16 @@ export class ChatService {
         private readonly streamChatService: StreamChatService,
         @InjectModel(User.name) private readonly userModel: Model<User>,
     ) {}
+
+    async onModuleInit() {
+    const chatClient = this.streamChatService.getClient();
+
+        await chatClient.updateChannelType('messaging', { reminders: true });
+        const halfAnHour: number = 60 * 30;
+        await chatClient.updateAppSettings({ reminders_interval: halfAnHour });
+
+        infoLog('CHAT SERVICE', 'Enable reminders for all channels');
+    }
 
     async bootstrapUserAndIssueToken(userId: string) {
         const user = await this.userModel.findById(userId).lean();

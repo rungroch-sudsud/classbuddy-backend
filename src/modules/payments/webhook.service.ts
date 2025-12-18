@@ -405,46 +405,46 @@ export class WebhookService {
     async handleGetStreamWebhook(body: any) {
         const eventType: string = body.type;
 
-        if (eventType === 'message.new') {
-            const message: string = body.message.text;
-            const senderUserId: User['_id'] = body.user.id;
+        // if (eventType === 'message.new') {
+        //     const message: string = body.message.text;
+        //     const senderUserId: User['_id'] = body.user.id;
 
-            const receiver = body.members.find(
-                (member) => member.user_id !== senderUserId,
-            );
+        //     const receiver = body.members.find(
+        //         (member) => member.user_id !== senderUserId,
+        //     );
 
-            const receiverUserId: string = receiver.user_id;
-            const receiverInfo = await this.userModel.findById(receiverUserId);
-            const receiverPhoneNumber: string | undefined = receiverInfo?.phone;
-            const receiverEmail: string | undefined = receiverInfo?.email;
+        //     const receiverUserId: string = receiver.user_id;
+        //     const receiverInfo = await this.userModel.findById(receiverUserId);
+        //     const receiverPhoneNumber: string | undefined = receiverInfo?.phone;
+        //     const receiverEmail: string | undefined = receiverInfo?.email;
 
-            const formattedMessage: string = `มีนักเรียนส่งข้อความถึงคุณ รายละเอียด https://classbuddy.online/chat`;
+        //     const formattedMessage: string = `มีนักเรียนส่งข้อความถึงคุณ รายละเอียด https://classbuddy.online/chat`;
 
-            if (receiverPhoneNumber) {
-                await this.smsService.sendSms(
-                    receiverPhoneNumber,
-                    formattedMessage,
-                );
-            }
+        //     if (receiverPhoneNumber) {
+        //         await this.smsService.sendSms(
+        //             receiverPhoneNumber,
+        //             formattedMessage,
+        //         );
+        //     }
 
-            // if (receiverEmail) {
-            //     const sendEmailPayload: SendEmailPayload = {
-            //         subject: 'มีนักเรียนส่งข้อความถึงคุณ',
-            //         template_uuid: EmailTemplateID.NEW_MESSAGE,
-            //         mail_from: {
-            //             email: envConfig.thaiBulk.emailSenderName!,
-            //         },
-            //         mail_to: {
-            //             email: receiverEmail,
-            //         },
-            //         payload: {
-            //             MESSAGE: formattedMessage,
-            //         },
-            //     };
+        //     // if (receiverEmail) {
+        //     //     const sendEmailPayload: SendEmailPayload = {
+        //     //         subject: 'มีนักเรียนส่งข้อความถึงคุณ',
+        //     //         template_uuid: EmailTemplateID.NEW_MESSAGE,
+        //     //         mail_from: {
+        //     //             email: envConfig.thaiBulk.emailSenderName!,
+        //     //         },
+        //     //         mail_to: {
+        //     //             email: receiverEmail,
+        //     //         },
+        //     //         payload: {
+        //     //             MESSAGE: formattedMessage,
+        //     //         },
+        //     //     };
 
-            //     await this.emailService.sendEmail(sendEmailPayload);
-            // }
-        }
+        //     //     await this.emailService.sendEmail(sendEmailPayload);
+        //     // }
+        // }
 
         if (eventType === 'channel.created') {
             const channelId: string = body.channel.id;
@@ -467,6 +467,22 @@ Class Buddy ไม่อนุญาตให้แลกเปลี่ยน�
 หรือนัดเจอ/คุยนอกแพลตฟอร์มทุกกรณี
 เพื่อปกป้องความปลอดภัยของทั้งครูและนักเรียน ขอบคุณค่ะ/ครับ `,
             });
+        }
+
+        if (eventType === 'user.unread_message_reminder') {
+            const userWhoDidNotRead = body.user;
+            const userId = userWhoDidNotRead.id;
+            const receiverInfo = await this.userModel.findById(userId);
+            const receiverPhoneNumber: string | undefined = receiverInfo?.phone;
+
+            if (receiverPhoneNumber) {
+                const formattedMessage: string = `มีนักเรียนส่งข้อความถึงคุณ รายละเอียด ${envConfig.frontEndUrl}/chat`;
+
+                await this.smsService.sendSms(
+                    receiverPhoneNumber,
+                    formattedMessage,
+                );
+            }
         }
     }
 }
