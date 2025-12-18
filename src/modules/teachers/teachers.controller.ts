@@ -86,6 +86,17 @@ export class TeachersController {
         };
     }
 
+    @Get('/by-user-id/:userId')
+    async getTeacherByUserId(@Param('userId') teacherUserId: string) {
+        const find =
+            await this.teacherService.getTeacherProfileByUserId(teacherUserId);
+
+        return {
+            message: 'แสดงโปรไฟล์ครูสำเร็จ',
+            data: find,
+        };
+    }
+
     @Get(':teacherId')
     async getTeacherById(@Param('teacherId') teacherId: string) {
         const find = await this.teacherService.getTeacherProfileById(teacherId);

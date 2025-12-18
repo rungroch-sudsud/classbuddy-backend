@@ -321,6 +321,59 @@ export class TeachersService {
         };
     }
 
+    async getTeacherProfileByUserId(
+        teacherUserId: string,
+    ): Promise<Record<string, any>> {
+        if (!Types.ObjectId.isValid(teacherUserId)) {
+            throw new BadRequestException('รหัสของครูไม่ถูกต้อง');
+        }
+
+        let teacher = await this.teacherModel
+            .findOne({ userId: new Types.ObjectId(teacherUserId) })
+            .select(
+                `
+                     -idCardWithPerson -bankName
+                     -bankAccountName -bankAccountNumber -recipientId
+                     -certificate
+                     `,
+            )
+            .populate([
+                { path: 'subjects' },
+                { path: 'userId', select: '_id profileImage' },
+                {
+                    path: 'reviews',
+                    populate: {
+                        path: 'reviewerId',
+                        select: 'name lastName profileImage',
+                    },
+                },
+            ])
+            .lean<Omit<Teacher, 'reviews'> & { reviews: any }>();
+
+        if (!teacher) throw new NotFoundException('ไม่พบข้อมูลผู้ใช้');
+
+        teacher.reviews = teacher.reviews.map((review) => {
+            const { reviewerId, ...rest } = review;
+
+            return { reviewer: reviewerId, ...rest };
+        });
+
+        const profileImage = (teacher.userId as any)?.profileImage ?? null;
+
+        console.log('teacher', teacher);
+
+        const isOnline = teacherUserId
+            ? this.socketService.isOnline(teacherUserId.toString())
+            : false;
+
+        return {
+            ...teacher,
+            userId: teacherUserId,
+            profileImage,
+            isOnline,
+        };
+    }
+
     async getTeacherProfileById(
         teacherId: string,
     ): Promise<Record<string, any>> {
