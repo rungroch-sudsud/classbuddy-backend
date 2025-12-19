@@ -24,7 +24,7 @@ import { Payment, PaymentStatus } from './schemas/payment.schema';
 import { PayoutLog } from './schemas/payout.schema';
 import { Wallet } from './schemas/wallet.schema';
 import { MemberResponse } from '@stream-io/node-sdk';
-import { createObjectId } from 'src/shared/utils/shared.util';
+import { createObjectId, infoLog } from 'src/shared/utils/shared.util';
 
 const Omise = require('omise');
 
@@ -405,46 +405,50 @@ export class WebhookService {
     async handleGetStreamWebhook(body: any) {
         const eventType: string = body.type;
 
-        // if (eventType === 'message.new') {
-        //     const message: string = body.message.text;
-        //     const senderUserId: User['_id'] = body.user.id;
+        if (eventType === 'message.new') {
+            infoLog('MESSAGE', 'new message');
+            const message: string = body.message.text;
+            const senderUserId: User['_id'] = body.user.id;
 
-        //     const receiver = body.members.find(
-        //         (member) => member.user_id !== senderUserId,
-        //     );
+            const receiver = body.members.find(
+                (member) => member.user_id !== senderUserId,
+            );
 
-        //     const receiverUserId: string = receiver.user_id;
-        //     const receiverInfo = await this.userModel.findById(receiverUserId);
-        //     const receiverPhoneNumber: string | undefined = receiverInfo?.phone;
-        //     const receiverEmail: string | undefined = receiverInfo?.email;
+            const receiverUserId: string = receiver.user_id;
+            const receiverInfo = await this.userModel.findById(receiverUserId);
+            // const receiverPhoneNumber: string | undefined = receiverInfo?.phone;
+            // const receiverEmail: string | undefined = receiverInfo?.email;
+            const receiverPushToken: string | null | undefined =
+                receiverInfo?.expoPushToken;
 
-        //     const formattedMessage: string = `มีนักเรียนส่งข้อความถึงคุณ รายละเอียด https://classbuddy.online/chat`;
+            // const formattedMessage: string = `มีนักเรียนส่งข้อความถึงคุณ รายละเอียด https://classbuddy.online/chat`;
 
-        //     if (receiverPhoneNumber) {
-        //         await this.smsService.sendSms(
-        //             receiverPhoneNumber,
-        //             formattedMessage,
-        //         );
-        //     }
+            if (receiverPushToken) {
+                await this.notificationService.notify({
+                    expoPushTokens: receiverPushToken,
+                    title: 'มีข้อความใหม่ส่งถึงคุณ',
+                    body: message,
+                });
+            }
 
-        //     // if (receiverEmail) {
-        //     //     const sendEmailPayload: SendEmailPayload = {
-        //     //         subject: 'มีนักเรียนส่งข้อความถึงคุณ',
-        //     //         template_uuid: EmailTemplateID.NEW_MESSAGE,
-        //     //         mail_from: {
-        //     //             email: envConfig.thaiBulk.emailSenderName!,
-        //     //         },
-        //     //         mail_to: {
-        //     //             email: receiverEmail,
-        //     //         },
-        //     //         payload: {
-        //     //             MESSAGE: formattedMessage,
-        //     //         },
-        //     //     };
+            // if (receiverEmail) {
+            //     const sendEmailPayload: SendEmailPayload = {
+            //         subject: 'มีนักเรียนส่งข้อความถึงคุณ',
+            //         template_uuid: EmailTemplateID.NEW_MESSAGE,
+            //         mail_from: {
+            //             email: envConfig.thaiBulk.emailSenderName!,
+            //         },
+            //         mail_to: {
+            //             email: receiverEmail,
+            //         },
+            //         payload: {
+            //             MESSAGE: formattedMessage,
+            //         },
+            //     };
 
-        //     //     await this.emailService.sendEmail(sendEmailPayload);
-        //     // }
-        // }
+            //     await this.emailService.sendEmail(sendEmailPayload);
+            // }
+        }
 
         if (eventType === 'channel.created') {
             const channelId: string = body.channel.id;

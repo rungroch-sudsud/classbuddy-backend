@@ -4,15 +4,16 @@ import { Model, Types } from 'mongoose';
 import { Notification } from './schema/notification';
 import { Teacher } from '../teachers/schemas/teacher.schema';
 import { SocketService } from '../socket/socket.service';
+import { expoNotificationClient } from 'src/infra/axios';
 
 @Injectable()
 export class NotificationsService {
     constructor(
-        @InjectModel(Notification.name) private notificationModel: Model<Notification>,
+        @InjectModel(Notification.name)
+        private notificationModel: Model<Notification>,
         @InjectModel(Teacher.name) private teacherModel: Model<Teacher>,
-        private readonly gateway: SocketService
-    ) { }
-
+        private readonly gateway: SocketService,
+    ) {}
 
     async getNotificationMine(userId: string): Promise<any> {
         const userObjId = new Types.ObjectId(userId);
@@ -23,7 +24,6 @@ export class NotificationsService {
 
         const recipientIds: Types.ObjectId[] = [userObjId];
         if (teacher?._id) recipientIds.push(teacher._id);
-
 
         const notifications = await this.notificationModel
             .find({
@@ -42,7 +42,6 @@ export class NotificationsService {
         });
         return { message: 'sent' };
     }
-
 
     async sendNotification(
         userId: string,
@@ -74,5 +73,39 @@ export class NotificationsService {
         return newNoti;
     }
 
+    async notify({
+        expoPushTokens,
+        title,
+        body,
+        data,
+    }: {
+        expoPushTokens: Array<string> | string;
+        title: string;
+        body: string;
+        data?: Record<string, any>;
+    }) {
+        let message: Record<string, any> = {};
 
+        message = {
+            to: expoPushTokens,
+            sound: 'notification.wav',
+            title,
+            body,
+            channelId: 'global',
+        };
+
+        if (data !== undefined) {
+            message.data = data;
+        }
+
+        const headers = {
+            Accept: 'application/json',
+            'Accept-encoding': 'gzip, deflate',
+            'Content-Type': 'application/json',
+        };
+
+        await expoNotificationClient.post('/', message, {
+            headers,
+        });
+    }
 }

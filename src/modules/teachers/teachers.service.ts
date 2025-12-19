@@ -360,8 +360,6 @@ export class TeachersService {
 
         const profileImage = (teacher.userId as any)?.profileImage ?? null;
 
-        console.log('teacher', teacher);
-
         const isOnline = teacherUserId
             ? this.socketService.isOnline(teacherUserId.toString())
             : false;
@@ -412,8 +410,6 @@ export class TeachersService {
         });
         const userId = teacher.userId?._id ?? null;
         const profileImage = (teacher.userId as any)?.profileImage ?? null;
-
-        console.log('teacher', teacher);
 
         const isOnline = userId
             ? this.socketService.isOnline(userId.toString())
