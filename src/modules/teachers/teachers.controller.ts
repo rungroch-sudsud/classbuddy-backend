@@ -124,6 +124,18 @@ export class TeachersController {
         };
     }
 
+    @Get('/classroom/practice')
+    @UseGuards(JwtGuard)
+    async getOrCreatePracticeClassroom(@CurrentUser() userId: string) {
+        const callRoomId =
+            await this.teacherService.getOrCreatePracticeClassroom(userId);
+
+        return {
+            message: 'ดึงข้อมูลคลาสสำหรับการฝึกสอนสำเร็จ',
+            data: callRoomId,
+        };
+    }
+
     @Post('profile/id-card-with-person')
     @ApiBody({ type: UploadFileDto })
     @ApiConsumes('multipart/form-data')

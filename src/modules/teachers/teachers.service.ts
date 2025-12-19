@@ -2,6 +2,7 @@ import {
     BadRequestException,
     ConflictException,
     Injectable,
+    InternalServerErrorException,
     NotFoundException,
 } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
@@ -9,7 +10,12 @@ import { FilterQuery, Model, Types } from 'mongoose';
 import { S3Service } from 'src/infra/s3/s3.service';
 import { Teacher, TeacherDocument } from './schemas/teacher.schema';
 // import { , reviewTeacherDto, UpdateTeacherDto } from './schemas/teacher.zod.schema';
-import { createObjectId } from 'src/shared/utils/shared.util';
+import {
+    createObjectId,
+    errorLog,
+    getErrorMessage,
+    infoLog,
+} from 'src/shared/utils/shared.util';
 import { StreamChatService } from '../chat/stream-chat.service';
 import { PaymentDocument } from '../payments/schemas/payment.schema';
 import { PayoutLog } from '../payments/schemas/payout.schema';
@@ -29,6 +35,7 @@ import {
 import { SmsService } from 'src/infra/sms/sms.service';
 import { SmsMessageBuilder } from 'src/infra/sms/builders/sms-builder.builder';
 import { envConfig } from 'src/configs/env.config';
+import { VideoService } from '../chat/video.service';
 
 @Injectable()
 export class TeachersService {
@@ -37,6 +44,7 @@ export class TeachersService {
         private readonly socketService: SocketService,
         private readonly streamChatService: StreamChatService,
         private readonly smsService: SmsService,
+        private readonly videoService: VideoService,
         @InjectModel(Teacher.name) private teacherModel: Model<Teacher>,
         @InjectModel(User.name) private userModel: Model<User>,
         @InjectModel(Slot.name) private slotModel: Model<Slot>,
@@ -643,5 +651,31 @@ export class TeachersService {
             availableBalance: wallet.availableBalance,
             processingBalance: wallet.lockedBalance,
         };
+    }
+
+    async getOrCreatePracticeClassroom(teacherUserId: string): Promise<string> {
+        try {
+            const { success, callRoomId } =
+                await this.videoService.getOrCreatePracticeCallRoom(
+                    teacherUserId,
+                );
+
+            if (!success || !callRoomId)
+                throw new Error(
+                    'ล้มเหลวระหว่าง สร้าง หรือ ดึงข้อมูลห้องสำหรับซ้อมสอน',
+                );
+
+            return callRoomId;
+        } catch (error: unknown) {
+            const errorMessage = getErrorMessage(error);
+
+            errorLog(
+                'TEACHER',
+                `[TEACHER SERVICE] [CREATE_PRACTICE_CLASSROOM]-> ${errorMessage}`,
+            );
+            throw new InternalServerErrorException(
+                'ล้มเหละวระหว่าง ดึงข้อมูล ห้องสำหรับซ้อนสอน',
+            );
+        }
     }
 }

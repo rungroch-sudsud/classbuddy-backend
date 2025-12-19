@@ -28,6 +28,48 @@ export class VideoService {
         );
     }
 
+    async getOrCreatePracticeCallRoom(teacherUserId: string) {
+        const teacher = await this.teacherModel
+            .findOne({ userId: createObjectId(teacherUserId) })
+            .populate('userId', '_id')
+            .lean();
+
+        if (!teacher) throw new NotFoundException('ไม่พบข้อมูลคุณครู');
+
+        const teacherId = teacher.userId?._id?.toString();
+        const callRoomId = `practice_${teacherUserId}`;
+
+        try {
+            const call = this.videoClient.video.call('default', callRoomId);
+
+            const retrievedCall = await call.getOrCreate({
+                data: {
+                    created_by_id: teacherId,
+                },
+            });
+
+            await call.updateCallMembers({
+                update_members: [{ user_id: teacherId }],
+            });
+
+            infoLog('Video Service', `สร้าง หรือ ดึง ห้องซ้อมสอน สำเร็จ`);
+
+            return {
+                success: true,
+                message: 'สร้าง หรือ ดึง ห้องซ้อมสอน สำเร็จ',
+                callRoomId: retrievedCall.call.id,
+            };
+        } catch (err) {
+            console.error(
+                '[STREAM VIDEO] Failed to create video call room:',
+                err.message,
+            );
+            throw new InternalServerErrorException(
+                'ไม่สามารถสร้างห้องเรียนได้ในขณะนี้',
+            );
+        }
+    }
+
     async createCallRoom(bookingId: string) {
         const booking = await this.bookingModel.findById(bookingId);
         if (!booking) throw new NotFoundException('ไม่พบข้อมูลการจอง');
