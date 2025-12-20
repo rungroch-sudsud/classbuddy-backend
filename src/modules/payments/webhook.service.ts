@@ -416,7 +416,7 @@ export class WebhookService {
 
             const receiverUserId: string = receiver.user_id;
             const receiverInfo = await this.userModel.findById(receiverUserId);
-            // const receiverPhoneNumber: string | undefined = receiverInfo?.phone;
+            const receiverPhoneNumber: string | undefined = receiverInfo?.phone;
             // const receiverEmail: string | undefined = receiverInfo?.email;
             const receiverPushToken: string | null | undefined =
                 receiverInfo?.expoPushToken;
@@ -429,6 +429,15 @@ export class WebhookService {
                     title: 'มีข้อความใหม่ส่งถึงคุณ',
                     body: message,
                 });
+            }
+
+            if (receiverPhoneNumber) {
+                const formattedMessage: string = `มีนักเรียนส่งข้อความถึงคุณ รายละเอียด ${envConfig.frontEndUrl}/chat`;
+
+                await this.smsService.sendSms(
+                    receiverPhoneNumber,
+                    formattedMessage,
+                );
             }
 
             // if (receiverEmail) {
