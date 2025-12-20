@@ -70,3 +70,7 @@ export function errorLog(
 export function createObjectId(id: string): Types.ObjectId {
     return new mongoose.Types.ObjectId(id);
 }
+
+export function isDevEnv() {
+    return envConfig.nodeEnv === 'dev';
+}
