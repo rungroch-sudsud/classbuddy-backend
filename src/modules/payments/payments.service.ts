@@ -20,6 +20,7 @@ import { PayoutLog } from './schemas/payout.schema';
 import { Wallet } from './schemas/wallet.schema';
 import { PaymentStrategyFactory } from './strategies/payment-strategy.factory';
 import { SmsService } from 'src/infra/sms/sms.service';
+import { isProductionEnv } from 'src/shared/utils/shared.util';
 
 const Omise = require('omise');
 
@@ -265,9 +266,11 @@ export class PaymentsService {
 
         await strategy.pay({ bookingId, currentUserId, receiptFile });
 
-        await this.smsService.sendSms(
-            ['0611752168', '0853009999'],
-            'มีนักเรียนชำระค่าเรียน 1 ท่าน',
-        );
+        if (isProductionEnv()) {
+            await this.smsService.sendSms(
+                ['0611752168', '0853009999'],
+                'มีนักเรียนชำระค่าเรียน 1 ท่าน',
+            );
+        }
     }
 }

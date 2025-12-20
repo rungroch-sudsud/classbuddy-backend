@@ -74,3 +74,7 @@ export function createObjectId(id: string): Types.ObjectId {
 export function isDevEnv() {
     return envConfig.nodeEnv === 'dev';
 }
+
+export function isProductionEnv() {
+    return envConfig.nodeEnv === 'production';
+}
