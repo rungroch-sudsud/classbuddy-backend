@@ -55,7 +55,7 @@ export class TeachersController {
         @Query('search') search?: string,
         @Query('sort') sort?: 'rating' | 'priceAsc' | 'priceDesc',
         @Query('page') page = '1',
-        @Query('limit') limit = '20',
+        @Query('limit') limit = '30',
     ) {
         return this.teacherService.getTeachers(
             search,
