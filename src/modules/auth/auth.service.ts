@@ -17,6 +17,7 @@ import Redis from 'ioredis';
 import * as bcrypt from 'bcrypt';
 import { EmailService } from 'src/infra/email/email.service';
 import { EmailTemplateID } from 'src/infra/email/email.type';
+import { isProductionEnv } from 'src/shared/utils/shared.util';
 
 @Injectable()
 export class AuthService {
@@ -133,10 +134,12 @@ export class AuthService {
 
         const user = await this.userService.createProfile(phone, hashed);
 
-        await this.smsService.sendSms(
-            ['0611752168', '0853009999'],
-            'มีผู้ใช้งานสมัครมา 1 ท่าน',
-        );
+        if (isProductionEnv()) {
+            await this.smsService.sendSms(
+                ['0611752168', '0853009999'],
+                'มีผู้ใช้งานสมัครมา 1 ท่าน',
+            );
+        }
 
         try {
             await this.streamChatService.upsertUser({
