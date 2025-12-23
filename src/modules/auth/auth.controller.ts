@@ -1,19 +1,35 @@
-import { BadRequestException, Body, Controller, Get, Patch, Post, Query, UseGuards } from '@nestjs/common';
+import {
+    BadRequestException,
+    Body,
+    Controller,
+    Get,
+    Patch,
+    Post,
+    Query,
+    UseGuards,
+} from '@nestjs/common';
 import { ApiBearerAuth, ApiBody, ApiTags } from '@nestjs/swagger';
 import { CurrentUser } from 'src/shared/utils/currentUser';
 import { ZodValidationPipe } from 'src/shared/validators/zod.validation.pipe';
 import { AuthService } from './auth.service';
 import { JwtGuard } from './guard/auth.guard';
-import { ChangePasswordDto, forgotPasswordOtpDto, LoginDto, RegisterDto, RegisterSchema, ResendOtpDto, ResetPasswordDto, VerifyForgotPasswordDto, VerifyOtpDto } from './schemas/auth.zod.schema';
-
-
+import {
+    ChangePasswordDto,
+    forgotPasswordOtpDto,
+    LoginDto,
+    RegisterDto,
+    RegisterSchema,
+    ResendOtpDto,
+    ResetPasswordDto,
+    VerifyForgotPasswordDto,
+    VerifyOtpDto,
+} from './schemas/auth.zod.schema';
 
 @ApiTags('Auth')
 @ApiBearerAuth()
 @Controller('auth')
 export class AuthController {
-    constructor(private readonly authService: AuthService) { }
-
+    constructor(private readonly authService: AuthService) {}
 
     @Post('register')
     @ApiBody({ type: RegisterDto })
@@ -28,12 +44,9 @@ export class AuthController {
         };
     }
 
-
     @Post('verify-otp')
     @ApiBody({ type: VerifyOtpDto })
-    async verifyRegisterOtp(
-        @Body(new ZodValidationPipe()) body: VerifyOtpDto
-    ) {
+    async verifyRegisterOtp(@Body(new ZodValidationPipe()) body: VerifyOtpDto) {
         const verify = await this.authService.verifyRegisterOtp(body);
 
         return {
@@ -42,12 +55,9 @@ export class AuthController {
         };
     }
 
-
     @Post('login')
     @ApiBody({ type: LoginDto })
-    async login(
-        @Body(new ZodValidationPipe()) body: LoginDto
-    ) {
+    async login(@Body(new ZodValidationPipe()) body: LoginDto) {
         const login = await this.authService.login(body);
 
         return {
@@ -56,11 +66,9 @@ export class AuthController {
         };
     }
 
-
     @Post('resend-otp')
     @ApiBody({ type: ResendOtpDto })
-    async resendOtp(@Body('sessionId') sessionId: string
-    ): Promise<any> {
+    async resendOtp(@Body('sessionId') sessionId: string): Promise<any> {
         if (!sessionId) throw new BadRequestException('กรุณาระบุ sessionId');
         const resend = await this.authService.resendOtp(sessionId);
 
@@ -69,7 +77,6 @@ export class AuthController {
             data: resend,
         };
     }
-
 
     @Post('forgot-password')
     @ApiBody({ type: forgotPasswordOtpDto })
@@ -87,7 +94,7 @@ export class AuthController {
     async verifyForgotPassword(@Body() body: VerifyOtpDto) {
         const verify = await this.authService.verifyForgotPassword(
             body.sessionId,
-            body.otp
+            body.otp,
         );
 
         return {
@@ -95,7 +102,6 @@ export class AuthController {
             data: verify,
         };
     }
-
 
     @Patch('forgot-password/reset')
     @ApiBody({ type: ResetPasswordDto })
@@ -112,12 +118,12 @@ export class AuthController {
         };
     }
 
-
     @Post('forgot-password/resend-otp')
     @ApiBody({ type: ResendOtpDto })
     async resendForgotPasswordOtp(@Body('sessionId') sessionId: string) {
         if (!sessionId) throw new BadRequestException('กรุณาระบุ sessionId');
-        const resend = await this.authService.resendForgotPasswordOtp(sessionId);
+        const resend =
+            await this.authService.resendForgotPasswordOtp(sessionId);
 
         return {
             message: 'ส่งรหัส OTP เรียบร้อย',
@@ -125,26 +131,22 @@ export class AuthController {
         };
     }
 
-
     @Patch('change-password')
     @UseGuards(JwtGuard)
     @ApiBody({ type: ChangePasswordDto })
     async changePassword(
         @CurrentUser() userId: string,
-        @Body() body: ChangePasswordDto
+        @Body() body: ChangePasswordDto,
     ) {
         await this.authService.changePassword(userId, body);
 
         return { message: 'เปลี่ยนรหัสผ่านสำเร็จ' };
     }
 
-
     //Verify Email
     @Post('request-verify-email')
     @UseGuards(JwtGuard)
-    async requestVerifyEmail(
-        @CurrentUser() userId: string,
-    ) {
+    async requestVerifyEmail(@CurrentUser() userId: string) {
         return this.authService.requestVerifyEmail(userId);
     }
 
@@ -152,5 +154,4 @@ export class AuthController {
     async verifyEmail(@Query('token') token: string) {
         return this.authService.verifyEmail(token);
     }
-
 }

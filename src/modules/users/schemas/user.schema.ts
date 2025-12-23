@@ -2,6 +2,7 @@ import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 import { Document, Types } from 'mongoose';
 import { Role } from 'src/modules/auth/role/role.enum';
 import { SubjectList } from 'src/modules/subjects/schemas/subject.schema';
+import { infoLog } from 'src/shared/utils/shared.util';
 
 @Schema({ timestamps: true })
 export class User extends Document {
@@ -69,5 +70,7 @@ export class User extends Document {
     expoPushToken: string | null;
 }
 
-export type UserDocument = User & Document;
-export const UserSchema = SchemaFactory.createForClass(User);
+type UserDocument = User & Document;
+const UserSchema = SchemaFactory.createForClass(User);
+
+export { UserSchema, type UserDocument };

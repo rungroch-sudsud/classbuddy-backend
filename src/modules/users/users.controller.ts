@@ -100,4 +100,15 @@ export class UsersController {
             data: booked,
         };
     }
+
+    @Post('delete')
+    @UseGuards(JwtGuard)
+    async deleteAccount(@CurrentUser() userId: string) {
+        const deleted = await this.usersService.deleteAccount(userId);
+
+        return {
+            message: 'ลบบัญชีของฉันสำเร็จ',
+            data: deleted,
+        };
+    }
 }

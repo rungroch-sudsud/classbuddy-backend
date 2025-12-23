@@ -18,7 +18,9 @@ import {
     errorLog,
     getErrorMessage,
     infoLog,
+    isProductionEnv,
 } from 'src/shared/utils/shared.util';
+import { SmsService } from 'src/infra/sms/sms.service';
 
 @Injectable()
 export class UsersService {
@@ -28,6 +30,7 @@ export class UsersService {
         @InjectModel(Teacher.name) private teacherModel: Model<Teacher>,
         private readonly s3Service: S3Service,
         private readonly streamChatService: StreamChatService,
+        private readonly smsService: SmsService,
     ) {}
 
     private async createUserWalletIfNotExists(userId: string): Promise<void> {
@@ -56,6 +59,19 @@ export class UsersService {
             phone,
             password: passwordHash,
         });
+    }
+
+    async deleteAccount(userId: string): Promise<void> {
+        const user = await this.userModel.findById(userId);
+        if (!user) throw new NotFoundException('ไม่พบผู้ใช้งาน');
+
+        await user.deleteOne();
+
+        if (isProductionEnv())
+            await this.smsService.sendSms(
+                ['0611752168', '0853009999'],
+                'มีผู้ใช้งานลบบัญชี 1 ท่าน',
+            );
     }
 
     async findByPhone(phone: string): Promise<any> {
