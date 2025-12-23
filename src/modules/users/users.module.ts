@@ -7,6 +7,8 @@ import { S3Module } from 'src/infra/s3/s3.module';
 import { Teacher, TeacherSchema } from '../teachers/schemas/teacher.schema';
 import { ChatModule } from '../chat/chat.module';
 import { Wallet, WalletSchema } from '../payments/schemas/wallet.schema';
+import { SmsService } from '../../infra/sms/sms.service';
+import { SmsModule } from 'src/infra/sms/sms.module';
 
 @Module({
     imports: [
@@ -17,7 +19,7 @@ import { Wallet, WalletSchema } from '../payments/schemas/wallet.schema';
         ]),
         S3Module,
         ChatModule,
-        
+        SmsModule,
     ],
     providers: [UsersService],
     controllers: [UsersController],
