@@ -6,7 +6,11 @@ import {
 } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model, Types } from 'mongoose';
-import { StreamClient } from '@stream-io/node-sdk';
+import {
+    CallRequest,
+    RecordSettingsRequest,
+    StreamClient,
+} from '@stream-io/node-sdk';
 import { Booking } from '../booking/schemas/booking.schema';
 import { Slot } from '../slots/schemas/slot.schema';
 import { Teacher } from '../teachers/schemas/teacher.schema';
@@ -96,10 +100,15 @@ export class VideoService {
         try {
             const call = this.videoClient.video.call('default', callRoomId);
 
-            await call.getOrCreate({
-                data: {
-                    created_by_id: teacherId,
+            const callRequest: CallRequest = {
+                created_by_id: teacherId,
+                settings_override: {
+                    transcription: { language: 'th', mode: 'available' },
                 },
+            };
+
+            await call.getOrCreate({
+                data: callRequest,
             });
 
             await call.updateCallMembers({
