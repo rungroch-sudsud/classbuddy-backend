@@ -417,11 +417,10 @@ export class WebhookService {
             const receiverUserId: string = receiver.user_id;
             const receiverInfo = await this.userModel.findById(receiverUserId);
             const receiverPhoneNumber: string | undefined = receiverInfo?.phone;
-            // const receiverEmail: string | undefined = receiverInfo?.email;
             const receiverPushToken: string | null | undefined =
                 receiverInfo?.expoPushToken;
 
-            // const formattedMessage: string = `มีนักเรียนส่งข้อความถึงคุณ รายละเอียด https://classbuddy.online/chat`;
+            let hasAlreadyNotified: boolean = false;
 
             if (receiverPushToken) {
                 await this.notificationService.notify({
@@ -429,9 +428,11 @@ export class WebhookService {
                     title: 'มีข้อความใหม่ส่งถึงคุณ',
                     body: message,
                 });
+
+                hasAlreadyNotified = true;
             }
 
-            if (receiverPhoneNumber) {
+            if (receiverPhoneNumber && !hasAlreadyNotified) {
                 const formattedMessage: string = `มีนักเรียนส่งข้อความถึงคุณ รายละเอียด ${envConfig.frontEndUrl}/chat`;
 
                 await this.smsService.sendSms(
