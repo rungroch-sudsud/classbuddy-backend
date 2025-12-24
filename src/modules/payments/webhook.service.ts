@@ -439,6 +439,8 @@ export class WebhookService {
                     receiverPhoneNumber,
                     formattedMessage,
                 );
+
+                hasAlreadyNotified = true;
             }
 
             // if (receiverEmail) {
