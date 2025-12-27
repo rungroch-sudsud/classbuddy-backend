@@ -7,6 +7,8 @@ import {
 import { InjectConnection, InjectModel } from '@nestjs/mongoose';
 import { Queue } from 'bullmq';
 import { Connection, Model, Types } from 'mongoose';
+import { SmsService } from 'src/infra/sms/sms.service';
+import { isProductionEnv } from 'src/shared/utils/shared.util';
 import { Booking } from '../booking/schemas/booking.schema';
 import { Teacher } from '../teachers/schemas/teacher.schema';
 import { User } from '../users/schemas/user.schema';
@@ -19,8 +21,6 @@ import {
 import { PayoutLog } from './schemas/payout.schema';
 import { Wallet } from './schemas/wallet.schema';
 import { PaymentStrategyFactory } from './strategies/payment-strategy.factory';
-import { SmsService } from 'src/infra/sms/sms.service';
-import { isProductionEnv } from 'src/shared/utils/shared.util';
 
 const Omise = require('omise');
 
@@ -32,8 +32,8 @@ export class PaymentsService {
         @InjectConnection() private readonly connection: Connection,
         @InjectModel(Payment.name) private paymentModel: Model<any>,
         @InjectModel(Wallet.name) private walletModel: Model<Wallet>,
-        @InjectModel(User.name) private userModel: Model<any>,
-        @InjectModel(Teacher.name) private teacherModel: Model<any>,
+        @InjectModel(User.name) private userModel: Model<User>,
+        @InjectModel(Teacher.name) private teacherModel: Model<Teacher>,
         @InjectModel(Booking.name) private bookingModel: Model<Booking>,
         @InjectModel(PayoutLog.name) private payoutLogModel: Model<any>,
         @InjectQueue('payout') private PayoutQueue: Queue,
@@ -262,9 +262,9 @@ export class PaymentsService {
         currentUserId: string,
         receiptFile: Express.Multer.File | undefined = undefined,
     ): Promise<void> {
-        const strategy = this.strategyFactory.getStrategy(method);
+        const paymentStrategy = this.strategyFactory.getStrategy(method);
 
-        await strategy.pay({ bookingId, currentUserId, receiptFile });
+        await paymentStrategy.pay({ bookingId, currentUserId, receiptFile });
 
         if (isProductionEnv()) {
             await this.smsService.sendSms(

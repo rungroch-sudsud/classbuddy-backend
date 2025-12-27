@@ -38,6 +38,7 @@ import {
 } from '../schemas/payment.schema';
 import { Wallet } from '../schemas/wallet.schema';
 import { PaymentStrategy } from './payment-strategy.interface';
+import dayjs from 'dayjs';
 
 @Injectable()
 export class BankTransferStrategy implements PaymentStrategy {
@@ -50,6 +51,7 @@ export class BankTransferStrategy implements PaymentStrategy {
         @InjectModel(Payment.name) private paymentModel: Model<Payment>,
         @InjectModel(Slot.name) private slotModel: Model<Slot>,
         @InjectModel(Teacher.name) private teacherModel: Model<Slot>,
+        @InjectModel(User.name) private userModel: Model<User>,
         private readonly notificationService: NotificationsService,
         private readonly chatService: ChatService,
         private readonly emailService: EmailService,
@@ -140,10 +142,10 @@ export class BankTransferStrategy implements PaymentStrategy {
                 await booking.save({ session });
 
                 // 5 : อัปเดตสถานะ slot เป็น paid
-                await this.slotModel.findOneAndUpdate(
+                const slot = await this.slotModel.findOneAndUpdate(
                     { bookingId: booking._id },
                     { status: SlotStatus.PAID, paidAt: new Date() },
-                    { session },
+                    { session, new: true },
                 );
 
                 // 6 : เพิ่มเงินเข้ากระเป๋าตังครู (pendingBalance)
@@ -167,7 +169,7 @@ export class BankTransferStrategy implements PaymentStrategy {
 
                 const teacherUserId = teacher.userId.toString();
 
-                await this.chatService.createOrGetChannel(
+                const channelInfo = await this.chatService.createOrGetChannel(
                     studentId,
                     teacherUserId,
                 );
@@ -185,8 +187,9 @@ export class BankTransferStrategy implements PaymentStrategy {
                     type: NotificationType.BOOKING_PAID,
                 });
 
-                // 9 : ส่ง Email ไปหาครูและนักเรียน
+                // 9 : ส่งแจ้งเตือน ไปหาครูและนักเรียน
                 const teacherEmail = teacher.user.email;
+                const teacherPushToken = teacher.user.expoPushToken;
 
                 if (teacherEmail) {
                     await this.emailService.sendEmail({
@@ -199,10 +202,42 @@ export class BankTransferStrategy implements PaymentStrategy {
                     });
                 }
 
+                if (teacherPushToken) {
+                    await this.notificationService.notify({
+                        expoPushTokens: teacherPushToken,
+                        title: 'มีนักเรียนชำระเงิน',
+                        body: 'ยินดีด้วย คุณมีนักเรียนชำระเงินให้คุณแล้ว ตรวจสอบตารางเรียนของคุณได้ที่ตารางของฉัน',
+                    });
+                }
+
+                // 10 : ส่งข้อความไปในแชทรวม
+                const channelId = channelInfo.id;
+                const student = await this.userModel.findById(studentId).lean();
+
+                if (!channelId)
+                    throw new NotFoundException('ไม่พบข้อมูลแชทรวม');
+                if (!student)
+                    throw new NotFoundException('ไม่พบข้อมูลนักเรียน');
+                if (!slot) throw new NotFoundException('ไม่พบข้อมูลตารางเรียน');
+
+                const startLocal = dayjs.utc(slot.startTime).tz('Asia/Bangkok');
+                const endLocal = dayjs.utc(slot.endTime).tz('Asia/Bangkok');
+
+                await this.chatService.sendChatMessage({
+                    channelId,
+                    message: `[ชำระเงินสำเร็จ 💰]
+นักเรียน ${student.name} ${student.lastName} ได้ชำระเงินสำเร็จแล้ว ✨ 
+เวลาเรียน : ${startLocal.locale('th').format('DD/MM/YYYY HH:mm')} - ${endLocal.locale('th').format('DD/MM/YYYY HH:mm')}
+รายละเอียดตารางสอน : ${envConfig.frontEndUrl}/my-teacher-profile
+รายละเอียดตารางเรียน : ${envConfig.frontEndUrl}/profile
+`,
+                    senderUserId: studentId,
+                });
+
                 infoLog('BOOKING', 'ชำระตลาสเรียนด้วย BANK_TRANSFER สำเร็จ!');
             });
 
-            // 10 : ส่ง Queue สร้างห้องสำหรับ class เรียนเนื่องจากค่อนข้างใช้เวลา
+            // 11 : ส่ง Queue สร้างห้องสำหรับ class เรียนเนื่องจากค่อนข้างใช้เวลา
             await this.videoQueue.add(BullMQJob.CREATE_CALLROOM, {
                 bookingId: booking._id,
             });
