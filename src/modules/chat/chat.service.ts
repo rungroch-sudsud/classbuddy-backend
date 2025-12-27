@@ -14,7 +14,7 @@ export class ChatService {
     ) {}
 
     async onModuleInit() {
-    const chatClient = this.streamChatService.getClient();
+        const chatClient = this.streamChatService.getClient();
 
         await chatClient.updateChannelType('messaging', { reminders: true });
         const halfAnHour: number = 60 * 30;
@@ -69,10 +69,12 @@ export class ChatService {
         channelId,
         message,
         senderUserId,
+        metadata,
     }: {
         channelId: string;
         message: string;
         senderUserId: string;
+        metadata?: Record<string, any>;
     }): Promise<void> {
         const client = this.streamChatService.getClient();
         const channel = client.channel('messaging', channelId);
@@ -80,11 +82,14 @@ export class ChatService {
         const sender = await this.userModel.findById(senderUserId).lean();
         if (!sender) throw new NotFoundException('ไม่พบผู้ใช้งานดังกล่าว');
 
-        const formattedMessage: Message = {
+        let formattedMessage: Message & {metadata?: Record<string, any>} = {
             text: message,
             user_id: senderUserId,
-            // user: { id: senderUserId, image: senderProfileImage, name : sender.},
         };
+
+        if (metadata){
+            formattedMessage.metadata = metadata;
+        }
 
         await channel.sendMessage(formattedMessage);
     }
