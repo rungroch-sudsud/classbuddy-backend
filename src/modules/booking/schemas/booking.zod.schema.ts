@@ -16,7 +16,7 @@ export const CreateBookingSchema = z.object({
             /^([01]\d|2[0-3]):([0-5]\d)$/,
             'กรุณาเลือกเวลาสิ้นสุดที่ถูกต้อง',
         ),
-    teacherId: z.string('กรุณาเลือกครู'),
+    teacherUserId: z.string('กรุณาเลือกครู'),
 });
 
 export class CreateBookingDto extends createZodDto(CreateBookingSchema) {}

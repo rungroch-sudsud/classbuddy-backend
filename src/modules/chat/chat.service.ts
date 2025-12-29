@@ -1,7 +1,11 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
-import { infoLog } from 'src/shared/utils/shared.util';
+import {
+    errorLog,
+    getErrorMessage,
+    infoLog,
+} from 'src/shared/utils/shared.util';
 import { Message } from 'stream-chat';
 import { User } from '../users/schemas/user.schema';
 import { StreamChatService } from './stream-chat.service';
@@ -59,15 +63,26 @@ export class ChatService {
             );
         }
 
-        channel = client.channel('messaging', channelId, {
-            members: [studentId, teacherId],
-            created_by_id: studentId,
-        });
+        try {
+            channel = client.channel('messaging', channelId, {
+                members: [studentId, teacherId],
+                created_by_id: studentId,
+            });
 
-        console.log(`[GETSTREAM] Created new chat channel: ${channelId}`);
-        await channel.create();
+            console.log(`[GETSTREAM] Created new chat channel: ${channelId}`);
+            await channel.create();
 
-        return channel;
+            return channel;
+        } catch (error: unknown) {
+            const errorMessage = getErrorMessage(error);
+
+            errorLog(
+                'CHAT SERVICE',
+                `ล้มเหลวระหว่างสร้างห้องแชท -> ${errorMessage}`,
+            );
+
+            throw new Error(errorMessage);
+        }
     }
 
     async sendChatMessage({

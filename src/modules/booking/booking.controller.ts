@@ -1,11 +1,4 @@
-import {
-    Body,
-    Controller,
-    Get,
-    Param,
-    Post,
-    UseGuards
-} from '@nestjs/common';
+import { Body, Controller, Get, Param, Post, UseGuards } from '@nestjs/common';
 import {
     ApiBearerAuth,
     ApiOperation,
@@ -18,31 +11,24 @@ import { JwtGuard } from '../auth/guard/auth.guard';
 import { BookingService } from './booking.service';
 import { CreateBookingDto } from './schemas/booking.zod.schema';
 
-
 @ApiTags('Booking')
 @ApiBearerAuth()
 @Controller('booking')
 @UseGuards(JwtGuard)
 export class BookingController {
-    constructor(private readonly bookingService: BookingService) { }
+    constructor(private readonly bookingService: BookingService) {}
 
-    @Post(':slotId')
+    @Post('ask-confirmation')
     @ApiParam({
-        name: 'slotId',
-        description: 'slot id ที่ต้องการจอง',
-    })
-    @ApiQuery({
-        name: 'method',
-        required: false,
-        type: String,
-        description: 'มี 2 method คือ 1. omise 2. wallet default จะเป็น omise',
+        name: 'body',
+        description: 'body ที่ต้องการจอง',
     })
     @UseGuards(JwtGuard)
-    async createBookingSlot(
+    async askForBookingConfirmation(
         @CurrentUser() studentId: string,
         @Body() body: CreateBookingDto,
     ) {
-        const booking = await this.bookingService.createBookingSlot(
+        const booking = await this.bookingService.askForBookingConfirmation(
             studentId,
             body,
         );

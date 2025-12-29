@@ -3,6 +3,7 @@ import dayjs from 'dayjs';
 import { MongoServerError } from 'mongodb';
 import mongoose, { Types } from 'mongoose';
 import { envConfig } from 'src/configs/env.config';
+import { ErrorFromResponse } from 'stream-chat';
 
 function isErrorObject(error: unknown): error is Error {
     return error instanceof Error;
@@ -24,6 +25,10 @@ export function getErrorMessage(
     if (isMongoServerError(error)) {
         console.error(`[ERROR] : ${error.message}`);
         return defaultErrorMessage;
+    }
+
+    if (error instanceof ErrorFromResponse) {
+        return error.message;
     }
 
     return error.message;
