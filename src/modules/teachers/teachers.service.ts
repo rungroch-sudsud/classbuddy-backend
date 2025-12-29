@@ -10,13 +10,16 @@ import { FilterQuery, Model, Types } from 'mongoose';
 import { S3Service } from 'src/infra/s3/s3.service';
 import { Teacher, TeacherDocument } from './schemas/teacher.schema';
 // import { , reviewTeacherDto, UpdateTeacherDto } from './schemas/teacher.zod.schema';
+import { envConfig } from 'src/configs/env.config';
+import { SmsMessageBuilder } from 'src/infra/sms/builders/sms-builder.builder';
+import { SmsService } from 'src/infra/sms/sms.service';
 import {
     createObjectId,
     errorLog,
     getErrorMessage,
-    infoLog,
 } from 'src/shared/utils/shared.util';
 import { StreamChatService } from '../chat/stream-chat.service';
+import { VideoService } from '../chat/video.service';
 import { PaymentDocument } from '../payments/schemas/payment.schema';
 import { PayoutLog } from '../payments/schemas/payout.schema';
 import { Wallet } from '../payments/schemas/wallet.schema';
@@ -32,10 +35,6 @@ import {
     PaymentHistoryResponseDto,
     ReviewResponseDto,
 } from './dto/teacher.response.zod';
-import { SmsService } from 'src/infra/sms/sms.service';
-import { SmsMessageBuilder } from 'src/infra/sms/builders/sms-builder.builder';
-import { envConfig } from 'src/configs/env.config';
-import { VideoService } from '../chat/video.service';
 
 @Injectable()
 export class TeachersService {
@@ -269,6 +268,16 @@ export class TeachersService {
             this.teacherModel.countDocuments(query),
         ]);
 
+        const teacherUserIds = teachers.map((teacher) =>
+            teacher.userId?._id?.toString(),
+        );
+
+        const streamChatUsers = await this.streamChatService.getAllUsers({
+            id: {
+                $in: teacherUserIds,
+            },
+        });
+
         const teachersWithStats = await Promise.all(
             teachers.map(async (teacher: any) => {
                 const userId = teacher.userId?._id ?? null;
@@ -277,6 +286,12 @@ export class TeachersService {
                 const isOnline = userId
                     ? this.socketService.isOnline(userId.toString())
                     : false;
+                const teacherStreamUser = streamChatUsers.find(
+                    (streamUser) => streamUser.id === userId?.toString(),
+                );
+                const avgReplySeconds =
+                    teacherStreamUser?.avg_response_time ?? 0;
+                const avgReplyMinutes = Math.round(avgReplySeconds / 60);
 
                 return {
                     ...teacher,
@@ -284,6 +299,7 @@ export class TeachersService {
                     profileImage,
                     isVerified,
                     isOnline,
+                    avgReplyMinutes,
                 };
             }),
         );

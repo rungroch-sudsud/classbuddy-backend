@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { StreamClient } from '@stream-io/node-sdk';
-import { StreamChat } from 'stream-chat';
+import { StreamChat, UserFilters } from 'stream-chat';
 
 @Injectable()
 export class StreamChatService {
@@ -21,6 +21,12 @@ export class StreamChatService {
 
     getVideoClient() {
         return this.videoClient;
+    }
+
+    async getAllUsers(filters: UserFilters = {}) {
+        const { users } = await this.client.queryUsers(filters);
+
+        return users;
     }
 
     async upsertUser(user: { id: string; name?: string; image?: string }) {
