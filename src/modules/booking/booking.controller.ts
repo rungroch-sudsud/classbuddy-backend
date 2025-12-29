@@ -74,6 +74,16 @@ export class BookingController {
         };
     }
 
+    @Get('mine/included')
+    async getAnyBookingHavingMyUserId(@CurrentUser() userId: string) {
+        const data = await this.bookingService.getAnyBookingHavingMyUserId(userId);
+
+        return {
+            message: 'ดึงตารางที่มี id ของฉันเกียวข้องสำเร็จ',
+            data: data,
+        };
+    }
+
     @ApiOperation({ summary: 'ดึงตารางเรียนของฉันที่ผ่านมา' })
     @Get('history')
     async getHistoryBookingMine(@CurrentUser() userId: string) {

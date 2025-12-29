@@ -553,6 +553,80 @@ export class BookingService {
         );
     }
 
+    async getAnyBookingHavingMyUserId(
+        userId: string,
+    ): Promise<MySlotResponse[]> {
+        const currentUserTeacher = await this.teacherModel
+            .findOne({ userId: createObjectId(userId) })
+            .lean();
+        if (!currentUserTeacher)
+            throw new NotFoundException('ไม่พบข้อมูลครูดังกล่าว');
+
+        const bookings = await this.bookingModel
+            .find({
+                $or: [
+                    { studentId: createObjectId(userId) },
+                    { teacherId: currentUserTeacher._id },
+                ],
+            })
+            .populate('subject', '_id name')
+            .populate({
+                path: 'teacherId',
+                select: 'name lastName verifyStatus userId',
+                populate: {
+                    path: 'userId',
+                    select: 'profileImage',
+                },
+            })
+            .lean<any>();
+
+        const sorted = bookings.sort((a, b) => {
+            const statusOrder = { paid: 0, pending: 1 };
+            const statusA = statusOrder[a.status] ?? 99;
+            const statusB = statusOrder[b.status] ?? 99;
+
+            if (statusA !== statusB) return statusA - statusB;
+            return (
+                new Date(a.startTime).getTime() -
+                new Date(b.startTime).getTime()
+            );
+        });
+
+        console.log('sorted', sorted);
+
+        return sorted.map(
+            ({ teacherId, startTime, endTime, date, paidAt, ...rest }) => {
+                const teacher: any = teacherId;
+                const startLocal = dayjs.utc(startTime).tz('Asia/Bangkok');
+                const endLocal = dayjs.utc(endTime).tz('Asia/Bangkok');
+
+                const dateDisplay = dayjs(startLocal)
+                    .locale('th')
+                    .format('D MMMM YYYY');
+                const start = startLocal.format('HH:mm');
+                const end = endLocal.format('HH:mm');
+                const paidAtDisplay = paidAt
+                    ? dayjs(paidAt).locale('th').format('D MMMM YYYY')
+                    : null;
+
+                return {
+                    ...rest,
+                    date: dateDisplay,
+                    startTime: start,
+                    endTime: end,
+                    paidAt: paidAtDisplay,
+                    teacher: {
+                        _id: teacher?._id,
+                        name: teacher?.name,
+                        lastName: teacher?.lastName,
+                        verifyStatus: teacher?.verifyStatus,
+                        profileImage: teacher?.userId?.profileImage ?? null,
+                    },
+                };
+            },
+        );
+    }
+
     async getBookingById(
         bookingId: string,
         userId: string,
