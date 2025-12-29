@@ -1,4 +1,12 @@
-import { Body, Controller, Get, Param, Post, UseGuards } from '@nestjs/common';
+import {
+    Body,
+    Controller,
+    Get,
+    Param,
+    Patch,
+    Post,
+    UseGuards,
+} from '@nestjs/common';
 import {
     ApiBearerAuth,
     ApiOperation,
@@ -36,6 +44,24 @@ export class BookingController {
         return {
             message: 'จองตารางเรียนสำเร็จ',
             data: booking,
+        };
+    }
+
+    @Patch(':bookingId/cancel')
+    @ApiParam({
+        name: 'bookingId',
+        description: 'bookingId ที่ต้องการยกเลิก',
+    })
+    @UseGuards(JwtGuard)
+    async cancelBooking(
+        @Param('bookingId') bookingId: string,
+        @CurrentUser() currentUserId: string,
+    ) {
+        await this.bookingService.cancelBooking(bookingId, currentUserId);
+
+        return {
+            message: 'ยกเลิกการจองสำเร็จ',
+            data: null,
         };
     }
 

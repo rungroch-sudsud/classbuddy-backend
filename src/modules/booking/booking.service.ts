@@ -5,6 +5,7 @@ import {
     Injectable,
     InternalServerErrorException,
     NotFoundException,
+    UnauthorizedException,
 } from '@nestjs/common';
 import { InjectConnection, InjectModel } from '@nestjs/mongoose';
 import { Queue } from 'bullmq';
@@ -123,6 +124,8 @@ export class BookingService {
         const hasOverlap = await this.bookingModel.exists({
             teacherId,
             date,
+            // : นักเรียนคนเดียวกัน ต้องไม่สามารถส่งคำจองเวลาเดียวกันได้ (ไม่สามารถส่งคำขอซ้ำได้)
+            // : นักเรียน ที่ต่างกัน สามารถขอจองเวลาเดียวกันได้ เพราะต้องรอครูยืนยัน
             studentId,
             $or: [
                 {
@@ -130,6 +133,8 @@ export class BookingService {
                     endTime: { $gt: startDate },
                 },
             ],
+            // : นักเรียนต้องสามารถจองเวลาเดิมได้ หากคุณครูได้ทำการยกเลิก เวลานั้นไปแล้ว
+            status: { $nin: ['canceled', 'expired'] },
         });
 
         return Boolean(hasOverlap);
@@ -409,7 +414,8 @@ export class BookingService {
                     { session },
                 );
             });
-            // 3 : สร้าง Queue เช็คว่าจ่าย booking แล้วหรือยัง
+
+            // 3 : ส่งข้อความเข้าไปในแชท ให้นักเรียนกด จ่ายเงิน
         } catch (error: unknown) {
             const errorMessage = getErrorMessage(error);
 
@@ -421,6 +427,66 @@ export class BookingService {
             throw error;
         } finally {
             await session.endSession();
+        }
+    }
+
+    async cancelBooking(bookingId: string, currentUserId: string) {
+        try {
+            // 1 : เช็คว่าครูมีสิทธ์ ยกเลิก booking นี้หรือไม่
+            const teacher = await this.teacherModel
+                .findOne({ userId: createObjectId(currentUserId) })
+                .lean();
+
+            if (!teacher) throw new NotFoundException('ไม่พบข้อมูลครูดังกล่าว');
+
+            const booking = await this.bookingModel.findById(bookingId);
+            if (!booking) throw new NotFoundException('ไม่พบข้อมูลการจอง');
+
+            if (booking.teacherId.toString() !== teacher._id.toString())
+                throw new UnauthorizedException(
+                    'คุณไม่มีสิทธิ์ยกเลิกการจองนี้',
+                );
+
+            if (booking.status !== 'teacher_confirm_pending')
+                throw new BadRequestException(
+                    'สถานะไม่ถูกต้องสำหรับการยกเลิกการจอง',
+                );
+
+            // 2 : ปรับสถานะ Booking
+            booking.status = 'canceled';
+            await booking.save();
+
+            // 3 : ส่งข้อความลงไปในแชทรวม
+            const channel = await this.chatService.createOrGetChannel(
+                booking.studentId.toString(),
+                teacher.userId.toString(),
+            );
+
+            const channelId = channel.id;
+
+            if (!channelId)
+                throw new InternalServerErrorException(
+                    'ล้มเหลวระหว่างการสร้างบทสนทนา',
+                );
+
+            await this.chatService.sendChatMessage({
+                channelId,
+                message: `
+[ยกเลิกการจอง] : คุณครูได้ทำการยกเลิกการจอง รหัส ${bookingId} เรียบร้อยแล้ว
+`,
+                senderUserId: teacher.userId.toString(),
+            });
+
+            // 4 : ส่ง notifcation ไปหานักเรียน
+
+            // 5 : ส่ง notification ไปหาคุณครู
+        } catch (error: unknown) {
+            const errorMessage = getErrorMessage(error);
+            errorLog(
+                'BOOKING',
+                `ล้มเหลวระหว่างยกเลิกการจอง Booking โดยใช้ cancelBooking -> ${errorMessage}`,
+            );
+            throw error;
         }
     }
 

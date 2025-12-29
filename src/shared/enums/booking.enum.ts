@@ -1,5 +1,5 @@
 export const BookingStatusList = [
-    'pending',
+    'pending', // : กำลังจ่ายเงินอยู่
     'available',
     'paid',
     'studied',
