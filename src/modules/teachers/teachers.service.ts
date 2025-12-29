@@ -273,7 +273,7 @@ export class TeachersService {
             teachers.map(async (teacher: any) => {
                 const userId = teacher.userId?._id ?? null;
                 const profileImage = teacher.userId?.profileImage ?? null;
-
+                const isVerified = teacher.verifyStatus === 'verified';
                 const isOnline = userId
                     ? this.socketService.isOnline(userId.toString())
                     : false;
@@ -282,6 +282,7 @@ export class TeachersService {
                     ...teacher,
                     userId,
                     profileImage,
+                    isVerified,
                     isOnline,
                 };
             }),
