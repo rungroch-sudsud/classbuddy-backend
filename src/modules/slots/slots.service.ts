@@ -25,6 +25,7 @@ import {
     SingleSlotDto,
     WeeklyRecurringSlotDto,
 } from './schemas/slot.zod.schema';
+import { createObjectId } from 'src/shared/utils/shared.util';
 
 dayjs.extend(utc);
 dayjs.extend(timezone);
@@ -43,6 +44,28 @@ export class SlotsService {
         @InjectConnection() private readonly connection: Connection,
         private readonly socketService: SocketService,
     ) {}
+
+    async hasOverlapSlots(
+        teacherId: string,
+        date: string,
+        endDate: Date,
+        startDate: Date,
+    ): Promise<boolean> {
+        const teacherObjId = createObjectId(teacherId);
+
+        const overlap = await this.slotModel.exists({
+            teacherId: teacherObjId,
+            date: date,
+            $or: [
+                {
+                    startTime: { $lt: endDate },
+                    endTime: { $gt: startDate },
+                },
+            ],
+        });
+
+        return Boolean(overlap);
+    }
 
     async createSlots(
         teacherId: string,
@@ -98,18 +121,14 @@ export class SlotsService {
             const startDateObj = startTime.toDate();
             const endDateObj = endTime.toDate();
 
-            const overlap = await this.slotModel.exists({
-                teacherId: teacherObjId,
-                date: body.date,
-                $or: [
-                    {
-                        startTime: { $lt: endDateObj },
-                        endTime: { $gt: startDateObj },
-                    },
-                ],
-            });
+            const hasOverlap = await this.hasOverlapSlots(
+                teacherObjId.toString(),
+                body.date,
+                endDateObj,
+                startDateObj,
+            );
 
-            if (overlap)
+            if (hasOverlap)
                 throw new BadRequestException('ไม่สามารถสร้างเวลาซ้ำได้');
 
             const durationHours =
@@ -173,18 +192,14 @@ export class SlotsService {
                 const startDateObj = startTime.toDate();
                 const endDateObj = endTime.toDate();
 
-                const overlap = await this.slotModel.exists({
-                    teacherId: teacherObjId,
-                    date: currentDate.format('YYYY-MM-DD'),
-                    $or: [
-                        {
-                            startTime: { $lt: endDateObj },
-                            endTime: { $gt: startDateObj },
-                        },
-                    ],
-                });
+                const hasOverlap = await this.hasOverlapSlots(
+                    teacherObjId.toString(),
+                    currentDate.format('YYYY-MM-DD'),
+                    endDateObj,
+                    startDateObj,
+                );
 
-                if (overlap)
+                if (hasOverlap)
                     throw new BadRequestException('ไม่สามารถสร้างเวลาซ้ำได้');
 
                 const durationHours =
@@ -249,15 +264,14 @@ export class SlotsService {
                 const startDateObj = startTime.toDate();
                 const endDateObj = endTime.toDate();
 
-                const overlap = await this.slotModel.exists({
-                    teacherId: teacherObjId,
-                    date: currentDate.format('YYYY-MM-DD'),
-                    $and: [
-                        { startTime: { $lt: endDateObj } },
-                        { endTime: { $gt: startDateObj } },
-                    ],
-                });
-                if (overlap) continue;
+                const hasOverlap = await this.hasOverlapSlots(
+                    teacherObjId.toString(),
+                    currentDate.format('YYYY-MM-DD'),
+                    endDateObj,
+                    startDateObj,
+                );
+
+                if (hasOverlap) continue;
 
                 const durationHours =
                     (endDateObj.getTime() - startDateObj.getTime()) /

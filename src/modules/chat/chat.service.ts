@@ -52,6 +52,8 @@ export class ChatService {
             console.log(
                 `[GETSTREAM] Channel not found → creating new one: ${channelId}`,
             );
+
+            throw err;
         }
 
         channel = client.channel('messaging', channelId, {
@@ -82,12 +84,12 @@ export class ChatService {
         const sender = await this.userModel.findById(senderUserId).lean();
         if (!sender) throw new NotFoundException('ไม่พบผู้ใช้งานดังกล่าว');
 
-        let formattedMessage: Message & {metadata?: Record<string, any>} = {
+        let formattedMessage: Message & { metadata?: Record<string, any> } = {
             text: message,
             user_id: senderUserId,
         };
 
-        if (metadata){
+        if (metadata) {
             formattedMessage.metadata = metadata;
         }
 

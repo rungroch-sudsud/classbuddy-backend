@@ -1,13 +1,25 @@
 import { createZodDto } from 'nestjs-zod';
 import { z } from 'zod';
 
-
 export const CreateBookingSchema = z.object({
     subject: z.string().regex(/^[0-9a-fA-F]{24}$/, 'รหัสวิชาไม่ถูกต้อง'),
-})
+    date: z.string('กรุณาเลือกวันที่ต้องการเรียน'),
+    startTime: z
+        .string()
+        .regex(
+            /^([01]\d|2[0-3]):([0-5]\d)$/,
+            'กรุณาเลือกเวลาเริ่มต้นที่ถูกต้อง',
+        ),
+    endTime: z
+        .string()
+        .regex(
+            /^([01]\d|2[0-3]):([0-5]\d)$/,
+            'กรุณาเลือกเวลาสิ้นสุดที่ถูกต้อง',
+        ),
+    teacherId: z.string('กรุณาเลือกครู'),
+});
 
-export class CreateBookingDto extends createZodDto(CreateBookingSchema) { }
-
+export class CreateBookingDto extends createZodDto(CreateBookingSchema) {}
 
 export const MySlotResponseSchema = z.object({
     _id: z.union([z.string(), z.any()]),
