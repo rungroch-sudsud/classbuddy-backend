@@ -11,7 +11,6 @@ import {
     ApiBearerAuth,
     ApiOperation,
     ApiParam,
-    ApiQuery,
     ApiTags,
 } from '@nestjs/swagger';
 import { CurrentUser } from 'src/shared/utils/currentUser';
@@ -66,8 +65,8 @@ export class BookingController {
     }
 
     @Get('mine')
-    async getMySlots(@CurrentUser() userId: string) {
-        const data = await this.bookingService.getMySlot(userId);
+    async getMyStudentBookings(@CurrentUser() userId: string) {
+        const data = await this.bookingService.getMyStudentBookings(userId);
 
         return {
             message: 'ดึงตารางเรียนของฉันสำเร็จ',

@@ -266,6 +266,7 @@ export class BookingService {
                         subjectName: subject.name,
                         studentId,
                         bookingId: createdBooking._id.toString(),
+                        teacherUserId: teacher.userId.toString(),
                     },
                 });
 
@@ -490,8 +491,8 @@ export class BookingService {
         }
     }
 
-    async getMySlot(userId: string): Promise<MySlotResponse[]> {
-        const bookings = (await this.bookingModel
+    async getMyStudentBookings(userId: string): Promise<MySlotResponse[]> {
+        const bookings = await this.bookingModel
             .find({
                 studentId: new Types.ObjectId(userId),
                 status: { $in: ['pending', 'paid'] },
@@ -505,7 +506,7 @@ export class BookingService {
                     select: 'profileImage',
                 },
             })
-            .lean()) as any;
+            .lean<any>();
 
         const sorted = bookings.sort((a, b) => {
             const statusOrder = { paid: 0, pending: 1 };
