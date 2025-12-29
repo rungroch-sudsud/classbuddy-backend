@@ -22,11 +22,16 @@ import { Slot } from '../slots/schemas/slot.schema';
 import { SlotsService } from '../slots/slots.service';
 import { Teacher } from '../teachers/schemas/teacher.schema';
 import { Booking } from './schemas/booking.schema';
-import { CreateBookingDto, MySlotResponse } from './schemas/booking.zod.schema';
+import {
+    ConfirmBookingDto,
+    CreateBookingDto,
+    MySlotResponse,
+} from './schemas/booking.zod.schema';
 import { User } from '../users/schemas/user.schema';
 import { NotificationsService } from '../notifications/notifications.service';
 import { SmsService } from 'src/infra/sms/sms.service';
 import { ChatService } from '../chat/chat.service';
+import { SubjectList } from '../subjects/schemas/subject.schema';
 
 @Injectable()
 export class BookingService {
@@ -36,6 +41,7 @@ export class BookingService {
         @InjectModel(User.name) private userModel: Model<User>,
         @InjectModel(Teacher.name) private teacherModel: Model<Teacher>,
         @InjectModel(Slot.name) private slotModel: Model<Slot>,
+        @InjectModel(SubjectList.name) private subjectList: Model<SubjectList>,
         @InjectConnection() private readonly connection: Connection,
         private readonly slotsService: SlotsService,
         private readonly notificationService: NotificationsService,
@@ -101,6 +107,34 @@ export class BookingService {
         return price;
     }
 
+    private async _hasOverlapBookings({
+        teacherId,
+        date,
+        studentId,
+        endDate,
+        startDate,
+    }: {
+        teacherId: Types.ObjectId;
+        date: string;
+        studentId: Types.ObjectId;
+        endDate: Date;
+        startDate: Date;
+    }) {
+        const hasOverlap = await this.bookingModel.exists({
+            teacherId,
+            date,
+            studentId,
+            $or: [
+                {
+                    startTime: { $lt: endDate },
+                    endTime: { $gt: startDate },
+                },
+            ],
+        });
+
+        return Boolean(hasOverlap);
+    }
+
     async askForBookingConfirmation(studentId: string, body: CreateBookingDto) {
         const studentObjId = createObjectId(studentId);
 
@@ -141,27 +175,60 @@ export class BookingService {
                 if (!teacher)
                     throw new NotFoundException('ไม่พบข้อมูลครูดังกล่าว');
 
-                // 1 : ตรวจสอบว่า slot นี้ถูกจองหรือไม่ว่างแล้ว
-                const hasOverlap = await this.slotsService.hasOverlapSlots(
-                    teacher._id.toString(),
-                    body.date,
-                    endDateObj,
-                    startDateObj,
-                );
+                // // 1 : ตรวจสอบว่า slot นี้ถูกจองหรือไม่ว่างแล้ว
+                // const hasOverlapSlots = await this.slotsService.hasOverlapSlots(
+                //     teacher._id.toString(),
+                //     body.date,
+                //     endDateObj,
+                //     startDateObj,
+                // );
 
-                // 2 : ถ้าไม่ว่างแล้วก็ให้ขึ้นเตือน user
-                if (hasOverlap)
+                // if (hasOverlapSlots)
+                //     throw new BadRequestException(
+                //         'เวลานี้ถูกจองหรือไม่ว่างแล้ว',
+                //     );
+
+                // 1 : ตรวจสอบว่าได้ส่ง คำขอ booking นี้ไปแล้วหรือไม่
+                const hasOverlapBookings = await this._hasOverlapBookings({
+                    teacherId: teacher._id,
+                    date: body.date,
+                    studentId: studentObjId,
+                    endDate: endDateObj,
+                    startDate: startDateObj,
+                });
+
+                if (hasOverlapBookings)
                     throw new BadRequestException(
-                        'เวลานี้ถูกจองหรือไม่ว่างแล้ว',
+                        'คุณได้ส่งคำขอ booking นี้ไปแล้ว',
                     );
 
-                // 3 : ส่งข้อความเข้าไปในแชท ให้ครูกด ยืนยันหรือไม่
-
+                // 2 : สร้าง Booking สำหรับคลาสนี้
                 const price = this._calculateBookingPrice(
                     teacher.hourlyRate,
                     startDateObj,
                     endDateObj,
                 );
+
+                const createdBooking = await this.bookingModel.insertOne(
+                    {
+                        studentId: studentObjId,
+                        teacherId: teacher._id,
+                        date: body.date,
+                        startTime: startDateObj,
+                        endTime: endDateObj,
+                        price,
+                        subject: body.subject,
+                        status: 'teacher_confirm_pending',
+                    },
+                    { session },
+                );
+
+                if (!createdBooking)
+                    throw new InternalServerErrorException(
+                        'สร้าง booking ไม่สำเร็จ',
+                    );
+
+                // 3 : ส่งข้อความเข้าไปในแชท ให้ครูกด ยืนยันหรือไม่
 
                 const channel = await this.chatService.createOrGetChannel(
                     studentId,
@@ -174,6 +241,12 @@ export class BookingService {
                         'ล้มเหลวระหว่างการสร้างบทสนทนา',
                     );
 
+                const subject = await this.subjectList
+                    .findById(body.subject)
+                    .lean();
+
+                if (!subject) throw new NotFoundException('ไม่พบวิชาดังกล่าว');
+
                 await this.chatService.sendChatMessage({
                     channelId,
                     message: '',
@@ -185,7 +258,9 @@ export class BookingService {
                         endTime: endTime.format('YYYY-MM-DD HH:mm'),
                         teacherId: teacher._id.toString(),
                         subjectId: body.subject,
+                        subjectName: subject.name,
                         studentId,
+                        bookingId: createdBooking._id.toString(),
                     },
                 });
 
@@ -254,36 +329,6 @@ export class BookingService {
 
                     hasNotifiedStudent = true;
                 }
-
-                // const createdSlot = await this.slotModel.insertOne(
-                //     {
-                //         teacherId: createObjectId(body.teacherId),
-                //         date: body.date,
-                //         startTime: startDateObj,
-                //         endTime: endDateObj,
-                //         price,
-                //         subject: subjectObjId,
-                //         status: 'available',
-                //         bookedBy: studentObjId,
-                //     },
-                //     { session },
-                // );
-
-                // // 4 : สร้าง booking ที่มีสถานะ teacher_confirm_pending และแนบ slotId ด้วย
-                // await this.bookingModel.insertOne(
-                //     {
-                //         studentId: studentObjId,
-                //         teacherId: teacherObjId,
-                //         slotId: createdSlot._id.toString(),
-                //         date: body.date,
-                //         startTime: startDateObj,
-                //         endTime: endDateObj,
-                //         price,
-                //         subject: subjectObjId,
-                //         status: 'teacher_confirm_pending',
-                //     },
-                //     { session },
-                // );
             });
         } catch (error: unknown) {
             const errorMessage = getErrorMessage(error);
@@ -291,6 +336,86 @@ export class BookingService {
             errorLog(
                 'BOOKING',
                 `ล้มเหลวระหว่างขอครูยืนยันการจอง Booking โดยใช้ askForBookingConfirmation -> ${errorMessage}`,
+            );
+
+            throw error;
+        } finally {
+            await session.endSession();
+        }
+    }
+
+    async confirmBooking(body: ConfirmBookingDto) {
+        const subjectObjId = createObjectId(body.subjectId);
+        const studentObjId = createObjectId(body.studentId);
+        const teacherObjId = createObjectId(body.teacherId);
+
+        const teacher = await this.teacherModel.findById(body.teacherId).lean();
+        if (!teacher) throw new NotFoundException('ไม่พบข้อมูลครูดังกล่าว');
+
+        const startDate = dayjs.tz(body.startDateTime, 'Asia/Bangkok').toDate();
+        const endDate = dayjs.tz(body.endDateTime, 'Asia/Bangkok').toDate();
+
+        const session = await this.connection.startSession();
+
+        try {
+            await session.withTransaction(async () => {
+                // 1 : เช็คว่า slot นี้ถูกจองแล้วหรือยัง
+                const hasOverlap = await this.slotsService.hasOverlapSlots(
+                    body.teacherId,
+                    body.date,
+                    endDate,
+                    startDate,
+                );
+
+                if (hasOverlap)
+                    throw new BadRequestException(
+                        'เวลานี้ถูกจองหรือไม่ว่างแล้ว',
+                    );
+
+                // 2 : สร้าง slot สำหรับคลาสเรียนนี้
+                const price = this._calculateBookingPrice(
+                    teacher.hourlyRate,
+                    startDate,
+                    endDate,
+                );
+
+                const createdSlot = await this.slotModel.insertOne(
+                    {
+                        teacherId: createObjectId(body.teacherId),
+                        date: body.date,
+                        startTime: body.startDateTime,
+                        endTime: body.endDateTime,
+                        price,
+                        subject: subjectObjId,
+                        status: 'pending',
+                        bookedBy: studentObjId,
+                    },
+                    { session },
+                );
+
+                // 2 : สร้าง booking ที่มีสถานะ teacher_confirm_pending และแนบ slotId ด้วย
+                await this.bookingModel.insertOne(
+                    {
+                        studentId: studentObjId,
+                        teacherId: teacherObjId,
+                        slotId: createdSlot._id.toString(),
+                        date: body.date,
+                        startTime: body.startDateTime,
+                        endTime: body.endDateTime,
+                        price,
+                        subject: subjectObjId,
+                        status: 'pending',
+                    },
+                    { session },
+                );
+            });
+            // 3 : สร้าง Queue เช็คว่าจ่าย booking แล้วหรือยัง
+        } catch (error: unknown) {
+            const errorMessage = getErrorMessage(error);
+
+            errorLog(
+                'BOOKING',
+                `ล้มเหลวระหว่างยืนยันการจอง Booking โดยใช้ confirmBooking -> ${errorMessage}`,
             );
 
             throw error;

@@ -21,6 +21,21 @@ export const CreateBookingSchema = z.object({
 
 export class CreateBookingDto extends createZodDto(CreateBookingSchema) {}
 
+export const ConfirmBookingSchema = z.object({
+    teacherId: z.string().regex(/^[0-9a-fA-F]{24}$/, 'รหัสครูไม่ถูกต้อง'),
+    date: z.string('กรุณาเลือกวันที่ต้องการเรียน'),
+    startDateTime: z
+        .string()
+        .datetime({ message: 'กรุณาเลือกเวลาเริ่มต้นที่ถูกต้อง' }),
+    endDateTime: z
+        .string()
+        .datetime({ message: 'กรุณาเลือกเวลาสิ้นสุดที่ถูกต้อง' }),
+    subjectId: z.string().regex(/^[0-9a-fA-F]{24}$/, 'รหัสวิชาไม่ถูกต้อง'),
+    studentId: z.string().regex(/^[0-9a-fA-F]{24}$/, 'รหัสนักเรียนไม่ถูกต้อง'),
+});
+
+export class ConfirmBookingDto extends createZodDto(ConfirmBookingSchema) {}
+
 export const MySlotResponseSchema = z.object({
     _id: z.union([z.string(), z.any()]),
     date: z.string(),

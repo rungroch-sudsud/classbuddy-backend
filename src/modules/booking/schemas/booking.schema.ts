@@ -22,7 +22,7 @@ export class Booking extends Document<Types.ObjectId> {
     })
     teacherId: Types.ObjectId;
 
-    @Prop({ type: String, required: true })
+    @Prop({ type: String, default : null })
     slotId: string;
 
     @Prop({ type: String })
