@@ -18,7 +18,11 @@ export class ChatService {
 
         await chatClient.updateChannelType('messaging', { reminders: true });
         const halfAnHour: number = 60 * 30;
-        await chatClient.updateAppSettings({ reminders_interval: halfAnHour });
+        
+        await chatClient.updateAppSettings({
+            reminders_interval: halfAnHour,
+            user_response_time_enabled: true,
+        });
 
         infoLog('CHAT SERVICE', 'Enable reminders for all channels');
     }
