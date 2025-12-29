@@ -24,6 +24,8 @@ import { User } from '../users/schemas/user.schema';
 import { Payment, PaymentStatus } from './schemas/payment.schema';
 import { PayoutLog } from './schemas/payout.schema';
 import { Wallet } from './schemas/wallet.schema';
+import { SocketService } from '../socket/socket.service';
+import { SocketEvent } from 'src/shared/enums/socket.enum';
 
 const Omise = require('omise');
 
@@ -46,6 +48,7 @@ export class WebhookService {
         private readonly chatService: ChatService,
         private readonly videoService: VideoService,
         private readonly emailService: EmailService,
+        private readonly socketService: SocketService,
     ) {
         const secretKey = process.env.OMISE_SECRET_KEY;
         const publicKey = process.env.OMISE_PUBLIC_KEY;
@@ -441,6 +444,11 @@ export class WebhookService {
 
                 hasAlreadyNotified = true;
             }
+
+            this.socketService.emit(SocketEvent.NEW_MESSAGE, {
+                receiverUserId,
+                senderUserId,
+            });
 
             // if (receiverEmail) {
             //     const sendEmailPayload: SendEmailPayload = {

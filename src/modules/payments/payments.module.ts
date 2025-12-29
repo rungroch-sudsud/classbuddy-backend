@@ -7,14 +7,17 @@ import { EmailModule } from 'src/infra/email/email.module';
 import { SmsService } from 'src/infra/sms/sms.service';
 import { Booking, BookingSchema } from '../booking/schemas/booking.schema';
 import { ChatModule } from '../chat/chat.module';
+import { VideoProcessor } from '../chat/processors/video.processor';
 import { NotificationsModule } from '../notifications/notifications.module';
 import {
     Notification,
     NotificationSchema,
 } from '../notifications/schema/notification';
 import { Slot, SlotSchema } from '../slots/schemas/slot.schema';
+import { SocketModule } from '../socket/socket.module';
 import { Teacher, TeacherSchema } from '../teachers/schemas/teacher.schema';
 import { User, UserSchema } from '../users/schemas/user.schema';
+import { EasySlipService } from './easy-slip.service';
 import { PaymentsController } from './payments.controller';
 import { PaymentsService } from './payments.service';
 import { PayoutProcessor } from './processors/payout.processor';
@@ -22,14 +25,12 @@ import { PayoutScheduler } from './processors/payout.scheduler';
 import { Payment, PaymentSchema } from './schemas/payment.schema';
 import { PayoutLog, PayoutLogSchema } from './schemas/payout.schema';
 import { Wallet, WalletSchema } from './schemas/wallet.schema';
-import { WebhookController } from './webhook.controller';
-import { WebhookService } from './webhook.service';
-import { VideoProcessor } from '../chat/processors/video.processor';
-import { WalletStrategy } from './strategies/wallet.strategy';
+import { BankTransferStrategy } from './strategies/bank-transfer.strategy';
 import { PaymentStrategyFactory } from './strategies/payment-strategy.factory';
 import { PaymentStrategy } from './strategies/payment-strategy.interface';
-import { EasySlipService } from './easy-slip.service';
-import { BankTransferStrategy } from './strategies/bank-transfer.strategy';
+import { WalletStrategy } from './strategies/wallet.strategy';
+import { WebhookController } from './webhook.controller';
+import { WebhookService } from './webhook.service';
 
 @Module({
     imports: [
@@ -38,6 +39,7 @@ import { BankTransferStrategy } from './strategies/bank-transfer.strategy';
         ChatModule,
         NotificationsModule,
         EmailModule,
+        SocketModule,
         MongooseModule.forFeature([
             { name: Wallet.name, schema: WalletSchema },
             { name: Payment.name, schema: PaymentSchema },
