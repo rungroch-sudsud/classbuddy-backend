@@ -18,7 +18,7 @@ export class ChatService {
 
         await chatClient.updateChannelType('messaging', { reminders: true });
         const halfAnHour: number = 60 * 30;
-        
+
         await chatClient.updateAppSettings({
             reminders_interval: halfAnHour,
             user_response_time_enabled: true,
@@ -57,8 +57,6 @@ export class ChatService {
             console.log(
                 `[GETSTREAM] Channel not found → creating new one: ${channelId}`,
             );
-
-            throw err;
         }
 
         channel = client.channel('messaging', channelId, {
