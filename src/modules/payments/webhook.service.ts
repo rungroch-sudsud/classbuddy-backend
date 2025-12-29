@@ -9,8 +9,9 @@ import { InjectConnection, InjectModel } from '@nestjs/mongoose';
 import { Connection, Model, Types } from 'mongoose';
 import { envConfig } from 'src/configs/env.config';
 import { EmailService } from 'src/infra/email/email.service';
-import { EmailTemplateID, SendEmailPayload } from 'src/infra/email/email.type';
+import { EmailTemplateID } from 'src/infra/email/email.type';
 import { SmsService } from 'src/infra/sms/sms.service';
+import { createObjectId, infoLog } from 'src/shared/utils/shared.util';
 import { Role } from '../auth/role/role.enum';
 import { Booking } from '../booking/schemas/booking.schema';
 import { ChatService } from '../chat/chat.service';
@@ -23,8 +24,6 @@ import { User } from '../users/schemas/user.schema';
 import { Payment, PaymentStatus } from './schemas/payment.schema';
 import { PayoutLog } from './schemas/payout.schema';
 import { Wallet } from './schemas/wallet.schema';
-import { MemberResponse } from '@stream-io/node-sdk';
-import { createObjectId, infoLog } from 'src/shared/utils/shared.util';
 
 const Omise = require('omise');
 

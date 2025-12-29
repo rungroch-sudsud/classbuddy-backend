@@ -18,7 +18,11 @@ export class ChatService {
 
         await chatClient.updateChannelType('messaging', { reminders: true });
         const halfAnHour: number = 60 * 30;
-        await chatClient.updateAppSettings({ reminders_interval: halfAnHour });
+        
+        await chatClient.updateAppSettings({
+            reminders_interval: halfAnHour,
+            user_response_time_enabled: true,
+        });
 
         infoLog('CHAT SERVICE', 'Enable reminders for all channels');
     }
@@ -42,6 +46,7 @@ export class ChatService {
 
         try {
             const state = await channel.query({});
+
             if (state?.channel?.id) {
                 console.log(
                     `[GETSTREAM] Found existing chat channel: ${channelId}`,
