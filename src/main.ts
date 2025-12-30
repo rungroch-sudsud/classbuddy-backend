@@ -4,6 +4,7 @@ import { AppModule } from './app.module';
 import { envConfig } from './configs/env.config';
 import { setupSwagger } from './infra/docs/swagger.config';
 import { ZodValidationPipe } from './shared/validators/zod.validation.pipe';
+import { VERSION_NEUTRAL, VersioningType } from '@nestjs/common';
 
 async function bootstrap() {
     try {
@@ -17,6 +18,11 @@ async function bootstrap() {
 
         app.use(json({ limit: '100mb' }));
         app.use(urlencoded({ extended: true, limit: '100mb' }));
+
+        app.enableVersioning({
+            type: VersioningType.URI,
+            defaultVersion: VERSION_NEUTRAL,
+        });
 
         setupSwagger(app);
         app.useGlobalPipes(new ZodValidationPipe());

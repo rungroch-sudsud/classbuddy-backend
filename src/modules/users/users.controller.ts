@@ -7,6 +7,7 @@ import {
     Post,
     UploadedFile,
     UseGuards,
+    Version,
 } from '@nestjs/common';
 import { ApiBearerAuth, ApiBody, ApiConsumes, ApiTags } from '@nestjs/swagger';
 import { UploadFileDto } from 'src/shared/docs/upload.file.docs';
@@ -19,7 +20,7 @@ import { SyncPushTokenDto } from './dto/sync-push-token.dto';
 
 @ApiTags('Users')
 @ApiBearerAuth()
-@Controller('users')
+@Controller({ path: 'users' })
 export class UsersController {
     constructor(private readonly usersService: UsersService) {}
 
