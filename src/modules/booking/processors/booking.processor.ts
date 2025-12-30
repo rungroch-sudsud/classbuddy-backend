@@ -133,14 +133,6 @@ export class BookingProcessor extends WorkerHost {
                     return { success: true };
                 }
 
-                // if (totalParticipants > totalMembers) {
-                //     errorLog(
-                //         logEntity,
-                //         'totalParticipants ไม่ควรจะเกิน totalMembers ได้ (DEV ATTENTION)',
-                //     );
-                //     return { success: false };
-                // }
-
                 const teacher = await this.teacherModel
                     .findById(booking.teacherId)
                     .lean();

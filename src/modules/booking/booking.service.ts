@@ -93,8 +93,13 @@ export class BookingService {
         const secondsUntilClassEnds =
             dayjs(booking.endTime).unix() - now.unix();
 
+        const additionalWrapUpSeconds = 10 * 60; // : เวลาสำหรับ wrapup 10 นาที
+
+        const totalSecondsToEndCall =
+            secondsUntilClassEnds + additionalWrapUpSeconds;
+
         await this.bookingQueue.add(BullMQJob.END_CALL, booking, {
-            delay: secondsToMilliseconds(secondsUntilClassEnds),
+            delay: secondsToMilliseconds(totalSecondsToEndCall),
         });
     }
 
