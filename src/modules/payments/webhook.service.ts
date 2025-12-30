@@ -19,13 +19,12 @@ import { StreamChatService } from '../chat/stream-chat.service';
 import { VideoService } from '../chat/video.service';
 import { NotificationsService } from '../notifications/notifications.service';
 import { Slot } from '../slots/schemas/slot.schema';
+import { SocketService } from '../socket/socket.service';
 import { Teacher } from '../teachers/schemas/teacher.schema';
 import { User } from '../users/schemas/user.schema';
 import { Payment, PaymentStatus } from './schemas/payment.schema';
 import { PayoutLog } from './schemas/payout.schema';
 import { Wallet } from './schemas/wallet.schema';
-import { SocketService } from '../socket/socket.service';
-import { SocketEvent } from 'src/shared/enums/socket.enum';
 
 const Omise = require('omise');
 
@@ -444,11 +443,6 @@ export class WebhookService {
 
                 hasAlreadyNotified = true;
             }
-
-            this.socketService.emit(SocketEvent.NEW_MESSAGE, {
-                receiverUserId,
-                senderUserId,
-            });
 
             // if (receiverEmail) {
             //     const sendEmailPayload: SendEmailPayload = {

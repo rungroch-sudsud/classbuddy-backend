@@ -21,6 +21,8 @@ import {
 import { PayoutLog } from './schemas/payout.schema';
 import { Wallet } from './schemas/wallet.schema';
 import { PaymentStrategyFactory } from './strategies/payment-strategy.factory';
+import { SocketService } from '../socket/socket.service';
+import { SocketEvent } from 'src/shared/enums/socket.enum';
 
 const Omise = require('omise');
 
@@ -39,6 +41,7 @@ export class PaymentsService {
         @InjectQueue('payout') private PayoutQueue: Queue,
         private readonly strategyFactory: PaymentStrategyFactory,
         private readonly smsService: SmsService,
+        private readonly socketService: SocketService,
     ) {
         const secretKey = process.env.OMISE_SECRET_KEY;
         const publicKey = process.env.OMISE_PUBLIC_KEY;
@@ -264,7 +267,20 @@ export class PaymentsService {
     ): Promise<void> {
         const paymentStrategy = this.strategyFactory.getStrategy(method);
 
+        const booking = await this.bookingModel.findById(bookingId).lean();
+        if (!booking) throw new NotFoundException('ไม่พบข้อมูลการจอง');
+
+        const teacher = await this.teacherModel
+            .findById(booking.teacherId)
+            .lean();
+        if (!teacher) throw new NotFoundException('ไม่พบข้อมูลครู');
+
         await paymentStrategy.pay({ bookingId, currentUserId, receiptFile });
+
+        this.socketService.emit(SocketEvent.BOOKING_PAID, {
+            teacherUserId: teacher.userId.toString(),
+            studentId: booking.studentId.toString(),
+        });
 
         if (isProductionEnv()) {
             await this.smsService.sendSms(

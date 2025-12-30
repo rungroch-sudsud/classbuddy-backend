@@ -46,6 +46,20 @@ export class BookingController {
         };
     }
 
+    @Patch(':bookingId/confirm')
+    @UseGuards(JwtGuard)
+    async confirmBooking(
+        @CurrentUser() studentId: string,
+        @Param('bookingId') bookingId: string,
+    ) {
+        const updatedBooking = await this.bookingService.confirmBooking(bookingId);
+
+        return {
+            message: 'จองตารางเรียนสำเร็จ',
+            data: updatedBooking,
+        };
+    }
+
     @Patch(':bookingId/cancel')
     @ApiParam({
         name: 'bookingId',
@@ -76,7 +90,8 @@ export class BookingController {
 
     @Get('mine/included')
     async getAnyBookingHavingMyUserId(@CurrentUser() userId: string) {
-        const data = await this.bookingService.getAnyBookingHavingMyUserId(userId);
+        const data =
+            await this.bookingService.getAnyBookingHavingMyUserId(userId);
 
         return {
             message: 'ดึงตารางที่มี id ของฉันเกียวข้องสำเร็จ',

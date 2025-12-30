@@ -227,6 +227,7 @@ export class BankTransferStrategy implements PaymentStrategy {
                     channelId,
                     message: `[ชำระเงินสำเร็จ 💰]
 นักเรียน ${student.name} ${student.lastName} ได้ชำระเงินสำเร็จแล้ว ✨ 
+รหัสการจอง : ${booking._id.toString()}
 เวลาเรียน : ${startLocal.locale('th').format('DD/MM/YYYY HH:mm')} - ${endLocal.locale('th').format('DD/MM/YYYY HH:mm')}
 รายละเอียดตารางสอน : ${envConfig.frontEndUrl}/my-teacher-profile
 รายละเอียดตารางเรียน : ${envConfig.frontEndUrl}/profile
