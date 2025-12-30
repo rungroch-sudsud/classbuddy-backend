@@ -14,6 +14,7 @@ import {
 import { Booking } from '../schemas/booking.schema';
 import { SlotsService } from 'src/modules/slots/slots.service';
 import { VideoService } from 'src/modules/chat/video.service';
+import { envConfig } from 'src/configs/env.config';
 
 @Processor('booking')
 export class BookingProcessor extends WorkerHost {
@@ -67,7 +68,10 @@ export class BookingProcessor extends WorkerHost {
             const teacherFullName = `${teacher.name} ${teacher.lastName}`;
 
             channel.sendMessage({
-                text: '[ข้อความอัตโนมัติจากระบบ] : อีก 15 นาทีก็ใกล้จะได้เวลาเริ่มคลาสแล้ว อย่าลืมเตรียมตัวละ!',
+                text: `
+[ข้อความอัตโนมัติจากระบบ] : อีก 15 นาทีก็ใกล้จะได้เวลาเริ่มคลาสแล้ว อย่าลืมเตรียมตัวละ!
+ลิงค์เข้าคลาส : ${envConfig.frontEndUrl}/classroom/${booking._id.toString()}
+`,
                 user: {
                     id: teacher.userId.toString(),
                     name: teacherFullName,
