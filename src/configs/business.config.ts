@@ -3,5 +3,6 @@ export const businessConfig = {
     payments: {
         maxBankTransferRetries: 3,
         maxBankTransferTTL: 1000 * 60 * 60, // : 1 ชั่วโมง
+        maximumBookingExpiryTime: 1000 * 60 * 15, // : 15 นาที
     },
 };
