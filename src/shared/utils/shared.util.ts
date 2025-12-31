@@ -83,3 +83,12 @@ export function isDevEnv() {
 export function isProductionEnv() {
     return envConfig.nodeEnv === 'production';
 }
+
+export function generateUrl(
+    url: string,
+    params: Record<string, string>,
+): string {
+    const queryString = new URLSearchParams(params).toString();
+
+    return `${url}?${queryString}`;
+}

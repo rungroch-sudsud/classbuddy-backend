@@ -16,6 +16,7 @@ import { BullMQJob } from 'src/shared/enums/bull-mq.enum';
 import {
     createObjectId,
     errorLog,
+    generateUrl,
     getErrorMessage,
     secondsToMilliseconds,
 } from 'src/shared/utils/shared.util';
@@ -295,7 +296,7 @@ export class BookingService {
                     .addText(`ราคา : ${price}`)
                     .newLine()
                     .addText(
-                        `ลิงค์อนุมัติการจองสำหรับคุณครู : ${envConfig.frontEndUrl}/booking/${chatId}`,
+                        `ลิงค์อนุมัติการจองสำหรับคุณครู : ${envConfig.frontEndUrl}/chat/${chatId}`,
                     );
 
                 const chatMessage = messageBuilder.getMessage();
@@ -458,11 +459,24 @@ export class BookingService {
                         'ล้มเหลวระหว่างการสร้างบทสนทนา',
                     );
 
+                const messageBuilder = new SmsMessageBuilder();
+
+                messageBuilder
+                    .addText('[การยืนยันการจอง] : ')
+                    .newLine()
+                    .addText(
+                        `คุณครูได้ยืนยันการจอง รหัส ${bookingId} เรียบร้อยแล้ว กรุณาชำระเงินภายใน 15 นาที`,
+                    )
+                    .newLine()
+                    .addText(
+                        `ลิงค์ชำระเงิน : ${generateUrl(`${envConfig.frontEndUrl}/payment`, { bookingId })}`,
+                    );
+
+                const chatMessage = messageBuilder.getMessage();
+
                 await this.chatService.sendChatMessage({
                     channelId,
-                    message: `
-[การยืนยันการจอง] : คุณครูได้ยืนยันการจอง รหัส ${bookingId} เรียบร้อยแล้ว กรุณาชำระเงินภายใน 15 นาที
-`,
+                    message: chatMessage,
                     senderUserId: teacher.userId.toString(),
                 });
 
