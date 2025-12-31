@@ -15,6 +15,7 @@ import { Booking } from '../schemas/booking.schema';
 import { SlotsService } from 'src/modules/slots/slots.service';
 import { VideoService } from 'src/modules/chat/video.service';
 import { envConfig } from 'src/configs/env.config';
+import { SmsMessageBuilder } from 'src/infra/sms/builders/sms-builder.builder';
 
 @Processor('booking')
 export class BookingProcessor extends WorkerHost {
@@ -60,18 +61,27 @@ export class BookingProcessor extends WorkerHost {
             }
 
             const chatClient = this.streamChatService.getClient();
-
             const chatChannelId = `stud_${booking.studentId}_teac_${teacher.userId}`;
-
             const channel = chatClient.channel('messaging', chatChannelId);
-
             const teacherFullName = `${teacher.name} ${teacher.lastName}`;
 
+            const messageBuilder = new SmsMessageBuilder();
+
+            messageBuilder
+                .addText('[ข้อความอัตโนมัติจากระบบ] : ')
+                .newLine()
+                .addText(
+                    'อีก 15 นาทีก็ใกล้จะได้เวลาเริ่มคลาสแล้ว อย่าลืมเตรียมตัวละ!',
+                )
+                .newLine()
+                .addText(
+                    `ลิงค์เข้าคลาส : ${envConfig.frontEndUrl}/classroom/${booking._id.toString()}`,
+                );
+
+            const chatMessage = messageBuilder.getMessage();
+
             channel.sendMessage({
-                text: `
-[ข้อความอัตโนมัติจากระบบ] : อีก 15 นาทีก็ใกล้จะได้เวลาเริ่มคลาสแล้ว อย่าลืมเตรียมตัวละ!
-ลิงค์เข้าคลาส : ${envConfig.frontEndUrl}/classroom/${booking._id.toString()}
-`,
+                text: chatMessage,
                 user: {
                     id: teacher.userId.toString(),
                     name: teacherFullName,
