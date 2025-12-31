@@ -35,6 +35,8 @@ import { ChatService } from '../chat/chat.service';
 import { SubjectList } from '../subjects/schemas/subject.schema';
 import { SocketEvent } from 'src/shared/enums/socket.enum';
 import { SocketService } from '../socket/socket.service';
+import { SmsMessageBuilder } from 'src/infra/sms/builders/sms-builder.builder';
+import { envConfig } from 'src/configs/env.config';
 
 @Injectable()
 export class BookingService {
@@ -154,7 +156,6 @@ export class BookingService {
         if (!Types.ObjectId.isValid(body.subject)) {
             throw new BadRequestException('subject id ไม่ถูกต้อง');
         }
-        console.log('body', body);
 
         const startTime = dayjs.tz(
             `${body.date}T${body.startTime}`,
@@ -242,8 +243,7 @@ export class BookingService {
                         'สร้าง booking ไม่สำเร็จ',
                     );
 
-                // 3 : ส่งข้อความเข้าไปในแชท ให้ครูกด ยืนยันหรือไม่
-
+                // 3 : ส่งข้อความเข้าไปในแชท ให้ครูกดยืนยันการจอง
                 const channel = await this.chatService.createOrGetChannel(
                     studentId,
                     body.teacherUserId,
@@ -261,22 +261,50 @@ export class BookingService {
 
                 if (!subject) throw new NotFoundException('ไม่พบวิชาดังกล่าว');
 
+                const metadata: Record<string, any> = {
+                    customMessageType: 'confirm-booking',
+                    price,
+                    startTime: startTime.format('YYYY-MM-DD HH:mm'),
+                    endTime: endTime.format('YYYY-MM-DD HH:mm'),
+                    teacherId: teacher._id.toString(),
+                    subjectId: body.subject,
+                    subjectName: subject.name,
+                    studentId,
+                    bookingId: createdBooking._id.toString(),
+                    teacherUserId: teacher.userId.toString(),
+                };
+
+                const messageBuilder = new SmsMessageBuilder();
+                const chatId = `stud_${studentId}_teac_${teacher.userId}`;
+
+                messageBuilder
+                    .addText('[ยืนยันการจองคลาสเรียน]')
+                    .newLine()
+                    .addText(`รหัสการจอง : ${createdBooking._id.toString()}`)
+                    .newLine()
+                    .addText(
+                        `เริ่มเรียน : ${dayjs.tz(startTime, 'Asia/Bangkok').format('DD/MM/YYYY HH:mm')}`,
+                    )
+                    .newLine()
+                    .addText(
+                        `สิ้นสุด : ${dayjs.tz(endTime, 'Asia/Bangkok').format('DD/MM/YYYY HH:mm')}`,
+                    )
+                    .newLine()
+                    .addText(`วิชา : ${subject.name}`)
+                    .newLine()
+                    .addText(`ราคา : ${price}`)
+                    .newLine()
+                    .addText(
+                        `ลิงค์อนุมัติการจองสำหรับคุณครู : ${envConfig.frontEndUrl}/booking/${chatId}`,
+                    );
+
+                const chatMessage = messageBuilder.getMessage();
+
                 await this.chatService.sendChatMessage({
                     channelId,
-                    message: '',
+                    message: chatMessage,
                     senderUserId: studentId,
-                    metadata: {
-                        customMessageType: 'confirm-booking',
-                        price,
-                        startTime: startTime.format('YYYY-MM-DD HH:mm'),
-                        endTime: endTime.format('YYYY-MM-DD HH:mm'),
-                        teacherId: teacher._id.toString(),
-                        subjectId: body.subject,
-                        subjectName: subject.name,
-                        studentId,
-                        bookingId: createdBooking._id.toString(),
-                        teacherUserId: teacher.userId.toString(),
-                    },
+                    metadata,
                 });
 
                 // 4 : ส่งแจ้งเตือนครูว่าให้ยืนยันการจอง
@@ -602,14 +630,12 @@ export class BookingService {
         const currentUserTeacher = await this.teacherModel
             .findOne({ userId: createObjectId(userId) })
             .lean();
-        if (!currentUserTeacher)
-            throw new NotFoundException('ไม่พบข้อมูลครูดังกล่าว');
 
         const bookings = await this.bookingModel
             .find({
                 $or: [
                     { studentId: createObjectId(userId) },
-                    { teacherId: currentUserTeacher._id },
+                    { teacherId: currentUserTeacher?._id },
                 ],
             })
             .populate('subject', '_id name')
