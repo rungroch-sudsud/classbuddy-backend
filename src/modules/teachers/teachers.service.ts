@@ -235,7 +235,7 @@ export class TeachersService {
         let sortOption = {};
         switch (sort) {
             case 'rating':
-                sortOption = { averageRating: -1 };
+                sortOption = { averageRating: -1, reviewCount: -1, satisfactionRate: -1, totalTeachingHours: -1, totalTeachingClass: -1, totalStudentInClass: -1 };
                 break;
             case 'priceAsc':
                 sortOption = { hourlyRate: 1 };
@@ -244,7 +244,7 @@ export class TeachersService {
                 sortOption = { hourlyRate: -1 };
                 break;
             default:
-                sortOption = { averageRating: -1 };
+                sortOption = { averageRating: -1, reviewCount: -1, satisfactionRate: -1, totalTeachingHours: -1, totalTeachingClass: -1, totalStudentInClass: -1 };
         }
 
         const skip = (page - 1) * limit;
