@@ -299,10 +299,10 @@ export class PaymentsService {
             .addText(`เวลาเรียน : ${formattedStartTime} - ${formattedEndTime}`)
             .newLine()
             .addText(
-                `รายละเอียดตารางสอน : ${envConfig.frontEndUrl}/my-teacher-profile`,
+                `รายละเอียดตารางสอน(สำหรับครู) : ${envConfig.frontEndUrl}/my-teacher-profile`,
             )
             .newLine()
-            .addText(`รายละเอียดตารางเรียน : ${envConfig.frontEndUrl}/profile`);
+            .addText(`รายละเอียดตารางเรียน(สำหรับนักเรียน) : ${envConfig.frontEndUrl}/profile`);
 
         const chatMessage = messageBuilder.getMessage();
 
