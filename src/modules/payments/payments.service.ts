@@ -23,6 +23,10 @@ import { Wallet } from './schemas/wallet.schema';
 import { PaymentStrategyFactory } from './strategies/payment-strategy.factory';
 import { SocketService } from '../socket/socket.service';
 import { SocketEvent } from 'src/shared/enums/socket.enum';
+import { SmsMessageBuilder } from 'src/infra/sms/builders/sms-builder.builder';
+import { ChatService } from '../chat/chat.service';
+import dayjs from 'dayjs';
+import { envConfig } from 'src/configs/env.config';
 
 const Omise = require('omise');
 
@@ -42,6 +46,7 @@ export class PaymentsService {
         private readonly strategyFactory: PaymentStrategyFactory,
         private readonly smsService: SmsService,
         private readonly socketService: SocketService,
+        private readonly chatService: ChatService,
     ) {
         const secretKey = process.env.OMISE_SECRET_KEY;
         const publicKey = process.env.OMISE_PUBLIC_KEY;
@@ -259,6 +264,55 @@ export class PaymentsService {
         }));
     }
 
+    private async _sendAfterPaymentMessage(
+        teacherUserId: string,
+        booking: Booking,
+        student: User,
+    ): Promise<void> {
+        const channel = await this.chatService.createOrGetChannel(
+            student._id.toString(),
+            teacherUserId,
+        );
+
+        const channelId = channel.id;
+
+        if (!channelId) return;
+
+        const messageBuilder = new SmsMessageBuilder();
+
+        const studentId = student._id.toString();
+        const startLocal = dayjs.utc(booking.startTime).tz('Asia/Bangkok');
+        const endLocal = dayjs.utc(booking.endTime).tz('Asia/Bangkok');
+        const studentFullName = `${student.name} ${student.lastName}`;
+        const formattedStartTime = startLocal
+            .locale('th')
+            .format('DD/MM/YYYY HH:mm');
+        const formattedEndTime = endLocal
+            .locale('th')
+            .format('DD/MM/YYYY HH:mm');
+
+        messageBuilder
+            .addText('[ชำระเงินสำเร็จ 💰]')
+            .newLine()
+            .addText(`นักเรียน ${studentFullName} ได้ชำระเงินสำเร็จแล้ว ✨`)
+            .newLine()
+            .addText(`เวลาเรียน : ${formattedStartTime} - ${formattedEndTime}`)
+            .newLine()
+            .addText(
+                `รายละเอียดตารางสอน : ${envConfig.frontEndUrl}/my-teacher-profile`,
+            )
+            .newLine()
+            .addText(`รายละเอียดตารางเรียน : ${envConfig.frontEndUrl}/profile`);
+
+        const chatMessage = messageBuilder.getMessage();
+
+        await this.chatService.sendChatMessage({
+            channelId,
+            message: chatMessage,
+            senderUserId: studentId,
+        });
+    }
+
     async pay(
         method: PaymentMethod,
         bookingId: string,
@@ -275,7 +329,16 @@ export class PaymentsService {
             .lean();
         if (!teacher) throw new NotFoundException('ไม่พบข้อมูลครู');
 
+        const student = await this.userModel.findById(booking.studentId).lean();
+        if (!student) throw new NotFoundException('ไม่พบข้อมูลนักเรียน');
+
         await paymentStrategy.pay({ bookingId, currentUserId, receiptFile });
+
+        await this._sendAfterPaymentMessage(
+            teacher.userId.toString(),
+            booking,
+            student,
+        );
 
         this.socketService.emit(SocketEvent.BOOKING_PAID, {
             teacherUserId: teacher.userId.toString(),

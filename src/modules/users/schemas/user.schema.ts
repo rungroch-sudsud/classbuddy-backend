@@ -4,7 +4,7 @@ import { Role } from 'src/modules/auth/role/role.enum';
 import { SubjectList } from 'src/modules/subjects/schemas/subject.schema';
 
 @Schema({ timestamps: true })
-export class User extends Document {
+export class User extends Document<Types.ObjectId> {
     @Prop({ unique: true, required: true })
     phone: string;
 

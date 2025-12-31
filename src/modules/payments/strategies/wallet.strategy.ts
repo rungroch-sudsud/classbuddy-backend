@@ -216,32 +216,6 @@ export class WalletStrategy implements PaymentStrategy {
                     });
                 }
 
-                // 10 : ส่งข้อความไปในแชทรวม
-                const channelId = channelInfo.id;
-                const student = await this.userModel.findById(studentId).lean();
-
-                if (!channelId)
-                    throw new NotFoundException('ไม่พบข้อมูลแชทรวม');
-
-                if (!student)
-                    throw new NotFoundException('ไม่พบข้อมูลนักเรียน');
-
-                if (!slot) throw new NotFoundException('ไม่พบข้อมูลตารางเรียน');
-
-                const startLocal = dayjs.utc(slot.startTime).tz('Asia/Bangkok');
-                const endLocal = dayjs.utc(slot.endTime).tz('Asia/Bangkok');
-
-                await this.chatService.sendChatMessage({
-                    channelId,
-                    message: `[ชำระเงินสำเร็จ 💰]
-นักเรียน ${student.name} ${student.lastName} ได้ชำระเงินสำเร็จแล้ว ✨ 
-เวลาเรียน : ${startLocal.locale('th').format('DD/MM/YYYY HH:mm')} - ${endLocal.locale('th').format('DD/MM/YYYY HH:mm')}
-รายละเอียดตารางสอน : ${envConfig.frontEndUrl}/my-teacher-profile
-รายละเอียดตารางเรียน : ${envConfig.frontEndUrl}/profile
-`,
-                    senderUserId: studentId,
-                });
-
                 infoLog('BOOKING', 'ชำระตลาสเรียนด้วย Wallet สำเร็จ!');
             });
 

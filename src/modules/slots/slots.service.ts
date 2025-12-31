@@ -316,7 +316,8 @@ export class SlotsService {
             userId: new Types.ObjectId(userId),
         });
 
-        if (!teacher) throw new NotFoundException('ไม่พบข้อมูลครู');
+        if (!teacher)
+            throw new NotFoundException('คุณยังไม่ได้สมัครเป็นคุณครู');
 
         let slots = await this.slotModel
             .find({
