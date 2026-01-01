@@ -239,12 +239,13 @@ export class UsersService {
         pushToken: string,
     ): Promise<void> {
         try {
-            const user = await this.userModel.findById(userId);
+            const user = await this.userModel.findByIdAndUpdate(
+                userId,
+                { $addToSet: { expoPushToken: pushToken } },
+                { new: true },
+            );
 
             if (!user) throw new NotFoundException('ไม่พบข้อมูล user ดังกล่าว');
-
-            user.expoPushToken = pushToken;
-            await user.save();
 
             infoLog(
                 'USER SERVICE',
