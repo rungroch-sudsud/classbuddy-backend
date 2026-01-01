@@ -418,7 +418,7 @@ export class WebhookService {
             const receiverUserId: string = receiver.user_id;
             const receiverInfo = await this.userModel.findById(receiverUserId);
             const receiverPhoneNumber: string | undefined = receiverInfo?.phone;
-            const receiverPushToken: string | null | undefined =
+            const receiverPushToken: Array<string> | undefined =
                 receiverInfo?.expoPushToken;
 
             let hasAlreadyNotified: boolean = false;
