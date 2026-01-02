@@ -302,7 +302,9 @@ export class PaymentsService {
                 `รายละเอียดตารางสอน(สำหรับครู) : ${envConfig.frontEndUrl}/my-teacher-profile`,
             )
             .newLine()
-            .addText(`รายละเอียดตารางเรียน(สำหรับนักเรียน) : ${envConfig.frontEndUrl}/profile`);
+            .addText(
+                `รายละเอียดตารางเรียน(สำหรับนักเรียน) : ${envConfig.frontEndUrl}/profile`,
+            );
 
         const chatMessage = messageBuilder.getMessage();
 
@@ -319,8 +321,6 @@ export class PaymentsService {
         currentUserId: string,
         receiptFile: Express.Multer.File | undefined = undefined,
     ): Promise<void> {
-        const paymentStrategy = this.strategyFactory.getStrategy(method);
-
         const booking = await this.bookingModel.findById(bookingId).lean();
         if (!booking) throw new NotFoundException('ไม่พบข้อมูลการจอง');
 
@@ -332,6 +332,7 @@ export class PaymentsService {
         const student = await this.userModel.findById(booking.studentId).lean();
         if (!student) throw new NotFoundException('ไม่พบข้อมูลนักเรียน');
 
+        const paymentStrategy = this.strategyFactory.getStrategy(method);
         await paymentStrategy.pay({ bookingId, currentUserId, receiptFile });
 
         await this._sendAfterPaymentMessage(

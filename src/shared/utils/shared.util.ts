@@ -52,7 +52,7 @@ export function infoLog(
 
 export function devLog(
     entity: string,
-    message: string,
+    message: unknown,
     when: dayjs.Dayjs = dayjs(),
 ) {
     if (envConfig.nodeEnv !== 'dev') return;

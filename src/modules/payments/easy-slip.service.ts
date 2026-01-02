@@ -1,8 +1,9 @@
 import { HttpStatus, Injectable } from '@nestjs/common';
 import axios, { type AxiosInstance } from 'axios';
 import { envConfig } from 'src/configs/env.config';
+import { devLog } from 'src/shared/utils/shared.util';
 
-export interface IVerifyReceiptResponse {
+export interface VerifyReceiptResponse {
     status: number;
     data: {
         payload: string;
@@ -104,7 +105,7 @@ export class EasySlipService {
     ) {
         try {
             const response =
-                await this.easySlipClient.post<IVerifyReceiptResponse>(
+                await this.easySlipClient.post<VerifyReceiptResponse>(
                     '/verify',
                     {
                         image: receiptBase64,

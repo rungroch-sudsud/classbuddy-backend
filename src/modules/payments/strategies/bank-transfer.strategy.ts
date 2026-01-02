@@ -169,7 +169,7 @@ export class BankTransferStrategy implements PaymentStrategy {
 
                 const teacherUserId = teacher.userId.toString();
 
-                const channelInfo = await this.chatService.createOrGetChannel(
+                await this.chatService.createOrGetChannel(
                     studentId,
                     teacherUserId,
                 );
