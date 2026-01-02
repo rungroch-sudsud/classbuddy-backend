@@ -27,6 +27,7 @@ import { SmsMessageBuilder } from 'src/infra/sms/builders/sms-builder.builder';
 import { ChatService } from '../chat/chat.service';
 import dayjs from 'dayjs';
 import { envConfig } from 'src/configs/env.config';
+import { businessConfig } from 'src/configs/business.config';
 
 const Omise = require('omise');
 
@@ -43,7 +44,7 @@ export class PaymentsService {
         @InjectModel(Booking.name) private bookingModel: Model<Booking>,
         @InjectModel(PayoutLog.name) private payoutLogModel: Model<any>,
         @InjectQueue('payout') private PayoutQueue: Queue,
-        private readonly strategyFactory: PaymentStrategyFactory,
+        private readonly paymentStrategyFactory: PaymentStrategyFactory,
         private readonly smsService: SmsService,
         private readonly socketService: SocketService,
         private readonly chatService: ChatService,
@@ -332,7 +333,7 @@ export class PaymentsService {
         const student = await this.userModel.findById(booking.studentId).lean();
         if (!student) throw new NotFoundException('ไม่พบข้อมูลนักเรียน');
 
-        const paymentStrategy = this.strategyFactory.getStrategy(method);
+        const paymentStrategy = this.paymentStrategyFactory.getStrategy(method);
         await paymentStrategy.pay({ bookingId, currentUserId, receiptFile });
 
         await this._sendAfterPaymentMessage(
@@ -348,7 +349,7 @@ export class PaymentsService {
 
         if (isProductionEnv()) {
             await this.smsService.sendSms(
-                ['0611752168', '0853009999'],
+                businessConfig.coFounderPhones,
                 'มีนักเรียนชำระค่าเรียน 1 ท่าน',
             );
         }

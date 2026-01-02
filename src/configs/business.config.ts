@@ -5,4 +5,5 @@ export const businessConfig = {
         maxBankTransferTTL: 1000 * 60 * 60, // : 1 ชั่วโมง
         maximumBookingExpiryTime: 1000 * 60 * 15, // : 15 นาที
     },
+    coFounderPhones: ['0611752168', '0853009999'],
 };

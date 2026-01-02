@@ -35,6 +35,7 @@ import {
     PaymentHistoryResponseDto,
     ReviewResponseDto,
 } from './dto/teacher.response.zod';
+import { businessConfig } from 'src/configs/business.config';
 
 @Injectable()
 export class TeachersService {
@@ -104,7 +105,7 @@ export class TeachersService {
         }).save();
 
         await this.smsService.sendSms(
-            ['0611752168', '0853009999'],
+            businessConfig.coFounderPhones,
             'มีคุณครูสมัครมา 1 อัตรา',
         );
 
@@ -235,7 +236,14 @@ export class TeachersService {
         let sortOption = {};
         switch (sort) {
             case 'rating':
-                sortOption = { averageRating: -1, reviewCount: -1, satisfactionRate: -1, totalTeachingHours: -1, totalTeachingClass: -1, totalStudentInClass: -1 };
+                sortOption = {
+                    averageRating: -1,
+                    reviewCount: -1,
+                    satisfactionRate: -1,
+                    totalTeachingHours: -1,
+                    totalTeachingClass: -1,
+                    totalStudentInClass: -1,
+                };
                 break;
             case 'priceAsc':
                 sortOption = { hourlyRate: 1 };
@@ -244,7 +252,14 @@ export class TeachersService {
                 sortOption = { hourlyRate: -1 };
                 break;
             default:
-                sortOption = { averageRating: -1, reviewCount: -1, satisfactionRate: -1, totalTeachingHours: -1, totalTeachingClass: -1, totalStudentInClass: -1 };
+                sortOption = {
+                    averageRating: -1,
+                    reviewCount: -1,
+                    satisfactionRate: -1,
+                    totalTeachingHours: -1,
+                    totalTeachingClass: -1,
+                    totalStudentInClass: -1,
+                };
         }
 
         const skip = (page - 1) * limit;
@@ -482,7 +497,7 @@ export class TeachersService {
                 );
 
                 this.smsService.sendSms(
-                    ['0611752168', '0853009999'],
+                    businessConfig.coFounderPhones,
                     'มีคุณครู update profile 1 ท่าน',
                 );
             } catch (err) {
