@@ -4,12 +4,14 @@ import { AdminService } from './admin.service';
 import { MongooseModule } from '@nestjs/mongoose';
 import { Teacher, TeacherSchema } from '../teachers/schemas/teacher.schema';
 import { Notification, NotificationSchema } from '../notifications/schema/notification';
+import { Booking, BookingSchema } from '../booking/schemas/booking.schema';
 
 @Module({
   imports: [
     MongooseModule.forFeature([
       { name: Teacher.name, schema: TeacherSchema },
-      { name: Notification.name, schema: NotificationSchema }
+      { name: Notification.name, schema: NotificationSchema },
+      { name: Booking.name, schema: BookingSchema },
     ]),
   ],
   controllers: [AdminController],

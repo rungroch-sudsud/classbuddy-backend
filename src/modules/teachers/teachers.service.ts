@@ -511,7 +511,7 @@ export class TeachersService {
         return updated;
     }
 
-    //Revice Section
+    //Review Section
     async addReview(
         teacherId: string,
         reviewerId: string,

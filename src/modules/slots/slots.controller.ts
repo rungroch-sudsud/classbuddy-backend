@@ -102,7 +102,7 @@ export class SlotsController {
 
     @Get('')
     @ApiOperation({ summary: 'ดึง slot ทั้งหมด' })
-    @Roles(Role.Admin, Role.Moderator)
+    // @Roles(Role.Admin, Role.Moderator)
     async getAllSubject() {
         const getAll = await this.slotsService.getAllSlots();
 

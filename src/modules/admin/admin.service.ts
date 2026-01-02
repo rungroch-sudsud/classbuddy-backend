@@ -3,6 +3,7 @@ import { InjectModel } from '@nestjs/mongoose';
 import { Teacher } from '../teachers/schemas/teacher.schema';
 import { isValidObjectId, Model } from 'mongoose';
 import { Notification } from '../notifications/schema/notification';
+import { Booking } from '../booking/schemas/booking.schema';
 
 const Omise = require('omise');
 
@@ -13,6 +14,7 @@ export class AdminService {
     constructor(
         @InjectModel(Teacher.name) private teacherModel: Model<Teacher>,
         @InjectModel(Notification.name) private notificationModel: Model<Notification>,
+        @InjectModel(Booking.name) private bookingModel: Model<Booking>,
     ) {
         const secretKey = process.env.OMISE_SECRET_KEY;
         const publicKey = process.env.OMISE_PUBLIC_KEY;
@@ -110,6 +112,30 @@ export class AdminService {
         });
 
         return teacher;
+    }
+
+    async getIncomingClasses(): Promise<Booking[]> {
+        const now = new Date();
+        
+        const incomingClasses = await this.bookingModel
+            .find({
+                startTime: { $gte: now },
+                status: { $in: ['pending', 'paid'] },
+            })
+            .populate('studentId', 'name lastName profileImage')
+            .populate({
+                path: 'teacherId',
+                select: 'name lastName verifyStatus userId',
+                populate: {
+                    path: 'userId',
+                    select: 'profileImage',
+                },
+            })
+            .populate('subject', '_id name')
+            .sort({ startTime: 1 })
+            .lean();
+
+        return incomingClasses;
     }
 
 }
