@@ -31,7 +31,7 @@ import { SubjectrequestsModule } from './modules/subjectrequests/subjectrequests
 import { EmailService } from './infra/email/email.service';
 import { EmailTestController } from './infra/email/email.controller';
 import { PostsModule } from './modules/posts/posts.module';
-
+import { TagsModule } from './modules/tags/tags.module';
 
 @Module({
     imports: [
@@ -55,7 +55,8 @@ import { PostsModule } from './modules/posts/posts.module';
         SocketModule,
         PostsModule,
         SubjectrequestsModule,
-        EmailModule
+        EmailModule,
+        TagsModule,
     ],
     controllers: [
         WebhookController,
@@ -64,9 +65,9 @@ import { PostsModule } from './modules/posts/posts.module';
         TeachersController,
         BookingController,
         NotificationsController,
-        EmailTestController
+        EmailTestController,
     ],
     providers: [VideoService, EmailService, WebhookService, AppService],
     exports: [],
 })
-export class AppModule { }
+export class AppModule {}
