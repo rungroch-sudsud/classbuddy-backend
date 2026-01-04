@@ -18,12 +18,14 @@ import {
     errorLog,
     getErrorMessage,
     infoLog,
+    isProductionEnv,
 } from 'src/shared/utils/shared.util';
 import { Teacher } from '../teachers/schemas/teacher.schema';
 import dayjs from 'dayjs';
 import 'dayjs/locale/th';
 import { SmsService } from 'src/infra/sms/sms.service';
 import { SmsMessageBuilder } from 'src/infra/sms/builders/sms-builder.builder';
+import { envConfig } from 'src/configs/env.config';
 
 dayjs.locale('th');
 
@@ -67,12 +69,13 @@ export class PostsService {
                 .addText(`รายละเอียด : ${newPost.detail}`)
                 .newLine()
                 .addText(
-                    `ดูรายละเอียดได้ที่ : https://www.classbuddy.online/job-board`,
+                    `ดูรายละเอียดได้ที่ : ${envConfig.frontEndUrl}/job-board`,
                 );
 
             const message = builder.getMessage();
 
-            await this.smsService.sendSms(userPhones, message);
+            if (isProductionEnv())
+                await this.smsService.sendSms(userPhones, message);
 
             infoLog(
                 this.logEntity,
@@ -300,7 +303,7 @@ export class PostsService {
             .addText(
                 `รายละเอียด : https://www.classbuddy.online/job-board/${updatedPost._id.toString()}`,
             );
-            
+
         const message = builder.getMessage();
 
         await this.smsService.sendSms(student.phone, message);
