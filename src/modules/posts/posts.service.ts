@@ -15,6 +15,7 @@ import { User } from '../users/schemas/user.schema';
 import { Model, Types } from 'mongoose';
 import { Post } from './schemas/post.schema';
 import {
+    createObjectId,
     errorLog,
     getErrorMessage,
     infoLog,
@@ -256,40 +257,42 @@ export class PostsService {
     ): Promise<any> {
         const teacher = await this.teacherModel
             .findOne({
-                userId: new Types.ObjectId(userId),
+                userId: createObjectId(userId),
             })
             .lean();
 
         if (!teacher) throw new BadRequestException('ไม่มีครูคนนี้');
 
+        console.log('teacher', teacher);
+
         if (teacher.verifyStatus !== 'verified') {
             throw new ForbiddenException('บัญชึของคุณยังไม่ได้รับการยืนยัน');
         }
 
-        const exist = await this.postModel
-            .exists({
-                _id: postId,
-                'proposals.teacherId': teacher._id,
-            })
-            .lean();
+        const post = await this.postModel.findById(postId);
+        if (!post) throw new NotFoundException('ไม่พบโพสต์นี้');
 
-        if (exist) throw new BadRequestException('คุณได้เสนอไปแล้ว');
+        if (post.createdBy.toString() === userId) {
+            throw new ForbiddenException('คุณไม่สามารถเสนอโพสต์ของตัวเองได้');
+        }
 
-        const updatedPost = await this.postModel.findByIdAndUpdate(
-            postId,
-            {
-                $push: {
-                    proposals: {
-                        teacherId: teacher._id,
-                        ...body,
-                    },
-                },
-            },
-            { new: true },
-        );
+        if (post.closedAt)
+            throw new BadRequestException('โพสต์นี้ถูกปิดไปแล้ว');
 
-        if (!updatedPost)
-            throw new InternalServerErrorException('ล้มเหลวระหว่างส่งคำเสนอ');
+        if (
+            post.proposals.some(
+                (p) => p.teacherId.toString() === teacher._id.toString(),
+            )
+        ) {
+            throw new BadRequestException('คุณได้เสนอไปแล้ว');
+        }
+
+        post.proposals.push({
+            teacherId: teacher._id,
+            ...body,
+        });
+
+        const updatedPost = await post.save();
 
         const student = await this.userModel.findById(updatedPost.createdBy);
         if (!student)
