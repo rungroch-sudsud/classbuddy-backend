@@ -9,6 +9,7 @@ import {
     CreatePostDto,
     CreateProposalDto,
     UpdatePostDto,
+    UpdateProposalDto,
 } from './dto/post.dto';
 import { InjectModel } from '@nestjs/mongoose';
 import { User } from '../users/schemas/user.schema';
@@ -249,12 +250,11 @@ export class PostsService {
         };
     }
 
-    //Teacher Section
     async addProposal(
         postId: string,
         userId: string,
         body: CreateProposalDto,
-    ): Promise<any> {
+    ): Promise<Post> {
         const teacher = await this.teacherModel
             .findOne({
                 userId: createObjectId(userId),
@@ -262,8 +262,6 @@ export class PostsService {
             .lean();
 
         if (!teacher) throw new BadRequestException('ไม่มีครูคนนี้');
-
-        console.log('teacher', teacher);
 
         if (teacher.verifyStatus !== 'verified') {
             throw new ForbiddenException('บัญชึของคุณยังไม่ได้รับการยืนยัน');
@@ -279,13 +277,12 @@ export class PostsService {
         if (post.closedAt)
             throw new BadRequestException('โพสต์นี้ถูกปิดไปแล้ว');
 
-        if (
-            post.proposals.some(
-                (p) => p.teacherId.toString() === teacher._id.toString(),
-            )
-        ) {
+        const teacherHasAlreadyProposed = post.proposals.some(
+            (p) => p.teacherId.toString() === teacher._id.toString(),
+        );
+
+        if (teacherHasAlreadyProposed)
             throw new BadRequestException('คุณได้เสนอไปแล้ว');
-        }
 
         post.proposals.push({
             teacherId: teacher._id,
@@ -310,6 +307,28 @@ export class PostsService {
         const message = builder.getMessage();
 
         await this.smsService.sendSms(student.phone, message);
+
+        return updatedPost;
+    }
+
+    async deleteProposal(postId: string, userId: string): Promise<Post> {
+        const teacher = await this.teacherModel
+            .findOne({ userId: createObjectId(userId) })
+            .lean();
+        if (!teacher) throw new BadRequestException('ไม่มีครูคนนี้');
+
+        const post = await this.postModel.findById(postId);
+
+        if (!post) throw new NotFoundException('ไม่พบโพสต์นี้');
+
+        if (post.closedAt)
+            throw new BadRequestException('โพสต์นี้ถูกปิดไปแล้ว');
+
+        post.proposals = post.proposals.filter(
+            (p) => p.teacherId.toString() !== teacher._id.toString(),
+        );
+
+        const updatedPost = await post.save();
 
         return updatedPost;
     }

@@ -16,6 +16,7 @@ import {
     CreatePostDto,
     CreateProposalDto,
     UpdatePostDto,
+    UpdateProposalDto,
 } from './dto/post.dto';
 import { PostsService } from './posts.service';
 
@@ -97,5 +98,19 @@ export class PostsController {
         @Body() body: CreateProposalDto,
     ) {
         return this.postsService.addProposal(postId, userId, body);
+    }
+
+    @Delete(':postId/proposals')
+    @ApiOperation({ summary: 'ครูลบข้อเสนอของตนเอง' })
+    @UseGuards(JwtGuard)
+    async deleteProposal(
+        @CurrentUser() userId: string,
+        @Param('postId') postId: string,
+    ) {
+        await this.postsService.deleteProposal(postId, userId);
+
+        return {
+            message: 'ลบข้อเสนอสำเร็จ',
+        };
     }
 }
