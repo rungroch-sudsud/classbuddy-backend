@@ -169,7 +169,8 @@ export class AuthService {
         const { phone, password } = body;
 
         const user = await this.userService.findByPhone(phone);
-        if (!user) throw new BadRequestException('User not found');
+        if (!user)
+            throw new BadRequestException('ไม่พบข้อมูลผู้ใช้งานดังกล่าว');
 
         const isPasswordValid = await bcrypt.compare(password, user.password);
         if (!isPasswordValid) {
