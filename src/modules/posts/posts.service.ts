@@ -2,19 +2,15 @@ import {
     BadRequestException,
     ForbiddenException,
     Injectable,
-    InternalServerErrorException,
     NotFoundException,
 } from '@nestjs/common';
-import {
-    CreatePostDto,
-    CreateProposalDto,
-    UpdatePostDto,
-    UpdateProposalDto,
-} from './dto/post.dto';
 import { InjectModel } from '@nestjs/mongoose';
-import { User } from '../users/schemas/user.schema';
-import { Model, Types } from 'mongoose';
-import { Post } from './schemas/post.schema';
+import dayjs from 'dayjs';
+import 'dayjs/locale/th';
+import { Model } from 'mongoose';
+import { envConfig } from 'src/configs/env.config';
+import { SmsMessageBuilder } from 'src/infra/sms/builders/sms-builder.builder';
+import { SmsService } from 'src/infra/sms/sms.service';
 import {
     createObjectId,
     errorLog,
@@ -23,11 +19,13 @@ import {
     isProductionEnv,
 } from 'src/shared/utils/shared.util';
 import { Teacher } from '../teachers/schemas/teacher.schema';
-import dayjs from 'dayjs';
-import 'dayjs/locale/th';
-import { SmsService } from 'src/infra/sms/sms.service';
-import { SmsMessageBuilder } from 'src/infra/sms/builders/sms-builder.builder';
-import { envConfig } from 'src/configs/env.config';
+import { User } from '../users/schemas/user.schema';
+import {
+    CreatePostDto,
+    CreateProposalDto,
+    UpdatePostDto,
+} from './dto/post.dto';
+import { Post } from './schemas/post.schema';
 
 dayjs.locale('th');
 
