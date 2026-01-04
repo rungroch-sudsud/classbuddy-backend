@@ -17,6 +17,7 @@ import {
     createObjectId,
     errorLog,
     getErrorMessage,
+    isProductionEnv,
 } from 'src/shared/utils/shared.util';
 import { StreamChatService } from '../chat/stream-chat.service';
 import { VideoService } from '../chat/video.service';
@@ -496,10 +497,12 @@ export class TeachersService {
                     `[getStream] upsert verified teacher_${userId} successful`,
                 );
 
-                this.smsService.sendSms(
-                    businessConfig.coFounderPhones,
-                    'มีคุณครู update profile 1 ท่าน',
-                );
+                if (isProductionEnv())
+                    await this.smsService.sendSms(
+                        businessConfig.coFounderPhones,
+                        'มีคุณครู update profile 1 ท่าน',
+                    );
+                    
             } catch (err) {
                 console.warn(
                     '[getStream] Failed to upsert teacher:',
