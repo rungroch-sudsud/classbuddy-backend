@@ -8,8 +8,8 @@ export class SmsMessageBuilder {
         return this;
     }
 
-    newLine() {
-        this.message += '\n';
+    newLine(numOfLines : number = 1) {
+        this.message += '\n'.repeat(numOfLines);
         return this;
     }
 
