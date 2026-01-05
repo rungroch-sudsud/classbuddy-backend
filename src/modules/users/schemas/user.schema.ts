@@ -67,6 +67,9 @@ export class User extends Document<Types.ObjectId> {
 
     @Prop({ type: [String], default: [] })
     expoPushToken: Array<string>;
+
+    @Prop({ type: String, default: null })
+    platformReferral: string | null;
 }
 
 export type UserDocument = User & Document;
