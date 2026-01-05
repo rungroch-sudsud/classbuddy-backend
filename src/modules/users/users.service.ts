@@ -51,10 +51,15 @@ export class UsersService {
         await wallet.save();
     }
 
-    async createProfile(phone: string, passwordHash: string): Promise<any> {
+    async createProfile(
+        phone: string,
+        passwordHash: string,
+        platformReferral: User['platformReferral'],
+    ): Promise<any> {
         return this.userModel.create({
             phone,
             password: passwordHash,
+            platformReferral,
         });
     }
 

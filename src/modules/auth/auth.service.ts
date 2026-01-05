@@ -94,7 +94,12 @@ export class AuthService {
     async verifyRegisterOtp({
         sessionId,
         otp,
-    }: any): Promise<{ accessToken: string }> {
+        platformReferral,
+    }: {
+        sessionId: string;
+        otp: string;
+        platformReferral: User['platformReferral'];
+    }): Promise<{ accessToken: string }> {
         const sessionKey = `otp-session:${sessionId}`;
         const attemptKey = `otp-attempt:${sessionId}`;
 
@@ -133,7 +138,11 @@ export class AuthService {
 
         if (storedOtp !== otp) throw new BadRequestException('Invalid OTP');
 
-        const user = await this.userService.createProfile(phone, hashed);
+        const user = await this.userService.createProfile(
+            phone,
+            hashed,
+            platformReferral,
+        );
 
         if (isProductionEnv()) {
             await this.smsService.sendSms(
