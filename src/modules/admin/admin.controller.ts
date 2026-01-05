@@ -5,6 +5,7 @@ import { RolesGuard } from '../auth/guard/roles.guard';
 import { Roles } from '../auth/decorators/roles.decorator';
 import { Role } from '../auth/role/role.enum';
 import { AdminService } from './admin.service';
+import { devLog } from 'src/shared/utils/shared.util';
 
 @ApiTags('Admin')
 @ApiBearerAuth()
@@ -26,7 +27,7 @@ export class AdminController {
     }
 
     @ApiOperation({ summary: 'ยืนยันการตัวตนของครู' })
-    @Patch(':teacherId/verify')
+    @Patch('teachers/:teacherId/verify')
     @Roles(Role.Admin)
     async verifyTeacher(@Param('teacherId') teacherId: string) {
         await this.adminService.verifyTeacher(teacherId);
@@ -38,7 +39,7 @@ export class AdminController {
     }
 
     @ApiOperation({ summary: 'ปฎิเสฑเอกสารของครู' })
-    @Patch(':teacherId/reject')
+    @Patch('teachers/:teacherId/reject')
     @Roles(Role.Admin)
     async rejectTeacher(@Param('teacherId') teacherId: string) {
         const reject = await this.adminService.rejectTeacher(teacherId);
