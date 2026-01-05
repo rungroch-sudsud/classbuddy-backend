@@ -186,28 +186,35 @@ export class TeachersService {
         return publicFileUrls;
     }
 
-    async getAllTeacher(): Promise<Teacher[]> {
+    async getAllTeacher(): Promise<
+        Array<
+            Omit<Teacher, 'userId' | 'subjects'> & {
+                profileImage: string | null;
+                userId: string | null;
+                isVerified: boolean;
+                subjects: SubjectList[];
+            }
+        >
+    > {
         const teachers = await this.teacherModel
             .find()
             .populate('userId', '_id profileImage')
             .populate('subjects')
-            .lean();
+            .lean<
+                Array<
+                    Omit<Teacher, 'userId'> & {
+                        userId: Pick<User, '_id' | 'profileImage'> | null;
+                        subjects: SubjectList[];
+                    }
+                >
+            >();
 
-        return teachers.map((teacher: any) => {
-            const user =
-                typeof teacher.userId === 'object'
-                    ? teacher.userId
-                    : { _id: teacher.userId, profileImage: null };
+        return teachers.map((teacher) => {
+            const profileImage = teacher.userId?.profileImage ?? null;
+            const userId = teacher.userId?._id.toString() ?? null;
+            const isVerified = teacher.verifyStatus === 'verified';
 
-            const isOnline = this.socketService.isOnline(user._id?.toString());
-
-            return {
-                ...teacher,
-                userId: user._id ?? null,
-                profileImage: user.profileImage ?? null,
-                subjects: teacher.subjects ?? [],
-                isOnline,
-            };
+            return { ...teacher, profileImage, userId, isVerified };
         });
     }
 
@@ -502,7 +509,6 @@ export class TeachersService {
                         businessConfig.coFounderPhones,
                         'มีคุณครู update profile 1 ท่าน',
                     );
-                    
             } catch (err) {
                 console.warn(
                     '[getStream] Failed to upsert teacher:',
