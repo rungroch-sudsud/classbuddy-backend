@@ -41,9 +41,9 @@ export class ChatService {
         return userToken;
     }
 
-    async createOrGetChannel(studentId: string, teacherId: string) {
+    async createOrGetChannel(studentId: string, teacherUserId: string) {
         const client = this.streamChatService.getClient();
-        const [a, b] = [studentId, teacherId];
+        const [a, b] = [studentId, teacherUserId];
         const channelId = `stud_${a}_teac_${b}`;
 
         let channel = client.channel('messaging', channelId);
@@ -65,7 +65,7 @@ export class ChatService {
 
         try {
             channel = client.channel('messaging', channelId, {
-                members: [studentId, teacherId],
+                members: [studentId, teacherUserId],
                 created_by_id: studentId,
             });
 
