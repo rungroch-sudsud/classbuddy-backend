@@ -16,13 +16,17 @@ import { SlotsService } from 'src/modules/slots/slots.service';
 import { VideoService } from 'src/modules/chat/video.service';
 import { envConfig } from 'src/configs/env.config';
 import { SmsMessageBuilder } from 'src/infra/sms/builders/sms-builder.builder';
+import { ChatService } from 'src/modules/chat/chat.service';
+import { NotFoundException } from '@nestjs/common';
 
 @Processor('booking')
 export class BookingProcessor extends WorkerHost {
     constructor(
         @InjectModel(Booking.name) private bookingModel: Model<Booking>,
         @InjectModel(Teacher.name) private teacherModel: Model<Teacher>,
+        @InjectModel(User.name) private userModel: Model<User>,
         private readonly streamChatService: StreamChatService,
+        private readonly chatService: ChatService,
         private readonly slotsService: SlotsService,
         private readonly videoService: VideoService,
     ) {
@@ -196,7 +200,42 @@ export class BookingProcessor extends WorkerHost {
                     return { succes: false };
                 }
 
+                // 1. จบ Call
                 await this.videoService.endCall(bookingId);
+
+                const teacherUser = await this.userModel
+                    .findById(booking.teacherId.toString())
+                    .lean();
+
+                if (!teacherUser) return { success: false };
+                const channel = await this.chatService.createOrGetChannel(
+                    booking.studentId.toString(),
+                    teacherUser._id.toString(),
+                );
+                const channelId = channel.id;
+
+                if (!channelId) return { success: false };
+
+                // 2. ส่งข้อความ after class check-up เข้าไปในคลาส
+                const teacherUserId = teacherUser._id.toString();
+                const messageBuilder = new SmsMessageBuilder();
+
+                messageBuilder
+                    .addText('[ข้อความอัตโนมัติจากระบบ] : ')
+                    .newLine()
+                    .addText('เรียนกับคุณครูเสร็จแล้ว')
+                    .newLine()
+                    .addText('เป็นอย่างไรบ้าง อยากให้สอนอะไร')
+                    .newLine()
+                    .addText('เพิ่มแจ้งคณครูได้เลยนะ ✏️');
+
+                const chatMessage = messageBuilder.getMessage();
+
+                await this.chatService.sendChatMessage({
+                    channelId: channelId,
+                    message: chatMessage,
+                    senderUserId: teacherUserId,
+                });
 
                 infoLog(
                     logEntity,
