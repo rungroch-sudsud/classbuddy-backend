@@ -3,7 +3,7 @@ import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
 import { MongooseModule } from '@nestjs/mongoose';
-import { SmsService } from 'src/infra/sms/sms.service';
+import { SmsModule } from 'src/infra/sms/sms.module';
 import { ChatModule } from '../chat/chat.module';
 import { NotificationsService } from '../notifications/notifications.service';
 import {
@@ -23,7 +23,6 @@ import { BookingCronService } from './booking.cron';
 import { BookingService } from './booking.service';
 import { BookingProcessor } from './processors/booking.processor';
 import { Booking, BookingSchema } from './schemas/booking.schema';
-import { SmsModule } from 'src/infra/sms/sms.module';
 
 @Module({
     imports: [
