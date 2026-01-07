@@ -12,6 +12,7 @@ import { Slot } from '../slots/schemas/slot.schema';
 import { Teacher } from '../teachers/schemas/teacher.schema';
 import { getErrorMessage, infoLog } from 'src/shared/utils/shared.util';
 import { createObjectId } from '../../shared/utils/shared.util';
+import { tryCatch } from 'bullmq';
 
 @Injectable()
 export class VideoService {
@@ -134,6 +135,36 @@ export class VideoService {
             );
             throw new InternalServerErrorException(
                 'ไม่สามารถสร้างห้องเรียนได้ในขณะนี้',
+            );
+        }
+    }
+
+    async deleteCallRoom(bookingId: string) {
+        const booking = await this.bookingModel.findById(bookingId);
+        if (!booking) throw new NotFoundException('ไม่พบข้อมูลการจอง');
+        
+        try {
+            const call = this.videoClient.video.call(
+                'default',
+                booking.callRoomId,
+            );
+
+            await call.delete();
+
+            infoLog(
+                'Video Service',
+                `ลบห้องเรียนสำหรับ bookingId ${bookingId} สำเร็จ`,
+            );
+        } catch (error: unknown) {
+            const errorMessage = getErrorMessage(error);
+
+            console.error(
+                '[STREAM VIDEO] Failed to delete video call room:',
+                errorMessage,
+            );
+
+            throw new InternalServerErrorException(
+                'ไม่สามารถลบห้องเรียนได้ในขณะนี้',
             );
         }
     }

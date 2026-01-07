@@ -6,4 +6,7 @@ export const businessConfig = {
         maximumBookingExpiryTime: 1000 * 60 * 15, // : 15 นาที
     },
     coFounderPhones: ['0611752168', '0853009999'],
+    booking: {
+        rescheduleMinutesBeforeClassStarts: 60,
+    },
 };

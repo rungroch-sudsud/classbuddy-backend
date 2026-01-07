@@ -43,7 +43,7 @@ export function secondsToMilliseconds(seconds: number) {
 export function infoLog(
     entity: string,
     message: string,
-    when: dayjs.Dayjs = dayjs(),
+    when: dayjs.Dayjs = dayjs().tz('Asia/Bangkok'),
 ) {
     console.log(
         `[${entity}] -> ${message} (${when.format('DD/MM/YYYY HH:mm')})`,
@@ -53,7 +53,7 @@ export function infoLog(
 export function devLog(
     entity: string,
     message: unknown,
-    when: dayjs.Dayjs = dayjs(),
+    when: dayjs.Dayjs = dayjs().tz('Asia/Bangkok'),
 ) {
     if (envConfig.nodeEnv !== 'dev') return;
 
@@ -65,7 +65,7 @@ export function devLog(
 export function errorLog(
     entity: string,
     message: string,
-    when: dayjs.Dayjs = dayjs(),
+    when: dayjs.Dayjs = dayjs().tz('Asia/Bangkok'),
 ) {
     console.error(
         `[${entity}] -> ${message} (${when.format('DD/MM/YYYY HH:mm')})`,

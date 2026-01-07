@@ -1,8 +1,9 @@
 import { Module } from '@nestjs/common';
 import { MongooseModule } from '@nestjs/mongoose';
 import { SmsModule } from 'src/infra/sms/sms.module';
+import { BookingModule } from '../booking/booking.module';
 import { Booking, BookingSchema } from '../booking/schemas/booking.schema';
-import { ChatService } from '../chat/chat.service';
+import { ChatModule } from '../chat/chat.module';
 import { NotificationsModule } from '../notifications/notifications.module';
 import {
     Notification,
@@ -12,7 +13,6 @@ import { Teacher, TeacherSchema } from '../teachers/schemas/teacher.schema';
 import { User, UserSchema } from '../users/schemas/user.schema';
 import { AdminController } from './admin.controller';
 import { AdminService } from './admin.service';
-import { ChatModule } from '../chat/chat.module';
 
 @Module({
     imports: [
@@ -25,6 +25,7 @@ import { ChatModule } from '../chat/chat.module';
         NotificationsModule,
         SmsModule,
         ChatModule,
+        BookingModule,
     ],
     controllers: [AdminController],
     providers: [AdminService],

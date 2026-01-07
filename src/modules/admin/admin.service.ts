@@ -247,4 +247,23 @@ export class AdminService {
 
         return incomingClasses;
     }
+
+    async getAllClasses(): Promise<Booking[]> {
+        const allClasses = await this.bookingModel
+            .find({})
+            .populate('studentId', 'name lastName profileImage')
+            .populate({
+                path: 'teacherId',
+                select: 'name lastName verifyStatus userId',
+                populate: {
+                    path: 'userId',
+                    select: 'profileImage',
+                },
+            })
+            .populate('subject', '_id name')
+            .sort({ startTime: -1 })
+            .lean();
+
+        return allClasses;
+    }
 }

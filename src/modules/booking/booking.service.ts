@@ -12,7 +12,11 @@ import { Queue } from 'bullmq';
 import dayjs from 'dayjs';
 import 'dayjs/locale/th';
 import { Connection, isValidObjectId, Model, Types } from 'mongoose';
+import { envConfig } from 'src/configs/env.config';
+import { SmsMessageBuilder } from 'src/infra/sms/builders/sms-builder.builder';
+import { SmsService } from 'src/infra/sms/sms.service';
 import { BullMQJob } from 'src/shared/enums/bull-mq.enum';
+import { SocketEvent } from 'src/shared/enums/socket.enum';
 import {
     createObjectId,
     errorLog,
@@ -20,24 +24,19 @@ import {
     getErrorMessage,
     secondsToMilliseconds,
 } from 'src/shared/utils/shared.util';
+import { ChatService } from '../chat/chat.service';
+import { NotificationsService } from '../notifications/notifications.service';
 import { Slot } from '../slots/schemas/slot.schema';
 import { SlotsService } from '../slots/slots.service';
-import { Teacher } from '../teachers/schemas/teacher.schema';
-import { Booking } from './schemas/booking.schema';
-import {
-    ConfirmBookingDto,
-    CreateBookingDto,
-    MySlotResponse,
-} from './schemas/booking.zod.schema';
-import { User } from '../users/schemas/user.schema';
-import { NotificationsService } from '../notifications/notifications.service';
-import { SmsService } from 'src/infra/sms/sms.service';
-import { ChatService } from '../chat/chat.service';
-import { SubjectList } from '../subjects/schemas/subject.schema';
-import { SocketEvent } from 'src/shared/enums/socket.enum';
 import { SocketService } from '../socket/socket.service';
-import { SmsMessageBuilder } from 'src/infra/sms/builders/sms-builder.builder';
-import { envConfig } from 'src/configs/env.config';
+import { SubjectList } from '../subjects/schemas/subject.schema';
+import { Teacher } from '../teachers/schemas/teacher.schema';
+import { User } from '../users/schemas/user.schema';
+import { Booking } from './schemas/booking.schema';
+import { CreateBookingDto, MySlotResponse } from './schemas/booking.zod.schema';
+import { businessConfig } from 'src/configs/business.config';
+import { Role } from '../auth/role/role.enum';
+import { VideoService } from '../chat/video.service';
 
 @Injectable()
 export class BookingService {
@@ -53,6 +52,7 @@ export class BookingService {
         private readonly notificationService: NotificationsService,
         private readonly smsService: SmsService,
         private readonly chatService: ChatService,
+        private readonly videoService: VideoService,
         private readonly socketService: SocketService,
     ) {}
 
@@ -69,6 +69,7 @@ export class BookingService {
 
         await this.bookingQueue.add(BullMQJob.NOTIFY_BEFORE_CLASS, booking, {
             delay: secondsToMilliseconds(secondsToNotifyUsers),
+            // jobId : 
         });
     }
 
@@ -575,6 +576,156 @@ export class BookingService {
             throw error;
         }
     }
+
+    private async _isAllowedToRescheduleBooking(
+        booking: Booking,
+    ): Promise<{ isAllowed: boolean; reason: string | null }> {
+        const now = dayjs();
+        const existingBookingStartTime = dayjs(booking.startTime);
+        const minutesUntilClassStarts = existingBookingStartTime.diff(
+            now,
+            'minute',
+        );
+
+        if (minutesUntilClassStarts <= 0)
+            return {
+                isAllowed: false,
+                reason: 'คลาสได้เริ่มเรียนไปแล้ว ไม่สามารถยกเลิกได้',
+            };
+
+        if (
+            minutesUntilClassStarts <=
+            businessConfig.booking.rescheduleMinutesBeforeClassStarts
+        )
+            return {
+                isAllowed: false,
+                reason: 'คุณไม่สามารถเลื่อนคลาสได้ก่อนคลาสจะเริ่ม 60 นาที',
+            };
+
+        if (booking.status === 'studied')
+            return {
+                isAllowed: false,
+                reason: 'คุณไม่สามารถเลื่อนเวลาได้เนื่องจากคลาสนี้ได้จบไปแล้ว',
+            };
+
+        if (booking.status !== 'paid')
+            return {
+                isAllowed: false,
+                reason: 'คลาสดังกล่าวยังไม่ได้ถูกชำระเงิน',
+            };
+
+        return { isAllowed: true, reason: null };
+    }
+
+    async reschedule(
+        bookingId: string,
+        currentUserId: string,
+        newStartTime: string,
+        newEndTime: string,
+    ): Promise<void> {
+        const session = await this.connection.startSession();
+
+        try {
+            await session.withTransaction(async () => {
+                const currentUser = await this.userModel
+                    .findById(currentUserId)
+                    .lean()
+                    .session(session);
+
+                if (!currentUser)
+                    throw new NotFoundException('ไม่พบข้อมูลผู้ใช้ของคุณ');
+
+                const booking = await this.bookingModel
+                    .findById(bookingId)
+                    .session(session);
+
+                if (!booking)
+                    throw new NotFoundException('ไม่พบข้อมูลการจองดังกล่าว');
+
+                const currentUserIsNotAdmin = currentUser.role !== Role.Admin;
+
+                if (currentUserIsNotAdmin)
+                    throw new ForbiddenException('คุณไม่ใช่ Admin');
+
+                // 1 : เช็คว่า slot เวลาทับซ้อนกับคนอื่นไหม
+                const hasOverlapBookings = await this._hasOverlapBookings({
+                    teacherId: booking.teacherId,
+                    date: booking.date,
+                    studentId: booking.studentId,
+                    endDate: new Date(newEndTime),
+                    startDate: new Date(newStartTime),
+                });
+
+                if (hasOverlapBookings)
+                    throw new BadRequestException(
+                        'คุณไม่สามารถเลื่อนเวลาได้เนื่องจากมีการจองอื่นที่ซ้อนทับกัน',
+                    );
+
+                const { isAllowed, reason } =
+                    await this._isAllowedToRescheduleBooking(booking);
+
+                if (!isAllowed) throw new BadRequestException(reason);
+
+                // 2. เปลี่ยนเวลาของ slot เดิม
+                const newBookingDate = dayjs(newStartTime).format('YYYY-MM-DD');
+
+                await this.slotModel.findByIdAndUpdate(
+                    booking.slotId,
+                    {
+                        $set: {
+                            date: newBookingDate,
+                            startTime: new Date(newStartTime),
+                            endTime: new Date(newEndTime),
+                        },
+                    },
+                    { session, new: true },
+                );
+
+                // 3. เปลี่ยนเวลาของ Booking (date, startTime, endTime)
+                booking.date = newBookingDate;
+                booking.startTime = new Date(newStartTime);
+                booking.endTime = new Date(newEndTime);
+                await booking.save({ session });
+
+                // 4 : ยกเลิก Job Queue ที่รันจากการจองเดิม
+
+                // // 2 : อัปเดตสถานะ Booking เป็น pending(รอจ่ายเงิน)
+                // booking.status = 'pending';
+                // booking.slotId = createdSlot._id.toString();
+                // await booking.save({ session });
+            });
+        } catch (error: unknown) {
+            const errorMessage = getErrorMessage(error);
+
+            errorLog(
+                'BOOKING',
+                `ล้มเหลวระหว่างขอครูเลื่อนเวลา Booking -> ${errorMessage}`,
+            );
+
+            throw error;
+        } finally {
+            await session.endSession();
+        }
+    }
+
+    // async confirmReschedule(bookingId: string): Promise<Booking> {
+    //     const session = await this.connection.startSession();
+
+    //     try {
+    //         //
+    //     } catch (error: unknown) {
+    //         const errorMessage = getErrorMessage(error);
+
+    //         errorLog(
+    //             'BOOKING',
+    //             `ล้มเหลวระหว่างเลื่อนวันนัด Booking -> ${errorMessage}`,
+    //         );
+
+    //         throw error;
+    //     } finally {
+    //         await session.endSession();
+    //     }
+    // }
 
     async getMyStudentBookings(userId: string): Promise<MySlotResponse[]> {
         const bookings = await this.bookingModel
