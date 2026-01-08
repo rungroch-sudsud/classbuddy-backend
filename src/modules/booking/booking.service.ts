@@ -655,7 +655,7 @@ export class BookingService {
             .populate('subject', '_id name')
             .populate({
                 path: 'teacherId',
-                select: 'name lastName verifyStatus userId',
+                select: 'name lastName verifyStatus userId reviews',
                 populate: {
                     path: 'userId',
                     select: 'profileImage',
@@ -690,6 +690,9 @@ export class BookingService {
                     ? dayjs(paidAt).locale('th').format('D MMMM YYYY')
                     : null;
 
+                const hasReviewed = teacher.reviews.map(
+                    (review) => review.reviewerId.toString() === userId,
+                );
                 return {
                     ...rest,
                     date: dateDisplay,
@@ -703,6 +706,7 @@ export class BookingService {
                         verifyStatus: teacher?.verifyStatus,
                         profileImage: teacher?.userId?.profileImage ?? null,
                     },
+                    hasReviewed,
                 };
             },
         );
@@ -737,6 +741,10 @@ export class BookingService {
             userId: new Types.ObjectId(userId),
         });
 
+        const teacherFromBooking = await this.teacherModel
+            .findById(booking.teacherId)
+            .lean();
+
         const isStudent = userId === booking.studentId.toString();
         const isTeacher =
             teacherRecord &&
@@ -764,6 +772,11 @@ export class BookingService {
             ? dayjs(paidAt).locale('th').format('D MMMM YYYY')
             : null;
 
+        const hasReviewed =
+            teacherFromBooking?.reviews.some(
+                (review) => review.reviewerId.toString() === userId,
+            ) ?? false;
+
         return {
             ...rest,
             date: dateDisplay,
@@ -777,6 +790,7 @@ export class BookingService {
                 verifyStatus: teacher?.verifyStatus,
                 profileImage: teacher?.userId?.profileImage ?? null,
             },
+            hasReviewed,
         };
     }
 

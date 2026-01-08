@@ -49,6 +49,7 @@ export const MySlotResponseSchema = z.object({
         verifyStatus: z.string(),
         profileImage: z.string().nullable(),
     }),
+    hasReviewed: z.boolean(),
 });
 
 export type MySlotResponse = z.infer<typeof MySlotResponseSchema>;
