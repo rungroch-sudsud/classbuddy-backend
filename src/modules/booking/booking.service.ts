@@ -690,9 +690,9 @@ export class BookingService {
                     ? dayjs(paidAt).locale('th').format('D MMMM YYYY')
                     : null;
 
-                const hasReviewed = teacher.reviews.map(
+                const hasReviewed = teacher.reviews.some(
                     (review) => review.reviewerId.toString() === userId,
-                );
+                ) ?? false;
                 return {
                     ...rest,
                     date: dateDisplay,
