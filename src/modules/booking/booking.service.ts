@@ -580,12 +580,12 @@ export class BookingService {
         const bookings = await this.bookingModel
             .find({
                 studentId: new Types.ObjectId(userId),
-                status: { $in: ['pending', 'paid'] },
+                status: { $in: ['pending', 'paid', 'studied'] },
             })
             .populate('subject', '_id name')
             .populate({
                 path: 'teacherId',
-                select: 'name lastName verifyStatus userId',
+                select: 'name lastName verifyStatus userId reviews',
                 populate: {
                     path: 'userId',
                     select: 'profileImage',
@@ -620,6 +620,10 @@ export class BookingService {
                     ? dayjs(paidAt).locale('th').format('D MMMM YYYY')
                     : null;
 
+                const hasReviewed = teacher.reviews.some(
+                    (review) => review.reviewerId.toString() === userId,
+                ) ?? false;
+
                 return {
                     ...rest,
                     date: dateDisplay,
@@ -633,6 +637,7 @@ export class BookingService {
                         verifyStatus: teacher?.verifyStatus,
                         profileImage: teacher?.userId?.profileImage ?? null,
                     },
+                    hasReviewed,
                 };
             },
         );
@@ -690,9 +695,10 @@ export class BookingService {
                     ? dayjs(paidAt).locale('th').format('D MMMM YYYY')
                     : null;
 
-                const hasReviewed = teacher.reviews.some(
-                    (review) => review.reviewerId.toString() === userId,
-                ) ?? false;
+                const hasReviewed =
+                    teacher.reviews.some(
+                        (review) => review.reviewerId.toString() === userId,
+                    ) ?? false;
                 return {
                     ...rest,
                     date: dateDisplay,
