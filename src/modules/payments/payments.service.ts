@@ -279,6 +279,11 @@ export class PaymentsService {
 
         if (!channelId) return;
 
+        const metadata: Record<string, any> = {
+            customMessageType: 'booking-paid',
+            bookingId: booking._id.toString(),
+        };
+
         const messageBuilder = new SmsMessageBuilder();
 
         const studentId = student._id.toString();
@@ -313,6 +318,7 @@ export class PaymentsService {
             channelId,
             message: chatMessage,
             senderUserId: studentId,
+            metadata,
         });
     }
 

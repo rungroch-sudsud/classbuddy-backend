@@ -11,7 +11,9 @@ export class StreamChatService {
         const apiKey = process.env.STREAM_KEY!;
         const apiSecret = process.env.STREAM_SECRET!;
 
-        this.client = StreamChat.getInstance(apiKey, apiSecret);
+        this.client = StreamChat.getInstance(apiKey, apiSecret, {
+            timeout: 30000,
+        });
         this.videoClient = new StreamClient(apiKey, apiSecret);
     }
 

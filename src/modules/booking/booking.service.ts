@@ -12,7 +12,11 @@ import { Queue } from 'bullmq';
 import dayjs from 'dayjs';
 import 'dayjs/locale/th';
 import { Connection, isValidObjectId, Model, Types } from 'mongoose';
+import { envConfig } from 'src/configs/env.config';
+import { SmsMessageBuilder } from 'src/infra/sms/builders/sms-builder.builder';
+import { SmsService } from 'src/infra/sms/sms.service';
 import { BullMQJob } from 'src/shared/enums/bull-mq.enum';
+import { SocketEvent } from 'src/shared/enums/socket.enum';
 import {
     createObjectId,
     errorLog,
@@ -20,24 +24,15 @@ import {
     getErrorMessage,
     secondsToMilliseconds,
 } from 'src/shared/utils/shared.util';
-import { Slot } from '../slots/schemas/slot.schema';
-import { SlotsService } from '../slots/slots.service';
-import { Teacher } from '../teachers/schemas/teacher.schema';
-import { Booking } from './schemas/booking.schema';
-import {
-    ConfirmBookingDto,
-    CreateBookingDto,
-    MySlotResponse,
-} from './schemas/booking.zod.schema';
-import { User } from '../users/schemas/user.schema';
-import { NotificationsService } from '../notifications/notifications.service';
-import { SmsService } from 'src/infra/sms/sms.service';
 import { ChatService } from '../chat/chat.service';
-import { SubjectList } from '../subjects/schemas/subject.schema';
-import { SocketEvent } from 'src/shared/enums/socket.enum';
+import { NotificationsService } from '../notifications/notifications.service';
+import { Slot } from '../slots/schemas/slot.schema';
 import { SocketService } from '../socket/socket.service';
-import { SmsMessageBuilder } from 'src/infra/sms/builders/sms-builder.builder';
-import { envConfig } from 'src/configs/env.config';
+import { SubjectList } from '../subjects/schemas/subject.schema';
+import { Teacher } from '../teachers/schemas/teacher.schema';
+import { User } from '../users/schemas/user.schema';
+import { Booking } from './schemas/booking.schema';
+import { CreateBookingDto, MySlotResponse } from './schemas/booking.zod.schema';
 
 @Injectable()
 export class BookingService {
@@ -49,7 +44,6 @@ export class BookingService {
         @InjectModel(Slot.name) private slotModel: Model<Slot>,
         @InjectModel(SubjectList.name) private subjectList: Model<SubjectList>,
         @InjectConnection() private readonly connection: Connection,
-        private readonly slotsService: SlotsService,
         private readonly notificationService: NotificationsService,
         private readonly smsService: SmsService,
         private readonly chatService: ChatService,
@@ -276,20 +270,26 @@ export class BookingService {
                 };
 
                 const messageBuilder = new SmsMessageBuilder();
+
                 const chatId = `stud_${studentId}_teac_${teacher.userId}`;
+                const formattedClassDate = dayjs
+                    .tz(startTime, 'Asia/Bangkok')
+                    .format('DD/MM/YYYY');
+                const startHours = dayjs
+                    .tz(startTime, 'Asia/Bangkok')
+                    .format('HH:mm');
+                const endHours = dayjs
+                    .tz(endTime, 'Asia/Bangkok')
+                    .format('HH:mm');
 
                 messageBuilder
                     .addText('[ยืนยันการจองคลาสเรียน]')
                     .newLine()
                     .addText(`รหัสการจอง : ${createdBooking._id.toString()}`)
                     .newLine()
-                    .addText(
-                        `เริ่มเรียน : ${dayjs.tz(startTime, 'Asia/Bangkok').format('DD/MM/YYYY HH:mm')}`,
-                    )
+                    .addText(`วันที่เรียน : ${formattedClassDate} `)
                     .newLine()
-                    .addText(
-                        `สิ้นสุด : ${dayjs.tz(endTime, 'Asia/Bangkok').format('DD/MM/YYYY HH:mm')}`,
-                    )
+                    .addText(`เวลาเรียน : ${startHours} - ${endHours}`)
                     .newLine()
                     .addText(`วิชา : ${subject.name}`)
                     .newLine()
@@ -394,6 +394,51 @@ export class BookingService {
         }
     }
 
+    private async _sendBookingConfirmedMessage(
+        booking: Booking,
+        teacherUserId: string,
+    ) {
+        const channel = await this.chatService.createOrGetChannel(
+            booking.studentId.toString(),
+            teacherUserId,
+        );
+        const channelId = channel.id;
+
+        if (!channelId)
+            throw new InternalServerErrorException(
+                'ล้มเหลวระหว่างการสร้างบทสนทนา',
+            );
+
+        const bookingId = booking._id.toString();
+
+        const metadata: Record<string, any> = {
+            customMessageType: 'booking-confirmed',
+            bookingId,
+        };
+
+        const messageBuilder = new SmsMessageBuilder();
+
+        messageBuilder
+            .addText('[การยืนยันการจอง] : ')
+            .newLine()
+            .addText(
+                `คุณครูได้ยืนยันการจอง รหัส ${bookingId} เรียบร้อยแล้ว กรุณาชำระเงินภายใน 15 นาที`,
+            )
+            .newLine()
+            .addText(
+                `ลิงค์ชำระเงิน : ${generateUrl(`${envConfig.frontEndUrl}/payment`, { bookingId })}`,
+            );
+
+        const chatMessage = messageBuilder.getMessage();
+
+        await this.chatService.sendChatMessage({
+            channelId,
+            message: chatMessage,
+            senderUserId: teacherUserId,
+            metadata,
+        });
+    }
+
     async confirmBooking(bookingId: string) {
         const session = await this.connection.startSession();
 
@@ -447,38 +492,10 @@ export class BookingService {
                 await booking.save({ session });
 
                 // 3 : ส่งข้อความการยืนยันการจองไปในแชท
-                const channel = await this.chatService.createOrGetChannel(
-                    studentObjId.toString(),
+                await this._sendBookingConfirmedMessage(
+                    booking,
                     teacher.userId.toString(),
                 );
-
-                const channelId = channel.id;
-
-                if (!channelId)
-                    throw new InternalServerErrorException(
-                        'ล้มเหลวระหว่างการสร้างบทสนทนา',
-                    );
-
-                const messageBuilder = new SmsMessageBuilder();
-
-                messageBuilder
-                    .addText('[การยืนยันการจอง] : ')
-                    .newLine()
-                    .addText(
-                        `คุณครูได้ยืนยันการจอง รหัส ${bookingId} เรียบร้อยแล้ว กรุณาชำระเงินภายใน 15 นาที`,
-                    )
-                    .newLine()
-                    .addText(
-                        `ลิงค์ชำระเงิน : ${generateUrl(`${envConfig.frontEndUrl}/payment`, { bookingId })}`,
-                    );
-
-                const chatMessage = messageBuilder.getMessage();
-
-                await this.chatService.sendChatMessage({
-                    channelId,
-                    message: chatMessage,
-                    senderUserId: teacher.userId.toString(),
-                });
 
                 // 4 : ส่ง Socket event ไปหานักเรียนและครู
                 this.socketService.emit(SocketEvent.BOOKING_CONFIRMED, {
@@ -487,6 +504,8 @@ export class BookingService {
                     bookingId: booking._id.toString(),
                 });
             });
+
+            // TODO : ปล่อย slot คืนด้วยถ้าลูกค้าไม่จ่ายเงินภายใน 15 นาที
 
             await this._addNotifyBeforeClassStartsQueue(booking);
 
@@ -548,12 +567,18 @@ export class BookingService {
                     'ล้มเหลวระหว่างการสร้างบทสนทนา',
                 );
 
+            const metadata: Record<string, any> = {
+                customMessageType: 'booking-canceled',
+                bookingId,
+            };
+
             await this.chatService.sendChatMessage({
                 channelId,
                 message: `
 [ยกเลิกการจอง] : คุณครูได้ทำการยกเลิกการจอง รหัส ${bookingId} เรียบร้อยแล้ว
 `,
                 senderUserId: teacher.userId.toString(),
+                metadata,
             });
 
             // 4 : ส่ง notifcation ไปหานักเรียน
@@ -620,9 +645,10 @@ export class BookingService {
                     ? dayjs(paidAt).locale('th').format('D MMMM YYYY')
                     : null;
 
-                const hasReviewed = teacher.reviews.some(
-                    (review) => review.reviewerId.toString() === userId,
-                ) ?? false;
+                const hasReviewed =
+                    teacher.reviews.some(
+                        (review) => review.reviewerId.toString() === userId,
+                    ) ?? false;
 
                 return {
                     ...rest,

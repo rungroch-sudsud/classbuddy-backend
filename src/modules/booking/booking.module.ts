@@ -12,7 +12,6 @@ import {
 } from '../notifications/schema/notification';
 import { Slot, SlotSchema } from '../slots/schemas/slot.schema';
 import { SlotsModule } from '../slots/slots.module';
-import { SlotsService } from '../slots/slots.service';
 import { SocketGateway } from '../socket/socket.gateway';
 import { SocketService } from '../socket/socket.service';
 import { SubjectList, SubjectSchema } from '../subjects/schemas/subject.schema';
@@ -50,7 +49,6 @@ import { Booking, BookingSchema } from './schemas/booking.schema';
         SocketService,
         BookingCronService,
         NotificationsService,
-        SlotsService,
         BookingProcessor,
         BookingService,
     ],

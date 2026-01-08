@@ -1,37 +1,35 @@
-import { EmailModule } from './infra/email/email.module';
-import { VideoService } from './modules/chat/video.service';
-import { WebhookService } from './modules/payments/webhook.service';
-import { WebhookController } from './modules/payments/webhook.controller';
-import { S3Module } from './infra/s3/s3.module';
-import { RedisModule } from './infra/redis/redis.module';
-import { SmsModule } from './infra/sms/sms.module';
 import { Module } from '@nestjs/common';
+import { ConfigModule } from '@nestjs/config';
+import { ScheduleModule } from '@nestjs/schedule';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
-import { ConfigModule } from '@nestjs/config';
 import { MongoDbModule } from './infra/database/connection';
+import { EmailTestController } from './infra/email/email.controller';
+import { EmailModule } from './infra/email/email.module';
+import { EmailService } from './infra/email/email.service';
+import { RedisModule } from './infra/redis/redis.module';
+import { S3Module } from './infra/s3/s3.module';
+import { SmsModule } from './infra/sms/sms.module';
+import { AdminModule } from './modules/admin/admin.module';
 import { AuthModule } from './modules/auth/auth.module';
-import { UsersModule } from './modules/users/users.module';
-import { SubjectsController } from './modules/subjects/subjects.controller';
-import { SubjectsModule } from './modules/subjects/subjects.module';
-import { TeachersModule } from './modules/teachers/teachers.module';
-import { TeachersController } from './modules/teachers/teachers.controller';
-import { SlotsModule } from './modules/slots/slots.module';
 import { BookingController } from './modules/booking/booking.controller';
 import { BookingModule } from './modules/booking/booking.module';
-import { PaymentsController } from './modules/payments/payments.controller';
-import { PaymentsModule } from './modules/payments/payments.module';
+import { ChatModule } from './modules/chat/chat.module';
+import { VideoService } from './modules/chat/video.service';
 import { NotificationsController } from './modules/notifications/notifications.controller';
 import { NotificationsModule } from './modules/notifications/notifications.module';
-import { AdminModule } from './modules/admin/admin.module';
-import { ChatModule } from './modules/chat/chat.module';
-import { ScheduleModule } from '@nestjs/schedule';
+import { PaymentsModule } from './modules/payments/payments.module';
+import { WebhookController } from './modules/payments/webhook.controller';
+import { WebhookService } from './modules/payments/webhook.service';
+import { PostsModule } from './modules/posts/posts.module';
+import { SlotsModule } from './modules/slots/slots.module';
 import { SocketModule } from './modules/socket/socket.module';
 import { SubjectrequestsModule } from './modules/subjectrequests/subjectrequests.module';
-import { EmailService } from './infra/email/email.service';
-import { EmailTestController } from './infra/email/email.controller';
-import { PostsModule } from './modules/posts/posts.module';
-
+import { SubjectsController } from './modules/subjects/subjects.controller';
+import { SubjectsModule } from './modules/subjects/subjects.module';
+import { TeachersController } from './modules/teachers/teachers.controller';
+import { TeachersModule } from './modules/teachers/teachers.module';
+import { UsersModule } from './modules/users/users.module';
 
 @Module({
     imports: [
@@ -55,7 +53,7 @@ import { PostsModule } from './modules/posts/posts.module';
         SocketModule,
         PostsModule,
         SubjectrequestsModule,
-        EmailModule
+        EmailModule,
     ],
     controllers: [
         WebhookController,
@@ -64,9 +62,9 @@ import { PostsModule } from './modules/posts/posts.module';
         TeachersController,
         BookingController,
         NotificationsController,
-        EmailTestController
+        EmailTestController,
     ],
     providers: [VideoService, EmailService, WebhookService, AppService],
     exports: [],
 })
-export class AppModule { }
+export class AppModule {}
