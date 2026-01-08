@@ -26,6 +26,7 @@ import {
     UpdatePostDto,
 } from './dto/post.dto';
 import { Post } from './schemas/post.schema';
+import { NotificationsService } from '../notifications/notifications.service';
 
 dayjs.locale('th');
 
@@ -39,6 +40,7 @@ export class PostsService {
         @InjectModel(Teacher.name)
         private readonly teacherModel: Model<Teacher>,
         private readonly smsService: SmsService,
+        private readonly notificationService: NotificationsService,
     ) {}
 
     async createPost(createPostDto: CreatePostDto, studentUserId: string) {
@@ -59,7 +61,19 @@ export class PostsService {
             });
 
             const users = await this.userModel.find({});
-            const userPhones: Array<string> = users.map((user) => user.phone);
+            const userHavingPushTokens = users.filter(
+                (user) => user.expoPushToken.length > 0,
+            );
+            const userNotHavingPushTokens = users.filter(
+                (user) => user.expoPushToken.length <= 0,
+            );
+
+            const userPhones: Array<string> = userNotHavingPushTokens.map(
+                (user) => user.phone,
+            );
+            const userPushTokens: Array<string> = userHavingPushTokens.flatMap(
+                (user) => user.expoPushToken,
+            );
 
             const builder = new SmsMessageBuilder();
 
@@ -74,8 +88,18 @@ export class PostsService {
 
             const message = builder.getMessage();
 
-            if (isProductionEnv())
+            if (isProductionEnv()) {
                 await this.smsService.sendSms(userPhones, message);
+
+                await this.notificationService.notify({
+                    expoPushTokens: userPushTokens,
+                    title: 'มีโพสประกาศหาคุณครู 1 รายการ ✨',
+                    body: `${newPost.detail}`,
+                    data: {
+                        link: `${envConfig.frontEndUrl}/job-board`,
+                    },
+                });
+            }
 
             infoLog(
                 this.logEntity,
