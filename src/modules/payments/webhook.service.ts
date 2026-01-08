@@ -11,7 +11,7 @@ import { envConfig } from 'src/configs/env.config';
 import { EmailService } from 'src/infra/email/email.service';
 import { EmailTemplateID } from 'src/infra/email/email.type';
 import { SmsService } from 'src/infra/sms/sms.service';
-import { createObjectId, infoLog } from 'src/shared/utils/shared.util';
+import { createObjectId, devLog, infoLog } from 'src/shared/utils/shared.util';
 import { Role } from '../auth/role/role.enum';
 import { Booking } from '../booking/schemas/booking.schema';
 import { ChatService } from '../chat/chat.service';
@@ -407,7 +407,7 @@ export class WebhookService {
         const eventType: string = body.type;
 
         if (eventType === 'message.new') {
-            infoLog('MESSAGE', 'new message');
+            devLog('WEBHOOK', 'NEW MESSAGE')
             const message: string = body.message.text;
             const senderUserId: User['_id'] = body.user.id;
 
@@ -420,21 +420,29 @@ export class WebhookService {
             const receiverPhoneNumber: string | undefined = receiverInfo?.phone;
             const receiverPushToken: Array<string> | undefined =
                 receiverInfo?.expoPushToken;
+            const chatChannelId = `stud_${senderUserId}_teac_${receiverUserId}`;
 
             let hasAlreadyNotified: boolean = false;
 
             if (receiverPushToken) {
+                const chatUrlForMobileApp = `chat/${chatChannelId}`;
+
                 await this.notificationService.notify({
                     expoPushTokens: receiverPushToken,
                     title: 'มีข้อความใหม่ส่งถึงคุณ',
                     body: message,
+                    data: {
+                        link: `/chat/${chatUrlForMobileApp}`,
+                    },
                 });
 
                 hasAlreadyNotified = true;
             }
 
             if (receiverPhoneNumber && !hasAlreadyNotified) {
-                const formattedMessage: string = `มีนักเรียนส่งข้อความถึงคุณ รายละเอียด ${envConfig.frontEndUrl}/chat`;
+                const chatUrlForWebApp = `${envConfig.frontEndUrl}/chat/${chatChannelId}`;
+
+                const formattedMessage: string = `มีนักเรียนส่งข้อความถึงคุณ รายละเอียด ${chatUrlForWebApp}`;
 
                 await this.smsService.sendSms(
                     receiverPhoneNumber,
