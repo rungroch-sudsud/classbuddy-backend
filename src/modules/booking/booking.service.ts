@@ -18,6 +18,7 @@ import {
     errorLog,
     generateUrl,
     getErrorMessage,
+    isProductionEnv,
     secondsToMilliseconds,
 } from 'src/shared/utils/shared.util';
 import { Slot } from '../slots/schemas/slot.schema';
@@ -112,7 +113,7 @@ export class BookingService {
 
         await this.bookingQueue.add(BullMQJob.AUTO_CANCEL_BOOKING, booking, {
             delay: secondsToMilliseconds(expirySeconds),
-            jobId: `${BullMQJob.AUTO_CANCEL_BOOKING}:${booking._id.toString()}`,
+            jobId: `${BullMQJob.AUTO_CANCEL_BOOKING}/${booking._id.toString()}`,
         });
     }
 
@@ -496,15 +497,15 @@ export class BookingService {
                     studentId: studentObjId.toString(),
                     bookingId: booking._id.toString(),
                 });
+
+                await this._addAutoCancelBookingQueue(booking);
+
+                await this._addNotifyBeforeClassStartsQueue(booking);
+
+                await this._addCheckParticipantsBeforeClassEndsQueue(booking);
+
+                await this._addEndCallQueue(booking);
             });
-
-            await this._addAutoCancelBookingQueue(booking);
-
-            await this._addNotifyBeforeClassStartsQueue(booking);
-
-            await this._addCheckParticipantsBeforeClassEndsQueue(booking);
-
-            await this._addEndCallQueue(booking);
 
             return booking;
         } catch (error: unknown) {

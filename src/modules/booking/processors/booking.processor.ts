@@ -2,6 +2,7 @@ import { Processor, WorkerHost } from '@nestjs/bullmq';
 import { InjectModel } from '@nestjs/mongoose';
 import { Job } from 'bullmq';
 import { Model } from 'mongoose';
+import { businessConfig } from 'src/configs/business.config';
 import { envConfig } from 'src/configs/env.config';
 import { SmsMessageBuilder } from 'src/infra/sms/builders/sms-builder.builder';
 import { ChatService } from 'src/modules/chat/chat.service';
@@ -13,6 +14,7 @@ import { Teacher } from 'src/modules/teachers/schemas/teacher.schema';
 import { User } from 'src/modules/users/schemas/user.schema';
 import { BullMQJob } from 'src/shared/enums/bull-mq.enum';
 import {
+    devLog,
     errorLog,
     getErrorMessage,
     infoLog,
@@ -205,21 +207,28 @@ export class BookingProcessor extends WorkerHost {
                 // 1. จบ Call
                 await this.videoService.endCall(bookingId);
 
-                const teacherUser = await this.userModel
-                    .findById(booking.teacherId.toString())
+                const teacher = await this.teacherModel
+                    .findById(booking.teacherId)
                     .lean();
 
-                if (!teacherUser) return { success: false };
+                if (!teacher) {
+                    errorLog(logEntity, 'ไม่พบข้อมูลคุณครูดังกล่าว');
+                    return { success: false };
+                }
+
+                const teacherUserId = teacher.userId.toString();
                 const channel = await this.chatService.createOrGetChannel(
                     booking.studentId.toString(),
-                    teacherUser._id.toString(),
+                    teacherUserId,
                 );
                 const channelId = channel.id;
 
-                if (!channelId) return { success: false };
+                if (!channelId) {
+                    errorLog(logEntity, 'ไม่พบข้อมูลแชทดังกล่าว');
+                    return { success: false };
+                }
 
                 // 2. ส่งข้อความ after class check-up เข้าไปในคลาส
-                const teacherUserId = teacherUser._id.toString();
                 const messageBuilder = new SmsMessageBuilder();
 
                 messageBuilder
@@ -256,6 +265,9 @@ export class BookingProcessor extends WorkerHost {
 
         if (job.name === BullMQJob.AUTO_CANCEL_BOOKING) {
             const logEntity = 'QUEUE (AUTO_CANCEL_BOOKING)';
+
+            devLog(logEntity, 'กำลังยกเลิกการจองอัตโนมัติ...');
+
             try {
                 const data: Booking & { _id: string } = job.data;
 
@@ -282,7 +294,7 @@ export class BookingProcessor extends WorkerHost {
                     );
                     return { success: true };
                 }
-                
+
                 // 1. ลบ slot ออก
                 await this.slotModel.findByIdAndDelete(booking.slotId);
 
@@ -295,26 +307,31 @@ export class BookingProcessor extends WorkerHost {
                 });
 
                 // 3. ส่งข้อความการยกเลิกการจองไปในแชท
-                const teacherUser = await this.userModel
-                    .findById(booking.teacherId.toString())
+                const teacher = await this.teacherModel
+                    .findById(booking.teacherId)
                     .lean();
 
-                if (!teacherUser) return { success: false };
+                if (!teacher) {
+                    errorLog(logEntity, 'ไม่พบข้อมูลคุณครูดังกล่าว');
+                    return { success: false };
+                }
+
+                const teacherUserId = teacher.userId.toString();
+
                 const channel = await this.chatService.createOrGetChannel(
                     booking.studentId.toString(),
-                    teacherUser._id.toString(),
+                    teacherUserId,
                 );
                 const channelId = channel.id;
                 if (!channelId) return { success: false };
 
-                const teacherUserId = teacherUser._id.toString();
                 const messageBuilder = new SmsMessageBuilder();
 
                 messageBuilder
                     .addText('[ข้อความอัตโนมัติจากระบบ] : ')
                     .newLine()
                     .addText(
-                        'การจองคลาสนี้ถูกยกเลิกอัตโนมัติเนื่องจากหมดเวลาชำระเงิน 15 นาที',
+                        `การจองคลาสนี้ถูกยกเลิกอัตโนมัติเนื่องจากหมดเวลาชำระเงิน ${businessConfig.payments.expiryMinutes} นาที`,
                     );
 
                 const chatMessage = messageBuilder.getMessage();
