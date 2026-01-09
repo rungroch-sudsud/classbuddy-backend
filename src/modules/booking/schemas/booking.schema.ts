@@ -1,10 +1,11 @@
-import { Schema, Prop, SchemaFactory } from '@nestjs/mongoose';
+import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 import { Document, HydratedDocument, Types } from 'mongoose';
+import { ClassTrial } from 'src/modules/classtrials/schemas/classtrial.schema';
 import { SubjectList } from 'src/modules/subjects/schemas/subject.schema';
 import { Teacher } from 'src/modules/teachers/schemas/teacher.schema';
 import { User } from 'src/modules/users/schemas/user.schema';
-import { BookingStatusList } from 'src/shared/enums/booking.enum';
 import type { BookingStatus } from 'src/shared/enums/booking.enum';
+import { BookingStatusList } from 'src/shared/enums/booking.enum';
 
 @Schema({ timestamps: true })
 export class Booking extends Document<Types.ObjectId> {
@@ -15,6 +16,9 @@ export class Booking extends Document<Types.ObjectId> {
     })
     studentId: Types.ObjectId;
 
+    @Prop({ type: Types.ObjectId, ref: ClassTrial.name, default: null })
+    classTrialId: Types.ObjectId | null;
+
     @Prop({
         type: Types.ObjectId,
         ref: Teacher.name,
@@ -22,7 +26,7 @@ export class Booking extends Document<Types.ObjectId> {
     })
     teacherId: Types.ObjectId;
 
-    @Prop({ type: String, default : null })
+    @Prop({ type: String, default: null })
     slotId: string;
 
     @Prop({ type: String })
