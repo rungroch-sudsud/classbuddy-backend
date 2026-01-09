@@ -1,4 +1,4 @@
-import { InjectQueue } from '@nestjs/bullmq';
+import { BULL_CONFIG_DEFAULT_TOKEN, InjectQueue } from '@nestjs/bullmq';
 import {
     BadRequestException,
     ForbiddenException,
@@ -38,6 +38,7 @@ import { SocketEvent } from 'src/shared/enums/socket.enum';
 import { SocketService } from '../socket/socket.service';
 import { SmsMessageBuilder } from 'src/infra/sms/builders/sms-builder.builder';
 import { envConfig } from 'src/configs/env.config';
+import { businessConfig } from 'src/configs/business.config';
 
 @Injectable()
 export class BookingService {
@@ -103,6 +104,15 @@ export class BookingService {
 
         await this.bookingQueue.add(BullMQJob.END_CALL, booking, {
             delay: secondsToMilliseconds(totalSecondsToEndCall),
+        });
+    }
+
+    private async _addAutoCancelBookingQueue(booking: Booking) {
+        const expirySeconds = businessConfig.payments.expiryMinutes * 60;
+
+        await this.bookingQueue.add(BullMQJob.AUTO_CANCEL_BOOKING, booking, {
+            delay: secondsToMilliseconds(expirySeconds),
+            jobId: `${BullMQJob.AUTO_CANCEL_BOOKING}:${booking._id.toString()}`,
         });
     }
 
@@ -488,6 +498,8 @@ export class BookingService {
                 });
             });
 
+            await this._addAutoCancelBookingQueue(booking);
+
             await this._addNotifyBeforeClassStartsQueue(booking);
 
             await this._addCheckParticipantsBeforeClassEndsQueue(booking);
@@ -620,9 +632,10 @@ export class BookingService {
                     ? dayjs(paidAt).locale('th').format('D MMMM YYYY')
                     : null;
 
-                const hasReviewed = teacher.reviews.some(
-                    (review) => review.reviewerId.toString() === userId,
-                ) ?? false;
+                const hasReviewed =
+                    teacher.reviews.some(
+                        (review) => review.reviewerId.toString() === userId,
+                    ) ?? false;
 
                 return {
                     ...rest,

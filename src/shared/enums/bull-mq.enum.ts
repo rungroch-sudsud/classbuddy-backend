@@ -3,4 +3,5 @@ export enum BullMQJob {
     CHECK_PARTICIPANTS_BEFORE_CLASS_ENDS = 'check-participants-before-class-ends',
     CREATE_CALLROOM = 'create-callroom',
     END_CALL = 'end-call',
+    AUTO_CANCEL_BOOKING = 'auto-cancel-booking',
 }
