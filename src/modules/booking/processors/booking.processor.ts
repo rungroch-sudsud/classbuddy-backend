@@ -20,6 +20,8 @@ import {
     infoLog,
 } from 'src/shared/utils/shared.util';
 import { Booking } from '../schemas/booking.schema';
+import { SocketService } from 'src/modules/socket/socket.service';
+import { SocketEvent } from 'src/shared/enums/socket.enum';
 
 @Processor('booking')
 export class BookingProcessor extends WorkerHost {
@@ -33,6 +35,7 @@ export class BookingProcessor extends WorkerHost {
         private readonly chatService: ChatService,
         private readonly slotsService: SlotsService,
         private readonly videoService: VideoService,
+        private readonly socketService: SocketService,
     ) {
         super();
     }
@@ -337,9 +340,14 @@ export class BookingProcessor extends WorkerHost {
                 const chatMessage = messageBuilder.getMessage();
 
                 await this.chatService.sendChatMessage({
-                    channelId: channelId,
+                    channelId,
                     message: chatMessage,
                     senderUserId: teacherUserId,
+                });
+
+                this.socketService.emit(SocketEvent.BOOKING_EXPIRED, {
+                    teacherUserId: teacher.userId.toString(),
+                    studentId: booking.studentId.toString(),
                 });
 
                 infoLog(

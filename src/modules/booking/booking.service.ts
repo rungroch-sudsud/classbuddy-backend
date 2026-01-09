@@ -476,7 +476,7 @@ export class BookingService {
                     .addText('[การยืนยันการจอง] : ')
                     .newLine()
                     .addText(
-                        `คุณครูได้ยืนยันการจอง รหัส ${bookingId} เรียบร้อยแล้ว กรุณาชำระเงินภายใน 15 นาที`,
+                        `คุณครูได้ยืนยันการจอง รหัส ${bookingId} เรียบร้อยแล้ว กรุณาชำระเงินภายใน ${businessConfig.payments.expiryMinutes} นาที`,
                     )
                     .newLine()
                     .addText(
