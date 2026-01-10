@@ -46,6 +46,7 @@ import { BookingType } from 'src/shared/enums/booking.enum';
 export class BookingService {
     constructor(
         @InjectQueue('booking') private bookingQueue: Queue,
+        @InjectQueue('video') private videoQueue: Queue,
         @InjectModel(Booking.name) private bookingModel: Model<Booking>,
         @InjectModel(User.name) private userModel: Model<User>,
         @InjectModel(Teacher.name) private teacherModel: Model<Teacher>,
@@ -789,8 +790,14 @@ export class BookingService {
                     },
                 );
 
-                if (booking.type === 'require_payment')
+                if (booking.type === 'require_payment') {
                     await this._addAutoCancelBookingQueue(booking);
+                }
+
+                if (booking.type === 'free_trial')
+                    await this.videoQueue.add(BullMQJob.CREATE_CALLROOM, {
+                        bookingId: booking._id,
+                    });
 
                 await this._addNotifyBeforeClassStartsQueue(booking);
 

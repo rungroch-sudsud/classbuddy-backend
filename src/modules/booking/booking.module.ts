@@ -42,6 +42,9 @@ import { Booking, BookingSchema } from './schemas/booking.schema';
         BullModule.registerQueue({
             name: 'booking',
         }),
+        BullModule.registerQueue({
+            name: 'video',
+        }),
         ConfigModule,
         SlotsModule,
         ChatModule,

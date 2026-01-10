@@ -38,7 +38,6 @@ import {
 } from '../schemas/payment.schema';
 import { Wallet } from '../schemas/wallet.schema';
 import { PaymentStrategy } from './payment-strategy.interface';
-import dayjs from 'dayjs';
 
 @Injectable()
 export class BankTransferStrategy implements PaymentStrategy {
