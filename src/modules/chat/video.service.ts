@@ -178,6 +178,8 @@ export class VideoService {
         const callRoomId = booking.callRoomId;
 
         try {
+            if (!callRoomId) throw new BadRequestException('ไม่มี call room id');
+            
             const call = this.videoClient.video.call('default', callRoomId);
 
             await call.end();

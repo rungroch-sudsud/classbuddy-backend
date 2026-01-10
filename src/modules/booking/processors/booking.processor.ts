@@ -132,6 +132,11 @@ export class BookingProcessor extends WorkerHost {
 
                 const videoClient = this.streamChatService.getVideoClient();
 
+                if (!booking.callRoomId) {
+                    infoLog(logEntity, 'ไม่ต้องจบคลาสเนื่องจาก ไม่มี call room id');
+                    return { success: true };
+                }
+
                 const call = videoClient.video.call(
                     'default',
                     booking.callRoomId,

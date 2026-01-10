@@ -9,4 +9,8 @@ export const businessConfig = {
         expiryMinutes: isProductionEnv() ? 15 : 1,
     },
     coFounderPhones: ['0611752168', '0853009999'],
+    classroom: {
+        freeTrialMinutes: 30,
+        maximumMontlyFreeTrials: 3,
+    },
 };

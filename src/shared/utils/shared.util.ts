@@ -92,3 +92,14 @@ export function generateUrl(
 
     return `${url}?${queryString}`;
 }
+
+export function isValidObjectId(
+    id:
+        | string
+        | number
+        | mongoose.mongo.BSON.ObjectId
+        | mongoose.mongo.BSON.ObjectIdLike
+        | Uint8Array,
+) {
+    return Types.ObjectId.isValid(id);
+}

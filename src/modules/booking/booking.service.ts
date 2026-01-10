@@ -1,4 +1,4 @@
-import { BULL_CONFIG_DEFAULT_TOKEN, InjectQueue } from '@nestjs/bullmq';
+import { InjectQueue } from '@nestjs/bullmq';
 import {
     BadRequestException,
     ForbiddenException,
@@ -12,34 +12,34 @@ import { Queue } from 'bullmq';
 import dayjs from 'dayjs';
 import 'dayjs/locale/th';
 import { Connection, isValidObjectId, Model, Types } from 'mongoose';
+import { businessConfig } from 'src/configs/business.config';
+import { envConfig } from 'src/configs/env.config';
+import { SmsMessageBuilder } from 'src/infra/sms/builders/sms-builder.builder';
+import { SmsService } from 'src/infra/sms/sms.service';
 import { BullMQJob } from 'src/shared/enums/bull-mq.enum';
+import { SocketEvent } from 'src/shared/enums/socket.enum';
 import {
     createObjectId,
     errorLog,
     generateUrl,
     getErrorMessage,
-    isProductionEnv,
     secondsToMilliseconds,
 } from 'src/shared/utils/shared.util';
+import { ChatService } from '../chat/chat.service';
+import { NotificationsService } from '../notifications/notifications.service';
 import { Slot } from '../slots/schemas/slot.schema';
 import { SlotsService } from '../slots/slots.service';
+import { SocketService } from '../socket/socket.service';
+import { SubjectList } from '../subjects/schemas/subject.schema';
 import { Teacher } from '../teachers/schemas/teacher.schema';
+import { User } from '../users/schemas/user.schema';
 import { Booking } from './schemas/booking.schema';
 import {
-    ConfirmBookingDto,
+    AskForBookingFreeTrialDto,
     CreateBookingDto,
     MySlotResponse,
 } from './schemas/booking.zod.schema';
-import { User } from '../users/schemas/user.schema';
-import { NotificationsService } from '../notifications/notifications.service';
-import { SmsService } from 'src/infra/sms/sms.service';
-import { ChatService } from '../chat/chat.service';
-import { SubjectList } from '../subjects/schemas/subject.schema';
-import { SocketEvent } from 'src/shared/enums/socket.enum';
-import { SocketService } from '../socket/socket.service';
-import { SmsMessageBuilder } from 'src/infra/sms/builders/sms-builder.builder';
-import { envConfig } from 'src/configs/env.config';
-import { businessConfig } from 'src/configs/business.config';
+import { ClassTrial } from '../classtrials/schemas/classtrial.schema';
 
 @Injectable()
 export class BookingService {
@@ -50,6 +50,8 @@ export class BookingService {
         @InjectModel(Teacher.name) private teacherModel: Model<Teacher>,
         @InjectModel(Slot.name) private slotModel: Model<Slot>,
         @InjectModel(SubjectList.name) private subjectList: Model<SubjectList>,
+        @InjectModel(ClassTrial.name)
+        private classTrialModel: Model<ClassTrial>,
         @InjectConnection() private readonly connection: Connection,
         private readonly slotsService: SlotsService,
         private readonly notificationService: NotificationsService,
@@ -246,6 +248,7 @@ export class BookingService {
                         price,
                         subject: body.subject,
                         status: 'teacher_confirm_pending',
+                        type: 'require_payment',
                     },
                     { session },
                 );
@@ -405,6 +408,263 @@ export class BookingService {
         }
     }
 
+    async askForBookingFreeTrial(
+        studentId: string,
+        body: AskForBookingFreeTrialDto,
+    ) {
+        const studentObjId = createObjectId(studentId);
+
+        if (!isValidObjectId(body.subject)) {
+            throw new BadRequestException('subject id ไม่ถูกต้อง');
+        }
+
+        const startTime = dayjs.tz(
+            `${body.date}T${body.startTime}`,
+            'Asia/Bangkok',
+        );
+
+        const endTime = startTime.add(
+            businessConfig.classroom.freeTrialMinutes,
+            'minutes',
+        );
+
+        const startDateObj = startTime.toDate();
+        const endDateObj = endTime.toDate();
+
+        const session = await this.connection.startSession();
+
+        try {
+            await session.withTransaction(async () => {
+                // 1 : เช็คว่าเคยเรียนฟรีกับครูคนนี้แล้วหรือยัง
+                const teacher = await this.teacherModel
+                    .findOne({ userId: createObjectId(body.teacherUserId) })
+                    .session(session)
+                    .lean();
+
+                if (!teacher)
+                    throw new NotFoundException('ไม่พบข้อมูลครูดังกล่าว');
+
+                const foundTrial = await this.classTrialModel
+                    .exists({
+                        teacherId: teacher._id,
+                        studentId: studentObjId,
+                    })
+                    .session(session);
+
+                if (foundTrial)
+                    throw new BadRequestException(
+                        'คุณได้เรียนฟรีกับครูคนนี้ไปแล้ว',
+                    );
+
+                // 2 : เช็คว่าเดือนนี้ทดลองเกินที่ระบบกำหนดหรือไม่
+                const startOfCurrentMonth = dayjs().startOf('month').toDate();
+                const endOfCurrentMonth = dayjs().endOf('month').toDate();
+
+                const trialsInCurrentMonthCount = await this.classTrialModel
+                    .countDocuments({
+                        studentId: studentObjId,
+                        createdAt: {
+                            $gte: startOfCurrentMonth,
+                            $lte: endOfCurrentMonth,
+                        },
+                    })
+                    .session(session);
+
+                if (
+                    trialsInCurrentMonthCount >=
+                    businessConfig.classroom.maximumMontlyFreeTrials
+                )
+                    throw new BadRequestException(
+                        `เดือนนี้คุณได้ทดลองเรียนครบ ${businessConfig.classroom.maximumMontlyFreeTrials} ครั้งแล้ว กรุณาลองอีกครั้งภายในเดือนหน้า`,
+                    );
+
+                // 3 : เช็คว่ามีคลาสที่ซ้อนทับกับคลาสนี้แล้วหรือไม่
+                const hasOverlapBookings = await this._hasOverlapBookings({
+                    teacherId: teacher._id,
+                    date: body.date,
+                    studentId: studentObjId,
+                    endDate: endDateObj,
+                    startDate: startDateObj,
+                });
+
+                if (hasOverlapBookings)
+                    throw new BadRequestException(
+                        'มีคลาสที่ซ้อนทับกับคลาสนี้แล้ว กรุณาลองอีกครั้ง',
+                    );
+
+                // 4 : สร้าง Booking สำหรับคลาสนี้
+                const price: number = 0;
+
+                const createdBooking = await this.bookingModel.insertOne(
+                    {
+                        studentId: studentObjId,
+                        teacherId: teacher._id,
+                        date: body.date,
+                        startTime: startDateObj,
+                        endTime: endDateObj,
+                        price,
+                        subject: body.subject,
+                        status: 'teacher_confirm_pending',
+                        type: 'free_trial',
+                    },
+                    { session },
+                );
+
+                if (!createdBooking)
+                    throw new InternalServerErrorException(
+                        'สร้าง booking ไม่สำเร็จ',
+                    );
+
+                // 5 : ส่งข้อความเข้าไปในแชท ให้ครูกดยืนยันการจอง
+                const channel = await this.chatService.createOrGetChannel(
+                    studentId,
+                    body.teacherUserId,
+                );
+                const channelId = channel.id;
+
+                if (!channelId)
+                    throw new InternalServerErrorException(
+                        'ล้มเหลวระหว่างการสร้างบทสนทนา',
+                    );
+
+                const subject = await this.subjectList
+                    .findById(body.subject)
+                    .lean();
+
+                if (!subject) throw new NotFoundException('ไม่พบวิชาดังกล่าว');
+
+                const metadata: Record<string, any> = {
+                    customMessageType: 'confirm-booking',
+                    price,
+                    startTime: startTime.format('YYYY-MM-DD HH:mm'),
+                    endTime: endTime.format('YYYY-MM-DD HH:mm'),
+                    teacherId: teacher._id.toString(),
+                    subjectId: body.subject,
+                    subjectName: subject.name,
+                    studentId,
+                    bookingId: createdBooking._id.toString(),
+                    teacherUserId: teacher.userId.toString(),
+                };
+
+                const messageBuilder = new SmsMessageBuilder();
+                const chatId = `stud_${studentId}_teac_${teacher.userId}`;
+
+                messageBuilder
+                    .addText('[คำขอทดลองเรียนฟรี]')
+                    .newLine()
+                    .addText(`รหัสการจอง : ${createdBooking._id.toString()}`)
+                    .newLine()
+                    .addText(
+                        `เริ่มเรียน : ${dayjs.tz(startTime, 'Asia/Bangkok').format('DD/MM/YYYY HH:mm')}`,
+                    )
+                    .newLine()
+                    .addText(
+                        `สิ้นสุด : ${dayjs.tz(endTime, 'Asia/Bangkok').format('DD/MM/YYYY HH:mm')}`,
+                    )
+                    .newLine()
+                    .addText(`วิชา : ${subject.name}`)
+                    .newLine()
+                    .addText(`ราคา : ${price}`)
+                    .newLine()
+                    .addText(
+                        `ลิงค์อนุมัติการจองสำหรับคุณครู : ${envConfig.frontEndUrl}/chat/${chatId}`,
+                    );
+
+                const chatMessage = messageBuilder.getMessage();
+
+                await this.chatService.sendChatMessage({
+                    channelId,
+                    message: chatMessage,
+                    senderUserId: studentId,
+                    metadata,
+                });
+
+                // 6 : ส่งแจ้งเตือนครูว่าให้ยืนยันการจอง
+                const teacherUser = await this.userModel
+                    .findById(teacher.userId)
+                    .session(session)
+                    .lean();
+
+                if (!teacherUser)
+                    throw new NotFoundException('ไม่พบข้อมูลผู้ใช้ของคุณครู');
+
+                const teacherPushToken = teacherUser.expoPushToken;
+                const teacherPhone = teacherUser.phone;
+
+                let hasNotifiedTeacher: boolean = false;
+
+                if (teacherPushToken) {
+                    await this.notificationService.notify({
+                        expoPushTokens: teacherPushToken,
+                        title: 'มีนักเรียนส่งคำขอทดลองเรียนฟรีกับคุณแล้ว ✨',
+                        body: 'กรุณายืนยันการทดลองเรียนฟรี',
+                    });
+
+                    hasNotifiedTeacher = true;
+                }
+
+                if (!hasNotifiedTeacher) {
+                    await this.smsService.sendSms(
+                        teacherPhone,
+                        'มีนักเรียนส่งคำขอทดลองเรียนฟรีกับคุณแล้ว ✨ กรุณายืนยันการทดลองเรียนฟรี',
+                    );
+
+                    hasNotifiedTeacher = true;
+                }
+
+                // 7 : ส่งแจ้งเตือนนักเรียนว่าให้รอการยืนยันจากครู
+                const student = await this.userModel
+                    .findById(studentObjId)
+                    .session(session)
+                    .lean();
+
+                if (!student)
+                    throw new NotFoundException('ไม่พบข้อมูลนักเรียน');
+
+                const studentPushToken = student.expoPushToken;
+                const studentPhone = student.phone;
+
+                let hasNotifiedStudent: boolean = false;
+
+                if (studentPushToken) {
+                    await this.notificationService.notify({
+                        expoPushTokens: studentPushToken,
+                        title: 'คุณได้ส่งคำขอทดลองเรียนฟรีกับครูแล้ว ✨',
+                        body: 'รอการยืนยันจากครูคนนี้',
+                    });
+
+                    hasNotifiedStudent = true;
+                }
+
+                if (!hasNotifiedStudent) {
+                    await this.smsService.sendSms(
+                        studentPhone,
+                        'คุณได้ส่งคำขอทดลองเรียนฟรีกับครูแล้ว ✨ รอการยืนยันจากครูคนนี้',
+                    );
+
+                    hasNotifiedStudent = true;
+                }
+
+                // 6 : ส่ง Socket event ไปหาทั้งครูและนักเรียน
+                this.socketService.emit(SocketEvent.BOOKING_CREATED, {
+                    teacherUserId: teacher.userId.toString(),
+                    studentId: studentId,
+                });
+            });
+        } catch (error: unknown) {
+            const errorMessage = getErrorMessage(error);
+
+            errorLog(
+                'BOOKING',
+                `ล้มเหลวระหว่างขอครูยืนยันการจอง Booking โดยใช้ askForBookingConfirmation -> ${errorMessage}`,
+            );
+
+            throw error;
+        } finally {
+            await session.endSession();
+        }
+    }
+
     async confirmBooking(bookingId: string) {
         const session = await this.connection.startSession();
 
@@ -499,6 +759,121 @@ export class BookingService {
                 });
 
                 await this._addAutoCancelBookingQueue(booking);
+
+                await this._addNotifyBeforeClassStartsQueue(booking);
+
+                await this._addCheckParticipantsBeforeClassEndsQueue(booking);
+
+                await this._addEndCallQueue(booking);
+            });
+
+            return booking;
+        } catch (error: unknown) {
+            const errorMessage = getErrorMessage(error);
+
+            errorLog(
+                'BOOKING',
+                `ล้มเหลวระหว่างยืนยันการจอง Booking โดยใช้ confirmBooking -> ${errorMessage}`,
+            );
+
+            throw error;
+        } finally {
+            await session.endSession();
+        }
+    }
+
+    async confirmFreeTrialBooking(bookingId: string) {
+        const session = await this.connection.startSession();
+
+        const booking = await this.bookingModel
+            .findById(bookingId)
+            .session(session);
+
+        if (!booking) throw new NotFoundException('ไม่พบข้อมูลการจอง');
+
+        const subjectObjId = booking.subject;
+        const studentObjId = booking.studentId;
+        const teacherObjId = booking.teacherId;
+
+        const teacher = await this.teacherModel
+            .findById(teacherObjId)
+            .lean()
+            .session(session);
+
+        if (!teacher) throw new NotFoundException('ไม่พบข้อมูลครูดังกล่าว');
+
+        const startDate = dayjs.tz(booking.startTime, 'Asia/Bangkok').toDate();
+        const endDate = dayjs.tz(booking.endTime, 'Asia/Bangkok').toDate();
+
+        try {
+            await session.withTransaction(async () => {
+                // 1 : สร้าง slot สำหรับคลาสเรียนนี้ (สถานะรอจ่ายเงิน)
+                const price: number = 0;
+
+                const createdSlot = await this.slotModel.insertOne(
+                    {
+                        teacherId: teacherObjId,
+                        date: booking.date,
+                        startTime: startDate,
+                        bookingId: booking._id,
+                        endTime: endDate,
+                        price,
+                        subject: subjectObjId,
+                        status: 'paid',
+                        bookedBy: studentObjId,
+                    },
+                    { session },
+                );
+
+                // 2 : อัปเดตสถานะ Booking เป็น paid (จ่ายเงินแล้ว เพราะฟรี)
+                booking.status = 'paid';
+                booking.slotId = createdSlot._id.toString();
+                await booking.save({ session });
+
+                // 3 : บันทึกลง ClassTrial
+                await this.classTrialModel.insertOne({
+                    teacherId: teacherObjId,
+                    studentId: studentObjId,
+                    bookingId,
+                });
+
+                // 4 : ส่งข้อความการยืนยันการจองไปในแชท
+                const channel = await this.chatService.createOrGetChannel(
+                    studentObjId.toString(),
+                    teacher.userId.toString(),
+                );
+
+                const channelId = channel.id;
+
+                if (!channelId)
+                    throw new InternalServerErrorException(
+                        'ล้มเหลวระหว่างการสร้างบทสนทนา',
+                    );
+
+                const messageBuilder = new SmsMessageBuilder();
+
+                messageBuilder
+                    .addText('[จองคลาสเรียนฟรีสำเร็จ] : ')
+                    .newLine()
+                    .addText(
+                        `คุณครูได้ยืนยันการจอง รหัส ${bookingId} เรียบร้อยแล้ว`,
+                    )
+                    .newLine();
+
+                const chatMessage = messageBuilder.getMessage();
+
+                await this.chatService.sendChatMessage({
+                    channelId,
+                    message: chatMessage,
+                    senderUserId: teacher.userId.toString(),
+                });
+
+                // 4 : ส่ง Socket event ไปหานักเรียนและครู
+                this.socketService.emit(SocketEvent.BOOKING_PAID, {
+                    teacherUserId: teacher.userId.toString(),
+                    studentId: studentObjId.toString(),
+                    bookingId: booking._id.toString(),
+                });
 
                 await this._addNotifyBeforeClassStartsQueue(booking);
 

@@ -16,7 +16,10 @@ import {
 import { CurrentUser } from 'src/shared/utils/currentUser';
 import { JwtGuard } from '../auth/guard/auth.guard';
 import { BookingService } from './booking.service';
-import { CreateBookingDto } from './schemas/booking.zod.schema';
+import {
+    AskForBookingFreeTrialDto,
+    CreateBookingDto,
+} from './schemas/booking.zod.schema';
 
 @ApiTags('Booking')
 @ApiBearerAuth()
@@ -46,16 +49,52 @@ export class BookingController {
         };
     }
 
+    @Post('ask-free-trial')
+    @ApiOperation({ summary: 'ส่งคำขอทดลองเรียนฟรีกับครู' })
+    @ApiParam({
+        name: 'body',
+        description: 'body ที่ต้องการส่งคำขอทดลองเรียนฟรี',
+    })
+    @UseGuards(JwtGuard)
+    async askForBookingFreeTrial(
+        @CurrentUser() studentId: string,
+        @Body() body: AskForBookingFreeTrialDto,
+    ) {
+        const freeTrialRequest =
+            await this.bookingService.askForBookingFreeTrial(studentId, body);
+
+        return {
+            message: 'ส่งคำขอทดลองเรียนฟรีกับครูสำเร็จ',
+            data: freeTrialRequest,
+        };
+    }
+
     @Patch(':bookingId/confirm')
     @UseGuards(JwtGuard)
     async confirmBooking(
         @CurrentUser() studentId: string,
         @Param('bookingId') bookingId: string,
     ) {
-        const updatedBooking = await this.bookingService.confirmBooking(bookingId);
+        const updatedBooking =
+            await this.bookingService.confirmBooking(bookingId);
 
         return {
             message: 'จองตารางเรียนสำเร็จ',
+            data: updatedBooking,
+        };
+    }
+
+    @Patch(':bookingId/confirm-free-trial')
+    @UseGuards(JwtGuard)
+    async confirmFreeTrialBooking(
+        @CurrentUser() studentId: string,
+        @Param('bookingId') bookingId: string,
+    ) {
+        const updatedBooking =
+            await this.bookingService.confirmFreeTrialBooking(bookingId);
+
+        return {
+            message: 'จองคลาสเรียนฟรีสำเร็จ',
             data: updatedBooking,
         };
     }

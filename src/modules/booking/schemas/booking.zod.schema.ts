@@ -53,3 +53,19 @@ export const MySlotResponseSchema = z.object({
 });
 
 export type MySlotResponse = z.infer<typeof MySlotResponseSchema>;
+
+export const AskForBookingFreeTrialSchema = z.object({
+    subject: z.string().regex(/^[0-9a-fA-F]{24}$/, 'รหัสวิชาไม่ถูกต้อง'),
+    date: z.string('กรุณาเลือกวันที่ต้องการเรียน'),
+    startTime: z
+        .string()
+        .regex(
+            /^([01]\d|2[0-3]):([0-5]\d)$/,
+            'กรุณาเลือกเวลาเริ่มต้นที่ถูกต้อง',
+        ),
+    teacherUserId: z.string('กรุณาเลือกครู'),
+});
+
+export class AskForBookingFreeTrialDto extends createZodDto(
+    AskForBookingFreeTrialSchema,
+) {}

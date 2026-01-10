@@ -4,8 +4,11 @@ import { ClassTrial } from 'src/modules/classtrials/schemas/classtrial.schema';
 import { SubjectList } from 'src/modules/subjects/schemas/subject.schema';
 import { Teacher } from 'src/modules/teachers/schemas/teacher.schema';
 import { User } from 'src/modules/users/schemas/user.schema';
-import type { BookingStatus } from 'src/shared/enums/booking.enum';
-import { BookingStatusList } from 'src/shared/enums/booking.enum';
+import type { BookingStatus, BookingType } from 'src/shared/enums/booking.enum';
+import {
+    BookingStatusList,
+    BookingTypeList,
+} from 'src/shared/enums/booking.enum';
 
 @Schema({ timestamps: true })
 export class Booking extends Document<Types.ObjectId> {
@@ -56,10 +59,17 @@ export class Booking extends Document<Types.ObjectId> {
     status: BookingStatus;
 
     @Prop({ type: String, default: null })
-    callRoomId: string;
+    callRoomId: string | null;
 
     @Prop({ type: Date, default: null })
     paidAt?: Date;
+
+    @Prop({
+        type: String,
+        enum: BookingTypeList,
+        default: 'require_payment',
+    })
+    type: BookingType;
 }
 
 export type BookingDocument = HydratedDocument<Booking>;
