@@ -834,7 +834,7 @@ export class BookingService {
                 await this.classTrialModel.insertOne({
                     teacherId: teacherObjId,
                     studentId: studentObjId,
-                    bookingId,
+                    bookingId: booking._id,
                 });
 
                 // 4 : ส่งข้อความการยืนยันการจองไปในแชท
