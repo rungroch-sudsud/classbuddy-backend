@@ -84,21 +84,6 @@ export class BookingController {
         };
     }
 
-    @Patch(':bookingId/confirm-free-trial')
-    @UseGuards(JwtGuard)
-    async confirmFreeTrialBooking(
-        @CurrentUser() studentId: string,
-        @Param('bookingId') bookingId: string,
-    ) {
-        const updatedBooking =
-            await this.bookingService.confirmFreeTrialBooking(bookingId);
-
-        return {
-            message: 'จองคลาสเรียนฟรีสำเร็จ',
-            data: updatedBooking,
-        };
-    }
-
     @Patch(':bookingId/cancel')
     @ApiParam({
         name: 'bookingId',

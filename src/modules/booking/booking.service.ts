@@ -40,6 +40,7 @@ import {
     MySlotResponse,
 } from './schemas/booking.zod.schema';
 import { ClassTrial } from '../classtrials/schemas/classtrial.schema';
+import { BookingType } from 'src/shared/enums/booking.enum';
 
 @Injectable()
 export class BookingService {
@@ -123,7 +124,10 @@ export class BookingService {
         teacherHourlyRate: number,
         startDate: Date,
         endDate: Date,
+        bookingType: BookingType,
     ): number {
+        if (bookingType === 'free_trial') return 0;
+
         const durationHours =
             (endDate.getTime() - startDate.getTime()) / (1000 * 60 * 60);
 
@@ -236,6 +240,7 @@ export class BookingService {
                     teacher.hourlyRate,
                     startDateObj,
                     endDateObj,
+                    'require_payment',
                 );
 
                 const createdBooking = await this.bookingModel.insertOne(
@@ -695,6 +700,7 @@ export class BookingService {
                     teacher.hourlyRate,
                     startDate,
                     endDate,
+                    booking.type,
                 );
 
                 const createdSlot = await this.slotModel.insertOne(
@@ -706,136 +712,26 @@ export class BookingService {
                         endTime: endDate,
                         price,
                         subject: subjectObjId,
-                        status: 'pending',
+                        status:
+                            booking.type === 'free_trial' ? 'paid' : 'pending',
                         bookedBy: studentObjId,
                     },
                     { session },
                 );
 
-                // 2 : อัปเดตสถานะ Booking เป็น pending(รอจ่ายเงิน)
-                booking.status = 'pending';
+                // 2 : อัปเดตสถานะ Booking เป็น pending(รอจ่ายเงิน) หรือ paid(จ่ายเงินแล้ว เพราะฟรี)
+                booking.status =
+                    booking.type === 'free_trial' ? 'paid' : 'pending';
                 booking.slotId = createdSlot._id.toString();
                 await booking.save({ session });
 
-                // 3 : ส่งข้อความการยืนยันการจองไปในแชท
-                const channel = await this.chatService.createOrGetChannel(
-                    studentObjId.toString(),
-                    teacher.userId.toString(),
-                );
-
-                const channelId = channel.id;
-
-                if (!channelId)
-                    throw new InternalServerErrorException(
-                        'ล้มเหลวระหว่างการสร้างบทสนทนา',
-                    );
-
-                const messageBuilder = new SmsMessageBuilder();
-
-                messageBuilder
-                    .addText('[การยืนยันการจอง] : ')
-                    .newLine()
-                    .addText(
-                        `คุณครูได้ยืนยันการจอง รหัส ${bookingId} เรียบร้อยแล้ว กรุณาชำระเงินภายใน ${businessConfig.payments.expiryMinutes} นาที`,
-                    )
-                    .newLine()
-                    .addText(
-                        `ลิงค์ชำระเงิน : ${generateUrl(`${envConfig.frontEndUrl}/payment`, { bookingId })}`,
-                    );
-
-                const chatMessage = messageBuilder.getMessage();
-
-                await this.chatService.sendChatMessage({
-                    channelId,
-                    message: chatMessage,
-                    senderUserId: teacher.userId.toString(),
-                });
-
-                // 4 : ส่ง Socket event ไปหานักเรียนและครู
-                this.socketService.emit(SocketEvent.BOOKING_CONFIRMED, {
-                    teacherUserId: teacher.userId.toString(),
-                    studentId: studentObjId.toString(),
-                    bookingId: booking._id.toString(),
-                });
-
-                await this._addAutoCancelBookingQueue(booking);
-
-                await this._addNotifyBeforeClassStartsQueue(booking);
-
-                await this._addCheckParticipantsBeforeClassEndsQueue(booking);
-
-                await this._addEndCallQueue(booking);
-            });
-
-            return booking;
-        } catch (error: unknown) {
-            const errorMessage = getErrorMessage(error);
-
-            errorLog(
-                'BOOKING',
-                `ล้มเหลวระหว่างยืนยันการจอง Booking โดยใช้ confirmBooking -> ${errorMessage}`,
-            );
-
-            throw error;
-        } finally {
-            await session.endSession();
-        }
-    }
-
-    async confirmFreeTrialBooking(bookingId: string) {
-        const session = await this.connection.startSession();
-
-        const booking = await this.bookingModel
-            .findById(bookingId)
-            .session(session);
-
-        if (!booking) throw new NotFoundException('ไม่พบข้อมูลการจอง');
-
-        const subjectObjId = booking.subject;
-        const studentObjId = booking.studentId;
-        const teacherObjId = booking.teacherId;
-
-        const teacher = await this.teacherModel
-            .findById(teacherObjId)
-            .lean()
-            .session(session);
-
-        if (!teacher) throw new NotFoundException('ไม่พบข้อมูลครูดังกล่าว');
-
-        const startDate = dayjs.tz(booking.startTime, 'Asia/Bangkok').toDate();
-        const endDate = dayjs.tz(booking.endTime, 'Asia/Bangkok').toDate();
-
-        try {
-            await session.withTransaction(async () => {
-                // 1 : สร้าง slot สำหรับคลาสเรียนนี้ (สถานะรอจ่ายเงิน)
-                const price: number = 0;
-
-                const createdSlot = await this.slotModel.insertOne(
-                    {
+                // 3 : ถ้าเป็น free_trial ให้บันทึกลง ClassTrial ด้วย
+                if (booking.type === 'free_trial')
+                    await this.classTrialModel.insertOne({
                         teacherId: teacherObjId,
-                        date: booking.date,
-                        startTime: startDate,
+                        studentId: studentObjId,
                         bookingId: booking._id,
-                        endTime: endDate,
-                        price,
-                        subject: subjectObjId,
-                        status: 'paid',
-                        bookedBy: studentObjId,
-                    },
-                    { session },
-                );
-
-                // 2 : อัปเดตสถานะ Booking เป็น paid (จ่ายเงินแล้ว เพราะฟรี)
-                booking.status = 'paid';
-                booking.slotId = createdSlot._id.toString();
-                await booking.save({ session });
-
-                // 3 : บันทึกลง ClassTrial
-                await this.classTrialModel.insertOne({
-                    teacherId: teacherObjId,
-                    studentId: studentObjId,
-                    bookingId: booking._id,
-                });
+                    });
 
                 // 4 : ส่งข้อความการยืนยันการจองไปในแชท
                 const channel = await this.chatService.createOrGetChannel(
@@ -853,12 +749,25 @@ export class BookingService {
                 const messageBuilder = new SmsMessageBuilder();
 
                 messageBuilder
-                    .addText('[จองคลาสเรียนฟรีสำเร็จ] : ')
+                    .addText(
+                        booking.type === 'free_trial'
+                            ? '[จองคลาสเรียนฟรีสำเร็จ] : '
+                            : '[การยืนยันการจอง] : ',
+                    )
                     .newLine()
                     .addText(
-                        `คุณครูได้ยืนยันการจอง รหัส ${bookingId} เรียบร้อยแล้ว`,
-                    )
-                    .newLine();
+                        booking.type === 'free_trial'
+                            ? `คุณครูได้ยืนยันการจอง รหัส ${bookingId} เรียบร้อยแล้ว`
+                            : `คุณครูได้ยืนยันการจอง รหัส ${bookingId} เรียบร้อยแล้ว กรุณาชำระเงินภายใน ${businessConfig.payments.expiryMinutes} นาที`,
+                    );
+
+                if (booking.type !== 'free_trial') {
+                    messageBuilder
+                        .newLine()
+                        .addText(
+                            `ลิงค์ชำระเงิน : ${generateUrl(`${envConfig.frontEndUrl}/payment`, { bookingId })}`,
+                        );
+                }
 
                 const chatMessage = messageBuilder.getMessage();
 
@@ -869,11 +778,19 @@ export class BookingService {
                 });
 
                 // 4 : ส่ง Socket event ไปหานักเรียนและครู
-                this.socketService.emit(SocketEvent.BOOKING_PAID, {
-                    teacherUserId: teacher.userId.toString(),
-                    studentId: studentObjId.toString(),
-                    bookingId: booking._id.toString(),
-                });
+                this.socketService.emit(
+                    booking.type === 'free_trial'
+                        ? SocketEvent.BOOKING_PAID
+                        : SocketEvent.BOOKING_CONFIRMED,
+                    {
+                        teacherUserId: teacher.userId.toString(),
+                        studentId: studentObjId.toString(),
+                        bookingId: booking._id.toString(),
+                    },
+                );
+
+                if (booking.type === 'require_payment')
+                    await this._addAutoCancelBookingQueue(booking);
 
                 await this._addNotifyBeforeClassStartsQueue(booking);
 
