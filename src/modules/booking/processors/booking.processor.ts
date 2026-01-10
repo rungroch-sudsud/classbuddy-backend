@@ -133,7 +133,10 @@ export class BookingProcessor extends WorkerHost {
                 const videoClient = this.streamChatService.getVideoClient();
 
                 if (!booking.callRoomId) {
-                    infoLog(logEntity, 'ไม่ต้องจบคลาสเนื่องจาก ไม่มี call room id');
+                    infoLog(
+                        logEntity,
+                        'ไม่ต้องจบคลาสเนื่องจาก ไม่มี call room id',
+                    );
                     return { success: true };
                 }
 
@@ -250,11 +253,13 @@ export class BookingProcessor extends WorkerHost {
 
                 const chatMessage = messageBuilder.getMessage();
 
-                await this.chatService.sendChatMessage({
-                    channelId: channelId,
-                    message: chatMessage,
-                    senderUserId: teacherUserId,
-                });
+                if (booking.status === 'paid' || booking.status === 'studied') {
+                    await this.chatService.sendChatMessage({
+                        channelId: channelId,
+                        message: chatMessage,
+                        senderUserId: teacherUserId,
+                    });
+                }
 
                 infoLog(
                     logEntity,
