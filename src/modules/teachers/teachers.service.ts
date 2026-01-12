@@ -10,6 +10,7 @@ import { FilterQuery, Model, Types } from 'mongoose';
 import { S3Service } from 'src/infra/s3/s3.service';
 import { Teacher, TeacherDocument } from './schemas/teacher.schema';
 // import { , reviewTeacherDto, UpdateTeacherDto } from './schemas/teacher.zod.schema';
+import { businessConfig } from 'src/configs/business.config';
 import { envConfig } from 'src/configs/env.config';
 import { SmsMessageBuilder } from 'src/infra/sms/builders/sms-builder.builder';
 import { SmsService } from 'src/infra/sms/sms.service';
@@ -36,7 +37,7 @@ import {
     PaymentHistoryResponseDto,
     ReviewResponseDto,
 } from './dto/teacher.response.zod';
-import { businessConfig } from 'src/configs/business.config';
+import { Role } from '../auth/role/role.enum';
 
 @Injectable()
 export class TeachersService {
@@ -275,7 +276,7 @@ export class TeachersService {
         const [teachers, total] = await Promise.all([
             this.teacherModel
                 .find(query)
-                .populate('userId', '_id profileImage')
+                .populate('userId', '_id profileImage role')
                 .populate('subjects', 'name')
                 .select(
                     `
@@ -304,6 +305,7 @@ export class TeachersService {
         const teachersWithStats = await Promise.all(
             teachers.map(async (teacher: any) => {
                 const userId = teacher.userId?._id ?? null;
+                const role = teacher.userId?.role ?? null;
                 const profileImage = teacher.userId?.profileImage ?? null;
                 const isVerified = teacher.verifyStatus === 'verified';
                 const isOnline = userId
@@ -319,6 +321,7 @@ export class TeachersService {
                 return {
                     ...teacher,
                     userId,
+                    role,
                     profileImage,
                     isVerified,
                     isOnline,
@@ -327,8 +330,20 @@ export class TeachersService {
             }),
         );
 
+        const adminTeacher = teachersWithStats.find(
+            (teacher) => teacher.role === Role.Admin,
+        );
+
+        const otherTeachers = teachersWithStats.filter(
+            (teacher) => teacher.role !== Role.Admin,
+        );
+
+        const sortedTeachers = adminTeacher
+            ? [adminTeacher, ...otherTeachers]
+            : otherTeachers;
+
         return {
-            data: teachersWithStats,
+            data: sortedTeachers,
             total,
             page,
             limit,

@@ -9,3 +9,7 @@ export const BookingStatusList = [
 ] as const;
 
 export type BookingStatus = (typeof BookingStatusList)[number];
+
+export const BookingTypeList = ['free_trial', 'require_payment'] as const;
+
+export type BookingType = (typeof BookingTypeList)[number];

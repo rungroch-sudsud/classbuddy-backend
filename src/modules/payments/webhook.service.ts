@@ -421,7 +421,7 @@ export class WebhookService {
             const receiverPushToken: Array<string> | undefined =
                 receiverInfo?.expoPushToken;
 
-            let hasAlreadyNotified: boolean = false;
+            // let hasAlreadyNotified: boolean = false;
 
             if (receiverPushToken) {
                 await this.notificationService.notify({
@@ -430,19 +430,19 @@ export class WebhookService {
                     body: message,
                 });
 
-                hasAlreadyNotified = true;
+                // hasAlreadyNotified = true;
             }
 
-            if (receiverPhoneNumber && !hasAlreadyNotified) {
-                const formattedMessage: string = `มีนักเรียนส่งข้อความถึงคุณ รายละเอียด ${envConfig.frontEndUrl}/chat`;
+            // if (receiverPhoneNumber && !hasAlreadyNotified) {
+            //     const formattedMessage: string = `มีนักเรียนส่งข้อความถึงคุณ รายละเอียด ${envConfig.frontEndUrl}/chat`;
 
-                await this.smsService.sendSms(
-                    receiverPhoneNumber,
-                    formattedMessage,
-                );
+            //     await this.smsService.sendSms(
+            //         receiverPhoneNumber,
+            //         formattedMessage,
+            //     );
 
-                hasAlreadyNotified = true;
-            }
+            //     hasAlreadyNotified = true;
+            // }
 
             // if (receiverEmail) {
             //     const sendEmailPayload: SendEmailPayload = {

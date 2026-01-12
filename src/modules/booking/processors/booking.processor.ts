@@ -2,22 +2,26 @@ import { Processor, WorkerHost } from '@nestjs/bullmq';
 import { InjectModel } from '@nestjs/mongoose';
 import { Job } from 'bullmq';
 import { Model } from 'mongoose';
+import { businessConfig } from 'src/configs/business.config';
+import { envConfig } from 'src/configs/env.config';
+import { SmsMessageBuilder } from 'src/infra/sms/builders/sms-builder.builder';
+import { ChatService } from 'src/modules/chat/chat.service';
 import { StreamChatService } from 'src/modules/chat/stream-chat.service';
+import { VideoService } from 'src/modules/chat/video.service';
+import { Slot } from 'src/modules/slots/schemas/slot.schema';
+import { SlotsService } from 'src/modules/slots/slots.service';
 import { Teacher } from 'src/modules/teachers/schemas/teacher.schema';
 import { User } from 'src/modules/users/schemas/user.schema';
 import { BullMQJob } from 'src/shared/enums/bull-mq.enum';
 import {
+    devLog,
     errorLog,
     getErrorMessage,
     infoLog,
 } from 'src/shared/utils/shared.util';
 import { Booking } from '../schemas/booking.schema';
-import { SlotsService } from 'src/modules/slots/slots.service';
-import { VideoService } from 'src/modules/chat/video.service';
-import { envConfig } from 'src/configs/env.config';
-import { SmsMessageBuilder } from 'src/infra/sms/builders/sms-builder.builder';
-import { ChatService } from 'src/modules/chat/chat.service';
-import { NotFoundException } from '@nestjs/common';
+import { SocketService } from 'src/modules/socket/socket.service';
+import { SocketEvent } from 'src/shared/enums/socket.enum';
 
 @Processor('booking')
 export class BookingProcessor extends WorkerHost {
@@ -25,10 +29,13 @@ export class BookingProcessor extends WorkerHost {
         @InjectModel(Booking.name) private bookingModel: Model<Booking>,
         @InjectModel(Teacher.name) private teacherModel: Model<Teacher>,
         @InjectModel(User.name) private userModel: Model<User>,
+        @InjectModel(Slot.name) private slotModel: Model<Slot>,
+
         private readonly streamChatService: StreamChatService,
         private readonly chatService: ChatService,
         private readonly slotsService: SlotsService,
         private readonly videoService: VideoService,
+        private readonly socketService: SocketService,
     ) {
         super();
     }
@@ -125,6 +132,14 @@ export class BookingProcessor extends WorkerHost {
 
                 const videoClient = this.streamChatService.getVideoClient();
 
+                if (!booking.callRoomId) {
+                    infoLog(
+                        logEntity,
+                        'ไม่ต้องจบคลาสเนื่องจาก ไม่มี call room id',
+                    );
+                    return { success: true };
+                }
+
                 const call = videoClient.video.call(
                     'default',
                     booking.callRoomId,
@@ -203,21 +218,28 @@ export class BookingProcessor extends WorkerHost {
                 // 1. จบ Call
                 await this.videoService.endCall(bookingId);
 
-                const teacherUser = await this.userModel
-                    .findById(booking.teacherId.toString())
+                const teacher = await this.teacherModel
+                    .findById(booking.teacherId)
                     .lean();
 
-                if (!teacherUser) return { success: false };
+                if (!teacher) {
+                    errorLog(logEntity, 'ไม่พบข้อมูลคุณครูดังกล่าว');
+                    return { success: false };
+                }
+
+                const teacherUserId = teacher.userId.toString();
                 const channel = await this.chatService.createOrGetChannel(
                     booking.studentId.toString(),
-                    teacherUser._id.toString(),
+                    teacherUserId,
                 );
                 const channelId = channel.id;
 
-                if (!channelId) return { success: false };
+                if (!channelId) {
+                    errorLog(logEntity, 'ไม่พบข้อมูลแชทดังกล่าว');
+                    return { success: false };
+                }
 
                 // 2. ส่งข้อความ after class check-up เข้าไปในคลาส
-                const teacherUserId = teacherUser._id.toString();
                 const messageBuilder = new SmsMessageBuilder();
 
                 messageBuilder
@@ -231,15 +253,116 @@ export class BookingProcessor extends WorkerHost {
 
                 const chatMessage = messageBuilder.getMessage();
 
-                await this.chatService.sendChatMessage({
-                    channelId: channelId,
-                    message: chatMessage,
-                    senderUserId: teacherUserId,
-                });
+                if (booking.status === 'paid' || booking.status === 'studied') {
+                    await this.chatService.sendChatMessage({
+                        channelId: channelId,
+                        message: chatMessage,
+                        senderUserId: teacherUserId,
+                    });
+                }
 
                 infoLog(
                     logEntity,
                     `จบ call สำหรับคลาสเรียน bookingId : ${bookingId} สำเร็จ!`,
+                );
+
+                return { success: true };
+            } catch (error: unknown) {
+                const errorMesage = getErrorMessage(error);
+
+                errorLog(logEntity, errorMesage);
+
+                return { success: false };
+            }
+        }
+
+        if (job.name === BullMQJob.AUTO_CANCEL_BOOKING) {
+            const logEntity = 'QUEUE (AUTO_CANCEL_BOOKING)';
+
+            devLog(logEntity, 'กำลังยกเลิกการจองอัตโนมัติ...');
+
+            try {
+                const data: Booking & { _id: string } = job.data;
+
+                const bookingId = data._id;
+
+                infoLog(
+                    logEntity,
+                    `กำลังยกเลิกการจอง bookingId : ${bookingId}`,
+                );
+
+                const booking = await this.bookingModel
+                    .findById(data._id)
+                    .lean();
+
+                if (!booking) {
+                    errorLog(logEntity, 'ไม่พบการจองดังกล่าว');
+                    return { succes: false };
+                }
+
+                if (booking.status === 'paid' || booking.status === 'studied') {
+                    infoLog(
+                        logEntity,
+                        'ไม่ต้องยกเลิกการจอง เนื่องจากการจองนี้ได้จ่ายเงินแล้วหรือเรียนจบแล้ว',
+                    );
+                    return { success: true };
+                }
+
+                // 1. ลบ slot ออก
+                await this.slotModel.findByIdAndDelete(booking.slotId);
+
+                // 2. ปรับสถานะ booking เป็น expired และลบ slotId ออก
+                await this.bookingModel.findByIdAndUpdate(bookingId, {
+                    $set: {
+                        status: 'expired',
+                        slotId: null,
+                    },
+                });
+
+                // 3. ส่งข้อความการยกเลิกการจองไปในแชท
+                const teacher = await this.teacherModel
+                    .findById(booking.teacherId)
+                    .lean();
+
+                if (!teacher) {
+                    errorLog(logEntity, 'ไม่พบข้อมูลคุณครูดังกล่าว');
+                    return { success: false };
+                }
+
+                const teacherUserId = teacher.userId.toString();
+
+                const channel = await this.chatService.createOrGetChannel(
+                    booking.studentId.toString(),
+                    teacherUserId,
+                );
+                const channelId = channel.id;
+                if (!channelId) return { success: false };
+
+                const messageBuilder = new SmsMessageBuilder();
+
+                messageBuilder
+                    .addText('[ข้อความอัตโนมัติจากระบบ] : ')
+                    .newLine()
+                    .addText(
+                        `การจองคลาสนี้ถูกยกเลิกอัตโนมัติเนื่องจากหมดเวลาชำระเงิน ${businessConfig.payments.expiryMinutes} นาที`,
+                    );
+
+                const chatMessage = messageBuilder.getMessage();
+
+                await this.chatService.sendChatMessage({
+                    channelId,
+                    message: chatMessage,
+                    senderUserId: teacherUserId,
+                });
+
+                this.socketService.emit(SocketEvent.BOOKING_EXPIRED, {
+                    teacherUserId: teacher.userId.toString(),
+                    studentId: booking.studentId.toString(),
+                });
+
+                infoLog(
+                    logEntity,
+                    `ยกเลิกการจอง bookingId : ${bookingId} สำเร็จ!`,
                 );
 
                 return { success: true };

@@ -5,6 +5,10 @@ import { JwtService } from '@nestjs/jwt';
 import { MongooseModule } from '@nestjs/mongoose';
 import { SmsModule } from 'src/infra/sms/sms.module';
 import { ChatModule } from '../chat/chat.module';
+import {
+    ClassTrial,
+    ClassTrialSchema,
+} from '../classtrials/schemas/classtrial.schema';
 import { NotificationsService } from '../notifications/notifications.service';
 import {
     Notification,
@@ -32,11 +36,14 @@ import { Booking, BookingSchema } from './schemas/booking.schema';
             { name: Teacher.name, schema: TeacherSchema },
             { name: SubjectList.name, schema: SubjectSchema },
             { name: Notification.name, schema: NotificationSchema },
+            { name: ClassTrial.name, schema: ClassTrialSchema },
         ]),
         BullModule.registerQueue({
             name: 'booking',
         }),
-
+        BullModule.registerQueue({
+            name: 'video',
+        }),
         ConfigModule,
         SlotsModule,
         ChatModule,

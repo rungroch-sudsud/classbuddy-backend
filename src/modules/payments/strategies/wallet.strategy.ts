@@ -1,3 +1,4 @@
+import { InjectQueue } from '@nestjs/bullmq';
 import {
     BadRequestException,
     Injectable,
@@ -5,40 +6,38 @@ import {
     NotFoundException,
     UnauthorizedException,
 } from '@nestjs/common';
-import { PaymentStrategy } from './payment-strategy.interface';
 import { InjectConnection, InjectModel } from '@nestjs/mongoose';
+import { Queue } from 'bullmq';
 import { Connection, Model } from 'mongoose';
+import { envConfig } from 'src/configs/env.config';
+import { EmailService } from 'src/infra/email/email.service';
+import { EmailTemplateID } from 'src/infra/email/email.type';
+import { Role } from 'src/modules/auth/role/role.enum';
+import { Booking } from 'src/modules/booking/schemas/booking.schema';
+import { ChatService } from 'src/modules/chat/chat.service';
+import { NotificationsService } from 'src/modules/notifications/notifications.service';
+import { Slot } from 'src/modules/slots/schemas/slot.schema';
+import { Teacher } from 'src/modules/teachers/schemas/teacher.schema';
+import { User } from 'src/modules/users/schemas/user.schema';
+import { BullMQJob } from 'src/shared/enums/bull-mq.enum';
+import {
+    NotificationReceipientType,
+    NotificationType,
+} from 'src/shared/enums/notification.enum';
+import { SlotStatus } from 'src/shared/enums/slot.enum';
 import {
     createObjectId,
     errorLog,
     getErrorMessage,
     infoLog,
 } from 'src/shared/utils/shared.util';
-import { Booking } from 'src/modules/booking/schemas/booking.schema';
-import { Wallet } from '../schemas/wallet.schema';
 import {
     Payment,
     PaymentMethod,
     PaymentStatus,
 } from '../schemas/payment.schema';
-import { Slot } from 'src/modules/slots/schemas/slot.schema';
-import { Role } from 'src/modules/auth/role/role.enum';
-import { SlotStatus } from 'src/shared/enums/slot.enum';
-import { Teacher } from 'src/modules/teachers/schemas/teacher.schema';
-import { NotificationsService } from 'src/modules/notifications/notifications.service';
-import { ChatService } from 'src/modules/chat/chat.service';
-import {
-    NotificationReceipientType,
-    NotificationType,
-} from 'src/shared/enums/notification.enum';
-import { EmailService } from 'src/infra/email/email.service';
-import { User } from 'src/modules/users/schemas/user.schema';
-import { envConfig } from 'src/configs/env.config';
-import { EmailTemplateID } from 'src/infra/email/email.type';
-import { InjectQueue } from '@nestjs/bullmq';
-import { Queue } from 'bullmq';
-import { BullMQJob } from 'src/shared/enums/bull-mq.enum';
-import dayjs from 'dayjs';
+import { Wallet } from '../schemas/wallet.schema';
+import { PaymentStrategy } from './payment-strategy.interface';
 
 @Injectable()
 export class WalletStrategy implements PaymentStrategy {
