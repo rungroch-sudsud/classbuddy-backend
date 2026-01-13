@@ -37,6 +37,10 @@ import {
 } from './schemas/booking.zod.schema';
 import { ClassTrial } from '../classtrials/schemas/classtrial.schema';
 import { BookingType } from 'src/shared/enums/booking.enum';
+import { businessConfig } from 'src/configs/business.config';
+import { SmsMessageBuilder } from 'src/infra/sms/builders/sms-builder.builder';
+import { envConfig } from 'src/configs/env.config';
+import { SmsService } from 'src/infra/sms/sms.service';
 
 @Injectable()
 export class BookingService {
@@ -676,10 +680,13 @@ export class BookingService {
         booking: Booking,
         teacherUserId: string,
     ) {
+        const bookingId = booking._id.toString();
+
         const channel = await this.chatService.createOrGetChannel(
             booking.studentId.toString(),
             teacherUserId,
         );
+
         const channelId = channel.id;
 
         if (!channelId)
@@ -687,25 +694,28 @@ export class BookingService {
                 'ล้มเหลวระหว่างการสร้างบทสนทนา',
             );
 
-        const bookingId = booking._id.toString();
-
-        const metadata: Record<string, any> = {
-            customMessageType: 'booking-confirmed',
-            bookingId,
-        };
-
         const messageBuilder = new SmsMessageBuilder();
 
         messageBuilder
-            .addText('[การยืนยันการจอง] : ')
-            .newLine()
             .addText(
-                `คุณครูได้ยืนยันการจอง รหัส ${bookingId} เรียบร้อยแล้ว กรุณาชำระเงินภายใน 15 นาที`,
+                booking.type === 'free_trial'
+                    ? '[จองคลาสเรียนฟรีสำเร็จ] : '
+                    : '[การยืนยันการจอง] : ',
             )
             .newLine()
             .addText(
-                `ลิงค์ชำระเงิน : ${generateUrl(`${envConfig.frontEndUrl}/payment`, { bookingId })}`,
+                booking.type === 'free_trial'
+                    ? `คุณครูได้ยืนยันการจอง รหัส ${bookingId} เรียบร้อยแล้ว`
+                    : `คุณครูได้ยืนยันการจอง รหัส ${bookingId} เรียบร้อยแล้ว กรุณาชำระเงินภายใน ${businessConfig.payments.expiryMinutes} นาที`,
             );
+
+        if (booking.type !== 'free_trial') {
+            messageBuilder
+                .newLine()
+                .addText(
+                    `ลิงค์ชำระเงิน : ${generateUrl(`${envConfig.frontEndUrl}/payment`, { bookingId })}`,
+                );
+        }
 
         const chatMessage = messageBuilder.getMessage();
 
@@ -713,7 +723,6 @@ export class BookingService {
             channelId,
             message: chatMessage,
             senderUserId: teacherUserId,
-            metadata,
         });
     }
 
@@ -769,10 +778,11 @@ export class BookingService {
                 // 2 : อัปเดตสถานะ Booking เป็น pending(รอจ่ายเงิน) หรือ paid(จ่ายเงินแล้ว เพราะฟรี)
                 booking.status =
                     booking.type === 'free_trial' ? 'paid' : 'pending';
+
                 booking.slotId = createdSlot._id.toString();
+
                 await booking.save({ session });
 
-                // 3 : ถ้าเป็น free_trial ให้บันทึกลง ClassTrial ด้วย
                 if (booking.type === 'free_trial')
                     await this.classTrialModel.insertOne({
                         teacherId: teacherObjId,
@@ -781,59 +791,17 @@ export class BookingService {
                     });
 
                 // 4 : ส่งข้อความการยืนยันการจองไปในแชท
-                const channel = await this.chatService.createOrGetChannel(
-                    studentObjId.toString(),
-                // 3 : ส่งข้อความการยืนยันการจองไปในแชท
-                await this._sendBookingConfirmedMessage(
-                    booking,
-                    teacher.userId.toString(),
-                );
+                const teacherUserId = teacher.userId.toString();
 
-                const channelId = channel.id;
+                await this._sendBookingConfirmedMessage(booking, teacherUserId);
 
-                if (!channelId)
-                    throw new InternalServerErrorException(
-                        'ล้มเหลวระหว่างการสร้างบทสนทนา',
-                    );
-
-                const messageBuilder = new SmsMessageBuilder();
-
-                messageBuilder
-                    .addText(
-                        booking.type === 'free_trial'
-                            ? '[จองคลาสเรียนฟรีสำเร็จ] : '
-                            : '[การยืนยันการจอง] : ',
-                    )
-                    .newLine()
-                    .addText(
-                        booking.type === 'free_trial'
-                            ? `คุณครูได้ยืนยันการจอง รหัส ${bookingId} เรียบร้อยแล้ว`
-                            : `คุณครูได้ยืนยันการจอง รหัส ${bookingId} เรียบร้อยแล้ว กรุณาชำระเงินภายใน ${businessConfig.payments.expiryMinutes} นาที`,
-                    );
-
-                if (booking.type !== 'free_trial') {
-                    messageBuilder
-                        .newLine()
-                        .addText(
-                            `ลิงค์ชำระเงิน : ${generateUrl(`${envConfig.frontEndUrl}/payment`, { bookingId })}`,
-                        );
-                }
-
-                const chatMessage = messageBuilder.getMessage();
-
-                await this.chatService.sendChatMessage({
-                    channelId,
-                    message: chatMessage,
-                    senderUserId: teacher.userId.toString(),
-                });
-
-                // 4 : ส่ง Socket event ไปหานักเรียนและครู
+                // 5 : ส่ง Socket event ไปหานักเรียนและครู
                 this.socketService.emit(
                     booking.type === 'free_trial'
                         ? SocketEvent.BOOKING_PAID
                         : SocketEvent.BOOKING_CONFIRMED,
                     {
-                        teacherUserId: teacher.userId.toString(),
+                        teacherUserId: teacherUserId,
                         studentId: studentObjId.toString(),
                         bookingId: booking._id.toString(),
                     },
@@ -987,10 +955,6 @@ export class BookingService {
                     ? dayjs(paidAt).locale('th').format('D MMMM YYYY')
                     : null;
 
-                const hasReviewed =
-                    teacher.reviews.some(
-                        (review) => review.reviewerId.toString() === userId,
-                    ) ?? false;
                 const hasReviewed =
                     teacher.reviews.some(
                         (review) => review.reviewerId.toString() === userId,
