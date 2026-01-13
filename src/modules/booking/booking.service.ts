@@ -681,9 +681,10 @@ export class BookingService {
         teacherUserId: string,
     ) {
         const bookingId = booking._id.toString();
+        const studentId = booking.studentId.toString();
 
         const channel = await this.chatService.createOrGetChannel(
-            booking.studentId.toString(),
+            studentId,
             teacherUserId,
         );
 
@@ -719,10 +720,16 @@ export class BookingService {
 
         const chatMessage = messageBuilder.getMessage();
 
+        const metadata: Record<string, any> = {
+            customMessageType: 'booking-confirmed',
+            bookingId,
+        };
+
         await this.chatService.sendChatMessage({
             channelId,
             message: chatMessage,
             senderUserId: teacherUserId,
+            metadata,
         });
     }
 
@@ -780,6 +787,13 @@ export class BookingService {
                     booking.type === 'free_trial' ? 'paid' : 'pending';
 
                 booking.slotId = createdSlot._id.toString();
+
+                if (booking.type === 'require_payment') {
+                    booking.maximumPaymentExpiredAt = dayjs()
+                        .utc()
+                        .add(businessConfig.payments.expiryMinutes, 'minute')
+                        .toDate();
+                }
 
                 await booking.save({ session });
 

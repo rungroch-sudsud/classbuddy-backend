@@ -70,6 +70,9 @@ export class Booking extends Document<Types.ObjectId> {
         default: 'require_payment',
     })
     type: BookingType;
+
+    @Prop({ type: Date, default: null })
+    maximumPaymentExpiredAt?: Date;
 }
 
 export type BookingDocument = HydratedDocument<Booking>;

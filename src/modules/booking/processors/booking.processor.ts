@@ -349,10 +349,16 @@ export class BookingProcessor extends WorkerHost {
 
                 const chatMessage = messageBuilder.getMessage();
 
+                const metadata: Record<string, any> = {
+                    customMessageType: 'booking-expired',
+                    bookingId,
+                };
+
                 await this.chatService.sendChatMessage({
                     channelId,
                     message: chatMessage,
                     senderUserId: teacherUserId,
+                    metadata,
                 });
 
                 this.socketService.emit(SocketEvent.BOOKING_EXPIRED, {
