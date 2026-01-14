@@ -40,6 +40,108 @@ export class BookingProcessor extends WorkerHost {
         super();
     }
 
+    private async _handleEndCall(job: Job): Promise<{ success: boolean }> {
+        const logEntity = 'QUEUE (END_CALL)';
+
+        try {
+            const data: Booking & { _id: string } = job.data;
+
+            const bookingId = data._id;
+
+            infoLog(
+                logEntity,
+                `กำลังปิด Call สำหรับคลาสเรียน bookingId : ${bookingId}`,
+            );
+
+            const booking = await this.bookingModel.findById(data._id).lean();
+
+            if (!booking) {
+                errorLog(logEntity, 'ไม่พบการจองดังกล่าว');
+                return { success: false };
+            }
+
+            // 1. จบ Call
+            await this.videoService.endCall(bookingId);
+
+            const teacher = await this.teacherModel
+                .findById(booking.teacherId)
+                .lean();
+
+            if (!teacher) {
+                errorLog(logEntity, 'ไม่พบข้อมูลคุณครูดังกล่าว');
+                return { success: false };
+            }
+
+            const teacherUserId = teacher.userId.toString();
+            const channel = await this.chatService.createOrGetChannel(
+                booking.studentId.toString(),
+                teacherUserId,
+            );
+            const channelId = channel.id;
+
+            if (!channelId) {
+                errorLog(logEntity, 'ไม่พบข้อมูลแชทดังกล่าว');
+                return { success: false };
+            }
+
+            // 2. ส่งข้อความ after class check-up เข้าไปในคลาส
+            const messageBuilder = new SmsMessageBuilder();
+
+            messageBuilder
+                .addText('[ข้อความอัตโนมัติจากระบบ] : ')
+                .newLine()
+                .addText('เรียนกับคุณครูเสร็จแล้ว')
+                .newLine()
+                .addText('เป็นอย่างไรบ้าง อยากให้สอนอะไร')
+                .newLine()
+                .addText('เพิ่มแจ้งคณครูได้เลยนะ ✏️');
+
+            const chatMessage = messageBuilder.getMessage();
+
+            if (booking.status === 'paid' || booking.status === 'studied') {
+                await this.chatService.sendChatMessage({
+                    channelId,
+                    message: chatMessage,
+                    senderUserId: teacherUserId,
+                });
+            }
+
+            // 3 : ส่งแบบฟอร์มให้นักเรียน สรุปสิ่งที่เรียนในวันนี้ในคลาส
+            const shortNoteMessageBuilder = new SmsMessageBuilder();
+
+            shortNoteMessageBuilder.addText(
+                'แบบฟอร์มสรุปสิ่งที่เรียนในวันนี้ในคลาส',
+            );
+
+            const shortNoteMessage = shortNoteMessageBuilder.getMessage();
+
+            const shortNoteMetaData: Record<string, any> = {
+                customMessageType: 'short-note',
+                bookingId,
+            };
+
+            await this.chatService.sendChatMessage({
+                channelId,
+                message: shortNoteMessage,
+                senderUserId: teacherUserId,
+                metadata: shortNoteMetaData,
+            });
+
+            infoLog(
+                logEntity,
+                `จบ call สำหรับคลาสเรียน bookingId : ${bookingId} สำเร็จ!`,
+            );
+
+            return { success: true };
+        } catch (error: unknown) {
+            const errorMesage = getErrorMessage(error);
+
+            errorLog(logEntity, errorMesage);
+
+            return { success: false };
+        }
+    }
+
     async process(job: Job) {
         if (job.name === BullMQJob.NOTIFY_BEFORE_CLASS) {
             const logEntity = 'QUEUE (NOTIFY_BEFORE_CLASS)';
@@ -198,87 +300,8 @@ export class BookingProcessor extends WorkerHost {
             }
         }
 
-        if (job.name === BullMQJob.END_CALL) {
-            const logEntity = 'QUEUE (END_CALL)';
-            try {
-                const data: Booking & { _id: string } = job.data;
-
-                const bookingId = data._id;
-
-                infoLog(
-                    logEntity,
-                    `กำลังปิด Call สำหรับคลาสเรียน bookingId : ${bookingId}`,
-                );
-
-                const booking = await this.bookingModel
-                    .findById(data._id)
-                    .lean();
-
-                if (!booking) {
-                    errorLog(logEntity, 'ไม่พบการจองดังกล่าว');
-                    return { succes: false };
-                }
-
-                // 1. จบ Call
-                await this.videoService.endCall(bookingId);
-
-                const teacher = await this.teacherModel
-                    .findById(booking.teacherId)
-                    .lean();
-
-                if (!teacher) {
-                    errorLog(logEntity, 'ไม่พบข้อมูลคุณครูดังกล่าว');
-                    return { success: false };
-                }
-
-                const teacherUserId = teacher.userId.toString();
-                const channel = await this.chatService.createOrGetChannel(
-                    booking.studentId.toString(),
-                    teacherUserId,
-                );
-                const channelId = channel.id;
-
-                if (!channelId) {
-                    errorLog(logEntity, 'ไม่พบข้อมูลแชทดังกล่าว');
-                    return { success: false };
-                }
-
-                // 2. ส่งข้อความ after class check-up เข้าไปในคลาส
-                const messageBuilder = new SmsMessageBuilder();
-
-                messageBuilder
-                    .addText('[ข้อความอัตโนมัติจากระบบ] : ')
-                    .newLine()
-                    .addText('เรียนกับคุณครูเสร็จแล้ว')
-                    .newLine()
-                    .addText('เป็นอย่างไรบ้าง อยากให้สอนอะไร')
-                    .newLine()
-                    .addText('เพิ่มแจ้งคณครูได้เลยนะ ✏️');
-
-                const chatMessage = messageBuilder.getMessage();
-
-                if (booking.status === 'paid' || booking.status === 'studied') {
-                    await this.chatService.sendChatMessage({
-                        channelId: channelId,
-                        message: chatMessage,
-                        senderUserId: teacherUserId,
-                    });
-                }
-
-                infoLog(
-                    logEntity,
-                    `จบ call สำหรับคลาสเรียน bookingId : ${bookingId} สำเร็จ!`,
-                );
-
-                return { success: true };
-            } catch (error: unknown) {
-                const errorMesage = getErrorMessage(error);
-
-                errorLog(logEntity, errorMesage);
-
-                return { success: false };
-            }
-        }
+        if (job.name === BullMQJob.END_CALL)
+            return await this._handleEndCall(job);
 
         if (job.name === BullMQJob.AUTO_CANCEL_BOOKING) {
             const logEntity = 'QUEUE (AUTO_CANCEL_BOOKING)';
