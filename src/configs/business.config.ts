@@ -12,5 +12,6 @@ export const businessConfig = {
     classroom: {
         freeTrialMinutes: 30,
         maximumMontlyFreeTrials: 3,
+        maximumClassShortNoteLength: 200,
     },
 };

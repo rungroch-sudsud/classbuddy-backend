@@ -17,6 +17,7 @@ import { CurrentUser } from 'src/shared/utils/currentUser';
 import { JwtGuard } from '../auth/guard/auth.guard';
 import { BookingService } from './booking.service';
 import {
+    AddStudentClassShortNoteDto,
     AskForBookingFreeTrialDto,
     CreateBookingDto,
 } from './schemas/booking.zod.schema';
@@ -80,6 +81,26 @@ export class BookingController {
 
         return {
             message: 'จองตารางเรียนสำเร็จ',
+            data: updatedBooking,
+        };
+    }
+
+    @Post(':bookingId/short-note')
+    @UseGuards(JwtGuard)
+    async addStudentClassShortNote(
+        @CurrentUser() studentId: string,
+        @Param('bookingId') bookingId: string,
+        @Body() body: AddStudentClassShortNoteDto,
+    ) {
+        const updatedBooking =
+            await this.bookingService.addStudentClassShortNote(
+                bookingId,
+                studentId,
+                body,
+            );
+
+        return {
+            message: 'เพิ่มสิ่งที่ได้เรียนรู้ในวันนี้ในคลาสสำเร็จ',
             data: updatedBooking,
         };
     }

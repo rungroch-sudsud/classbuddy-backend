@@ -16,6 +16,7 @@ import { BullMQJob } from 'src/shared/enums/bull-mq.enum';
 import { SocketEvent } from 'src/shared/enums/socket.enum';
 import {
     createObjectId,
+    devLog,
     errorLog,
     generateUrl,
     getErrorMessage,
@@ -31,6 +32,7 @@ import { Teacher } from '../teachers/schemas/teacher.schema';
 import { User } from '../users/schemas/user.schema';
 import { Booking } from './schemas/booking.schema';
 import {
+    AddStudentClassShortNoteDto,
     AskForBookingFreeTrialDto,
     CreateBookingDto,
     MySlotResponse,
@@ -1212,5 +1214,48 @@ export class BookingService {
                 };
             },
         );
+    }
+
+    async addStudentClassShortNote(
+        bookingId: string,
+        currentUserId: string,
+        body: AddStudentClassShortNoteDto,
+    ): Promise<Booking> {
+        devLog('BOOKING SERVICE', 'Adding student class shortnote ...');
+
+        const booking = await this.bookingModel.findById(bookingId);
+        if (!booking) throw new NotFoundException('ไม่พบข้อมูการจอง');
+
+        const studentId = booking.studentId.toString();
+        const currentUserIsNotTheStudent = studentId !== currentUserId;
+
+        if (currentUserIsNotTheStudent)
+            throw new ForbiddenException('คุณไม่ใช่นักเรียนของคลาสนี้');
+
+        if (booking.status !== 'studied')
+            throw new BadRequestException('คุณยังเรียนคลาสนี้ไม่จบ');
+
+        if (booking.studentShortNote)
+            throw new BadRequestException('คุณได้เพิ่ม note ของคลาสนี้แล้ว');
+
+        // 1 : เพิ่ม short note ลงใน booking
+        booking.studentShortNote = body.content;
+        const updatedBooking = await booking.save();
+
+        // 2 : ส่ง sockt event ว่ามีนักเรียนเพิ่ม note ลงใน booking
+        const teacher = await this.teacherModel.findById(
+            updatedBooking.teacherId,
+        );
+        if (!teacher) throw new NotFoundException('ไม่พบข้อมูลครู');
+
+        const teacherUserId = teacher.userId.toString();
+
+        this.socketService.emit(SocketEvent.BOOKING_SHORT_NOTE_ADDED, {
+            bookingId,
+            teacherUserId,
+            studentId,
+        });
+
+        return updatedBooking;
     }
 }

@@ -1,4 +1,5 @@
 import { createZodDto } from 'nestjs-zod';
+import { businessConfig } from 'src/configs/business.config';
 import { z } from 'zod';
 
 export const CreateBookingSchema = z.object({
@@ -68,4 +69,18 @@ export const AskForBookingFreeTrialSchema = z.object({
 
 export class AskForBookingFreeTrialDto extends createZodDto(
     AskForBookingFreeTrialSchema,
+) {}
+
+export const AddStudentClassShortNoteSchema = z.object({
+    content: z
+        .string()
+        .min(1, 'กรุณากรอกสิ่งที่ได้เรียนรู้ในวันนี้...')
+        .max(
+            businessConfig.classroom.maximumClassShortNoteLength,
+            `กรุณากรอกไม่เกิน ${businessConfig.classroom.maximumClassShortNoteLength} ตัวอักษร`,
+        ),
+});
+
+export class AddStudentClassShortNoteDto extends createZodDto(
+    AddStudentClassShortNoteSchema,
 ) {}

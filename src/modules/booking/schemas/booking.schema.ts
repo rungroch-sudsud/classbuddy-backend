@@ -73,6 +73,9 @@ export class Booking extends Document<Types.ObjectId> {
 
     @Prop({ type: Date, default: null })
     maximumPaymentExpiredAt?: Date;
+
+    @Prop({ type: String, default: null })
+    studentShortNote: string | null;
 }
 
 export type BookingDocument = HydratedDocument<Booking>;

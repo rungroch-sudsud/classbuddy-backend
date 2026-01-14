@@ -5,4 +5,5 @@ export enum SocketEvent {
     BOOKING_CONFIRMED = 'booking:confirmed',
     BOOKING_EXPIRED = 'booking:expired',
     BOOKING_PAID = 'booking:paid',
+    BOOKING_SHORT_NOTE_ADDED = 'booking:short-note:added',
 }
