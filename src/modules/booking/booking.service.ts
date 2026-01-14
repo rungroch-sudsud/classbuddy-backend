@@ -721,7 +721,10 @@ export class BookingService {
         const chatMessage = messageBuilder.getMessage();
 
         const metadata: Record<string, any> = {
-            customMessageType: 'booking-confirmed',
+            customMessageType:
+                booking.type === 'free_trial'
+                    ? 'booking-paid'
+                    : 'booking-confirmed',
             bookingId,
         };
 
@@ -797,12 +800,21 @@ export class BookingService {
 
                 await booking.save({ session });
 
-                if (booking.type === 'free_trial')
-                    await this.classTrialModel.insertOne({
-                        teacherId: teacherObjId,
-                        studentId: studentObjId,
-                        bookingId: booking._id,
-                    });
+                if (booking.type === 'free_trial') {
+                    const createdClassTrial =
+                        await this.classTrialModel.insertOne(
+                            {
+                                teacherId: teacherObjId,
+                                studentId: studentObjId,
+                                bookingId: booking._id,
+                            },
+                            { session },
+                        );
+
+                    booking.classTrialId = createdClassTrial._id;
+
+                    await booking.save({ session });
+                }
 
                 // 4 : ส่งข้อความการยืนยันการจองไปในแชท
                 const teacherUserId = teacher.userId.toString();
