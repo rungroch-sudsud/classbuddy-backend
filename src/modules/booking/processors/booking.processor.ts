@@ -71,11 +71,11 @@ export class BookingProcessor extends WorkerHost {
                 return { success: true };
             }
 
-            const chatClient = this.streamChatService.getClient();
-            const chatChannelId = `stud_${booking.studentId}_teac_${teacher.userId}`;
-            const channel = chatClient.channel('messaging', chatChannelId);
-            const teacherFullName = `${teacher.name} ${teacher.lastName}`;
+            // const chatClient = this.streamChatService.getClient();
+            // const channel = chatClient.channel('messaging', chatChannelId);
+            // const teacherFullName = `${teacher.name} ${teacher.lastName}`;
 
+            const chatChannelId = `stud_${booking.studentId}_teac_${teacher.userId}`;
             const messageBuilder = new SmsMessageBuilder();
 
             messageBuilder
@@ -90,14 +90,18 @@ export class BookingProcessor extends WorkerHost {
                 );
 
             const chatMessage = messageBuilder.getMessage();
+            const bookingId = booking._id.toString();
 
-            channel.sendMessage({
-                text: chatMessage,
-                user: {
-                    id: teacher.userId.toString(),
-                    name: teacherFullName,
-                    image: teacher.user.profileImage,
-                },
+            const metadata: Record<string, any> = {
+                customMessageType: 'notify-before-class',
+                bookingId,
+            };
+
+            await this.chatService.sendChatMessage({
+                channelId: chatChannelId,
+                message: chatMessage,
+                senderUserId: teacher.userId.toString(),
+                metadata,
             });
 
             infoLog(
