@@ -681,22 +681,9 @@ export class BookingService {
     private async _sendBookingConfirmedMessage(
         booking: Booking,
         teacherUserId: string,
+        channelId: string,
     ) {
         const bookingId = booking._id.toString();
-        const studentId = booking.studentId.toString();
-
-        const channel = await this.chatService.createOrGetChannel(
-            studentId,
-            teacherUserId,
-        );
-
-        const channelId = channel.id;
-
-        if (!channelId)
-            throw new InternalServerErrorException(
-                'ล้มเหลวระหว่างการสร้างบทสนทนา',
-            );
-
         const messageBuilder = new SmsMessageBuilder();
 
         messageBuilder
@@ -735,6 +722,29 @@ export class BookingService {
             message: chatMessage,
             senderUserId: teacherUserId,
             metadata,
+        });
+    }
+
+    private async _informTeacherToUploadClassMaterialForFreeTrial(
+        booking: Booking,
+        teacherUserId: string,
+        channelId: string,
+    ) {
+        if (booking.type !== 'free_trial') return;
+
+        const messageBuilder = new SmsMessageBuilder();
+
+        messageBuilder
+            .addText('[ข้อความอัตโนมัติจากระบบ] : ')
+            .newLine()
+            .addText('อย่าลืมอัปโหลดเอกสารการเรียนให้กับนักเรียนละ!');
+
+        const chatMessage = messageBuilder.getMessage();
+
+        await this.chatService.sendChatMessage({
+            channelId,
+            message: chatMessage,
+            senderUserId: teacherUserId,
         });
     }
 
@@ -820,10 +830,34 @@ export class BookingService {
 
                 // 4 : ส่งข้อความการยืนยันการจองไปในแชท
                 const teacherUserId = teacher.userId.toString();
+                const studentId = booking.studentId.toString();
 
-                await this._sendBookingConfirmedMessage(booking, teacherUserId);
+                const channel = await this.chatService.createOrGetChannel(
+                    studentId,
+                    teacherUserId,
+                );
 
-                // 5 : ส่ง Socket event ไปหานักเรียนและครู
+                const channelId = channel.id;
+
+                if (!channelId)
+                    throw new InternalServerErrorException(
+                        'ล้มเหลวระหว่างการสร้างบทสนทนา',
+                    );
+
+                await this._sendBookingConfirmedMessage(
+                    booking,
+                    teacherUserId,
+                    channelId,
+                );
+
+                // 5 : แจ้งครูว่าให้อัปโหลดไฟล์เอกสารการเรียนด้วยหากเป็นทดลองเรียน
+                await this._informTeacherToUploadClassMaterialForFreeTrial(
+                    booking,
+                    teacherUserId,
+                    channelId,
+                );
+
+                // 6 : ส่ง Socket event ไปหานักเรียนและครู
                 this.socketService.emit(
                     booking.type === 'free_trial'
                         ? SocketEvent.BOOKING_PAID
