@@ -12,6 +12,11 @@ import { Queue } from 'bullmq';
 import dayjs from 'dayjs';
 import 'dayjs/locale/th';
 import { Connection, isValidObjectId, Model, Types } from 'mongoose';
+import { businessConfig } from 'src/configs/business.config';
+import { envConfig } from 'src/configs/env.config';
+import { SmsMessageBuilder } from 'src/infra/sms/builders/sms-builder.builder';
+import { SmsService } from 'src/infra/sms/sms.service';
+import { BookingType } from 'src/shared/enums/booking.enum';
 import { BullMQJob } from 'src/shared/enums/bull-mq.enum';
 import { SocketEvent } from 'src/shared/enums/socket.enum';
 import {
@@ -23,9 +28,9 @@ import {
     secondsToMilliseconds,
 } from 'src/shared/utils/shared.util';
 import { ChatService } from '../chat/chat.service';
+import { ClassTrial } from '../classtrials/schemas/classtrial.schema';
 import { NotificationsService } from '../notifications/notifications.service';
 import { Slot } from '../slots/schemas/slot.schema';
-import { SlotsService } from '../slots/slots.service';
 import { SocketService } from '../socket/socket.service';
 import { SubjectList } from '../subjects/schemas/subject.schema';
 import { Teacher } from '../teachers/schemas/teacher.schema';
@@ -37,12 +42,6 @@ import {
     CreateBookingDto,
     MySlotResponse,
 } from './schemas/booking.zod.schema';
-import { ClassTrial } from '../classtrials/schemas/classtrial.schema';
-import { BookingType } from 'src/shared/enums/booking.enum';
-import { businessConfig } from 'src/configs/business.config';
-import { SmsMessageBuilder } from 'src/infra/sms/builders/sms-builder.builder';
-import { envConfig } from 'src/configs/env.config';
-import { SmsService } from 'src/infra/sms/sms.service';
 
 @Injectable()
 export class BookingService {
@@ -681,21 +680,9 @@ export class BookingService {
     private async _sendBookingConfirmedMessage(
         booking: Booking,
         teacherUserId: string,
+        channelId: string,
     ) {
         const bookingId = booking._id.toString();
-        const studentId = booking.studentId.toString();
-
-        const channel = await this.chatService.createOrGetChannel(
-            studentId,
-            teacherUserId,
-        );
-
-        const channelId = channel.id;
-
-        if (!channelId)
-            throw new InternalServerErrorException(
-                'ล้มเหลวระหว่างการสร้างบทสนทนา',
-            );
 
         const messageBuilder = new SmsMessageBuilder();
 
@@ -820,8 +807,25 @@ export class BookingService {
 
                 // 4 : ส่งข้อความการยืนยันการจองไปในแชท
                 const teacherUserId = teacher.userId.toString();
+                const studentId = studentObjId.toString();
 
-                await this._sendBookingConfirmedMessage(booking, teacherUserId);
+                const channel = await this.chatService.createOrGetChannel(
+                    studentId,
+                    teacherUserId,
+                );
+
+                const channelId = channel.id;
+
+                if (!channelId)
+                    throw new InternalServerErrorException(
+                        'ล้มเหลวระหว่างการสร้างบทสนทนา',
+                    );
+
+                await this._sendBookingConfirmedMessage(
+                    booking,
+                    teacherUserId,
+                    channelId,
+                );
 
                 // 5 : ส่ง Socket event ไปหานักเรียนและครู
                 this.socketService.emit(
@@ -835,9 +839,36 @@ export class BookingService {
                     },
                 );
 
-                if (booking.type === 'require_payment') {
-                    await this._addAutoCancelBookingQueue(booking);
+                // 6 : จัดการการส่งแบบ ฟอร์มให้ครูอัปเอกสาร booking นี้
+                if (booking.type === 'free_trial') {
+                    const classMaterialMessageBuilder = new SmsMessageBuilder();
+
+                    classMaterialMessageBuilder
+                        .addText('[ข้อความอัตโนมัติจากระบบ] : ')
+                        .newLine()
+                        .addText(
+                            'คุณครูสามารถอัปเอกสาารประกอบการเรียนได้ในนี้เลยครับ',
+                        );
+
+                    const classMaterialMessage =
+                        classMaterialMessageBuilder.getMessage();
+
+                    const classMaterialMetaData: Record<string, any> = {
+                        customMessageType: 'class-material',
+                        bookingId: booking._id.toString(),
+                    };
+
+                    await this.chatService.sendChatMessage({
+                        channelId,
+                        message: classMaterialMessage,
+                        senderUserId: teacherUserId,
+                        metadata: classMaterialMetaData,
+                    });
                 }
+
+                // 7 : สร้าง jobQueue ต่างๆสำหรับ booking นี้
+                if (booking.type === 'require_payment')
+                    await this._addAutoCancelBookingQueue(booking);
 
                 if (booking.type === 'free_trial')
                     await this.videoQueue.add(BullMQJob.CREATE_CALLROOM, {
