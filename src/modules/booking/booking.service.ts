@@ -725,13 +725,10 @@ export class BookingService {
         });
     }
 
-    private async _informTeacherToUploadClassMaterialForFreeTrial(
-        booking: Booking,
+    async informTeacherToUploadClassMaterial(
         teacherUserId: string,
         channelId: string,
     ) {
-        if (booking.type !== 'free_trial') return;
-
         const messageBuilder = new SmsMessageBuilder();
 
         messageBuilder
@@ -851,11 +848,11 @@ export class BookingService {
                 );
 
                 // 5 : แจ้งครูว่าให้อัปโหลดไฟล์เอกสารการเรียนด้วยหากเป็นทดลองเรียน
-                await this._informTeacherToUploadClassMaterialForFreeTrial(
-                    booking,
-                    teacherUserId,
-                    channelId,
-                );
+                if (booking.type === 'free_trial')
+                    await this.informTeacherToUploadClassMaterial(
+                        teacherUserId,
+                        channelId,
+                    );
 
                 // 6 : ส่ง Socket event ไปหานักเรียนและครู
                 this.socketService.emit(

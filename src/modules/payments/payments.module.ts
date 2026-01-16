@@ -31,6 +31,8 @@ import { PaymentStrategy } from './strategies/payment-strategy.interface';
 import { WalletStrategy } from './strategies/wallet.strategy';
 import { WebhookController } from './webhook.controller';
 import { WebhookService } from './webhook.service';
+import { BookingService } from '../booking/booking.service';
+import { BookingModule } from '../booking/booking.module';
 
 @Module({
     imports: [
@@ -70,6 +72,7 @@ import { WebhookService } from './webhook.service';
         BullModule.registerQueue({
             name: 'video',
         }),
+        BookingModule,
     ],
     controllers: [PaymentsController, WebhookController],
     providers: [

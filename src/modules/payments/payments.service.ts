@@ -2,6 +2,7 @@ import { InjectQueue } from '@nestjs/bullmq';
 import {
     BadRequestException,
     Injectable,
+    InternalServerErrorException,
     NotFoundException,
 } from '@nestjs/common';
 import { InjectConnection, InjectModel } from '@nestjs/mongoose';
@@ -28,6 +29,7 @@ import { ChatService } from '../chat/chat.service';
 import dayjs from 'dayjs';
 import { envConfig } from 'src/configs/env.config';
 import { businessConfig } from 'src/configs/business.config';
+import { BookingService } from '../booking/booking.service';
 
 const Omise = require('omise');
 
@@ -48,6 +50,7 @@ export class PaymentsService {
         private readonly smsService: SmsService,
         private readonly socketService: SocketService,
         private readonly chatService: ChatService,
+        private readonly bookingService: BookingService,
     ) {
         const secretKey = process.env.OMISE_SECRET_KEY;
         const publicKey = process.env.OMISE_PUBLIC_KEY;
@@ -339,20 +342,46 @@ export class PaymentsService {
         const student = await this.userModel.findById(booking.studentId).lean();
         if (!student) throw new NotFoundException('ไม่พบข้อมูลนักเรียน');
 
+        // 1 : ชำระเงิน
+
         const paymentStrategy = this.paymentStrategyFactory.getStrategy(method);
         await paymentStrategy.pay({ bookingId, currentUserId, receiptFile });
 
+        // 2 : ส่งข้อความหลังชำระเงิน
         await this._sendAfterPaymentMessage(
             teacher.userId.toString(),
             booking,
             student,
         );
 
+        // 3 : ส่งข้อความเตือนให้ครูอัปไฟล์เอกสาร
+        const teacherUserId: string = teacher.userId.toString();
+        const studentId: string = booking.studentId.toString();
+
+        const channel = await this.chatService.createOrGetChannel(
+            studentId,
+            teacherUserId,
+        );
+
+        const channelId = channel.id;
+
+        if (!channelId)
+            throw new InternalServerErrorException(
+                'ล้มเหลวระหว่างการสร้างบทสนทนา',
+            );
+
+        await this.bookingService.informTeacherToUploadClassMaterial(
+            teacherUserId,
+            channelId,
+        );
+
+        // 4 : ส่ง Socket Event
         this.socketService.emit(SocketEvent.BOOKING_PAID, {
             teacherUserId: teacher.userId.toString(),
             studentId: booking.studentId.toString(),
         });
 
+        // 5 : แจ้งเตือน co-founders ว่ามีคนชำระแล้ว
         if (isProductionEnv()) {
             await this.smsService.sendSms(
                 businessConfig.coFounderPhones,

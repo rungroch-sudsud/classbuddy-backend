@@ -409,25 +409,41 @@ export class WebhookService {
         if (eventType === 'message.new') {
             infoLog('MESSAGE', 'new message');
             const message: string = body.message.text;
+
+            const attachments: Array<{
+                type: string;
+                fallback: string;
+                image_url: string;
+                original_width: number;
+                original_height: number;
+                file_size: number;
+                mime_type: string;
+            }> = body.message.attachments;
+
             const senderUserId: User['_id'] = body.user.id;
 
             const receiver = body.members.find(
                 (member) => member.user_id !== senderUserId,
             );
 
+            // const receiverPhoneNumber: string | undefined = receiverInfo?.phone;
+
             const receiverUserId: string = receiver.user_id;
             const receiverInfo = await this.userModel.findById(receiverUserId);
-            const receiverPhoneNumber: string | undefined = receiverInfo?.phone;
             const receiverPushToken: Array<string> | undefined =
                 receiverInfo?.expoPushToken;
 
             // let hasAlreadyNotified: boolean = false;
 
             if (receiverPushToken) {
+                const isMessageOfTypeFile = attachments.length > 0;
+
                 await this.notificationService.notify({
                     expoPushTokens: receiverPushToken,
                     title: 'มีข้อความใหม่ส่งถึงคุณ',
-                    body: message,
+                    body: isMessageOfTypeFile
+                        ? `คุณได้รับไฟล์เอกสาร ${attachments.length} ไฟล์`
+                        : message,
                 });
 
                 // hasAlreadyNotified = true;
