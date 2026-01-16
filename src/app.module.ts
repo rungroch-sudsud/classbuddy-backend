@@ -30,6 +30,7 @@ import { SubjectsModule } from './modules/subjects/subjects.module';
 import { TeachersController } from './modules/teachers/teachers.controller';
 import { TeachersModule } from './modules/teachers/teachers.module';
 import { UsersModule } from './modules/users/users.module';
+import { AnnouncementsModule } from './modules/announcements/announcements.module';
 
 @Module({
     imports: [
@@ -46,6 +47,7 @@ import { UsersModule } from './modules/users/users.module';
         TeachersModule,
         SlotsModule,
         BookingModule,
+        AnnouncementsModule,
         PaymentsModule,
         NotificationsModule,
         AdminModule,

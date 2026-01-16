@@ -12,6 +12,8 @@ import { AnnouncementsService } from './announcements.service';
 import { CreateAnnouncementDto } from './dto/create-announcement.dto';
 import { UpdateAnnouncementDto } from './dto/update-announcement.dto';
 import { UploadInterceptor } from 'src/shared/interceptors/upload.interceptor';
+import { Roles } from '../auth/decorators/roles.decorator';
+import { Role } from '../auth/role/role.enum';
 
 @Controller('announcements')
 export class AnnouncementsController {
@@ -35,8 +37,13 @@ export class AnnouncementsController {
     }
 
     @Get()
-    findAll() {
-        return this.announcementsService.findAll();
+    async findAll() {
+        const announcements = await this.announcementsService.findAll();
+
+        return {
+            message: 'ดึงข้อมูลประกาศทั้งหมดเรียบร้อย',
+            data: announcements,
+        };
     }
 
     @Get(':id')
@@ -45,15 +52,29 @@ export class AnnouncementsController {
     }
 
     @Patch(':id')
-    update(
+    @Roles(Role.Admin)
+    async update(
         @Param('id') id: string,
         @Body() updateAnnouncementDto: UpdateAnnouncementDto,
     ) {
-        return this.announcementsService.update(+id, updateAnnouncementDto);
+        const announcement = await this.announcementsService.update(
+            id,
+            updateAnnouncementDto,
+        );
+
+        return {
+            message: 'แก้ไขประกาศเรียบร้อย',
+            data: announcement,
+        };
     }
 
     @Delete(':id')
-    remove(@Param('id') id: string) {
-        return this.announcementsService.remove(+id);
+    @Roles(Role.Admin)
+    async remove(@Param('id') id: string) {
+        await this.announcementsService.remove(id);
+
+        return {
+            message: 'ลบประกาศเรียบร้อย',
+        };
     }
 }

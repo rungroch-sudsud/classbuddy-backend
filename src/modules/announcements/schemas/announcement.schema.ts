@@ -3,8 +3,8 @@ import { Document, HydratedDocument, Types } from 'mongoose';
 
 @Schema({ timestamps: true })
 export class Announcement extends Document<Types.ObjectId> {
-    @Prop({ type: String, required: true })
-    imageUrl: string;
+    @Prop({ type: String, default: null })
+    imageUrl: string | null;
 
     @Prop({ type: String, default: null })
     externalUrl: string | null;
