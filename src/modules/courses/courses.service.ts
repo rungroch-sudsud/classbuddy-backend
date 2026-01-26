@@ -77,6 +77,10 @@ export class CoursesService {
         return this.courseModel.find();
     }
 
+    async getMyCreatedCourses(userId: string) {
+        return this.courseModel.find({ createdBy: createObjectId(userId) });
+    }
+
     async findOne(id: string) {
         const course = await this.courseModel.findById(id);
 

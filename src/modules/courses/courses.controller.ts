@@ -49,6 +49,18 @@ export class CoursesController {
         return this.coursesService.findAll();
     }
 
+    @Get('mine')
+    @ApiBearerAuth()
+    @UseGuards(JwtGuard)
+    async getMyCreatedCourses(@CurrentUser() userId: string) {
+        const courses = await this.coursesService.getMyCreatedCourses(userId);
+
+        return {
+            message: 'ดึงข้อมูลคอร์สเรียนของฉันสำเร็จ',
+            data: courses,
+        };
+    }
+
     @Patch(':id')
     @ApiBearerAuth()
     @UseGuards(JwtGuard)
