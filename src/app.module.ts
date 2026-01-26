@@ -30,6 +30,7 @@ import { SubjectsModule } from './modules/subjects/subjects.module';
 import { TeachersController } from './modules/teachers/teachers.controller';
 import { TeachersModule } from './modules/teachers/teachers.module';
 import { UsersModule } from './modules/users/users.module';
+import { CoursesModule } from './modules/courses/courses.module';
 
 @Module({
     imports: [
@@ -54,6 +55,7 @@ import { UsersModule } from './modules/users/users.module';
         PostsModule,
         SubjectrequestsModule,
         EmailModule,
+        CoursesModule,
     ],
     controllers: [
         WebhookController,

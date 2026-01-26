@@ -14,4 +14,11 @@ export const businessConfig = {
         maximumMontlyFreeTrials: 3,
         maximumClassShortNoteLength: 200,
     },
+    course: {
+        minimumHours: 1,
+        maximumHours: 1000,
+        minimumPriceBaht: 100,
+        maximumPriceBaht: 1000000,
+    },
 };
+

@@ -1,4 +1,6 @@
-import { PartialType } from '@nestjs/mapped-types';
-import { CreateCourseDto } from './create-course.dto';
+import { createZodDto } from 'nestjs-zod';
+import { CreateCourseSchema } from './create-course.dto';
 
-export class UpdateCourseDto extends PartialType(CreateCourseDto) {}
+export const UpdateCourseSchema = CreateCourseSchema.partial();
+
+export class UpdateCourseDto extends createZodDto(UpdateCourseSchema) {}
