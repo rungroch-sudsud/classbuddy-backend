@@ -7,7 +7,6 @@ import {
     Post,
     UseGuards
 } from '@nestjs/common';
-import { SlotsService } from './slots.service';
 import {
     ApiBearerAuth,
     ApiBody,
@@ -16,12 +15,11 @@ import {
     ApiTags,
     getSchemaPath
 } from '@nestjs/swagger';
-import { JwtGuard } from '../auth/guard/auth.guard';
 import { CurrentUser } from 'src/shared/utils/currentUser';
-import { SingleSlotDto, DailyRecurringSlotDto, WeeklyRecurringSlotDto } from './schemas/slot.zod.schema';
-import { Roles } from '../auth/decorators/roles.decorator';
+import { JwtGuard } from '../auth/guard/auth.guard';
 import { RolesGuard } from '../auth/guard/roles.guard';
-import { Role } from '../auth/role/role.enum';
+import { DailyRecurringSlotDto, SingleSlotDto, WeeklyRecurringSlotDto } from './schemas/slot.zod.schema';
+import { SlotsService } from './slots.service';
 
 @ApiExtraModels(
     SingleSlotDto,

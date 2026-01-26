@@ -25,7 +25,7 @@ import {
     SingleSlotDto,
     WeeklyRecurringSlotDto,
 } from './schemas/slot.zod.schema';
-import { createObjectId } from 'src/shared/utils/shared.util';
+import { createObjectId, errorLog, getErrorMessage } from 'src/shared/utils/shared.util';
 
 dayjs.extend(utc);
 dayjs.extend(timezone);
@@ -33,6 +33,8 @@ dayjs.tz.setDefault('Asia/Bangkok');
 
 @Injectable()
 export class SlotsService {
+    private readonly logEntity = 'SLOT SERVICE';
+
     constructor(
         @InjectModel(Slot.name) private slotModel: Model<Slot>,
         @InjectModel(User.name) private userModel: Model<User>,
@@ -43,7 +45,7 @@ export class SlotsService {
         private readonly bookingModel: Model<Booking>,
         @InjectConnection() private readonly connection: Connection,
         private readonly socketService: SocketService,
-    ) {}
+    ) { }
 
     async hasOverlapSlots(
         teacherId: string,
@@ -312,94 +314,105 @@ export class SlotsService {
     }
 
     async getMineSlot(userId: string): Promise<any> {
-        const teacher = await this.teacherModel.findOne({
-            userId: new Types.ObjectId(userId),
-        });
+        try {
+            const teacher = await this.teacherModel.findOne({
+                userId: new Types.ObjectId(userId),
+            });
 
-        if (!teacher)
-            throw new NotFoundException('คุณยังไม่ได้สมัครเป็นคุณครู');
+            if (!teacher)
+                throw new NotFoundException('คุณยังไม่ได้สมัครเป็นคุณครู');
 
-        let slots = await this.slotModel
-            .find({
-                teacherId: teacher._id,
-                status: { $in: ['pending', 'paid'] },
-            })
-            .populate('subject', '_id name')
-            .populate('bookedBy', '_id name lastName profileImage')
-            .populate({
-                path: 'booking',
-                populate: [
-                    {
-                        path: 'subject',
-                        select: '_id name',
-                    },
-                    {
-                        path: 'teacherId',
-                        select: 'name lastName verifyStatus userId',
-                        populate: {
-                            path: 'userId',
-                            select: 'profileImage',
+            let slots = await this.slotModel
+                .find({
+                    teacherId: teacher._id,
+                    status: { $in: ['pending', 'paid'] },
+                })
+                .populate('subject', '_id name')
+                .populate('bookedBy', '_id name lastName profileImage')
+                .populate({
+                    path: 'booking',
+                    populate: [
+                        {
+                            path: 'subject',
+                            select: '_id name',
                         },
+                        {
+                            path: 'teacherId',
+                            select: 'name lastName verifyStatus userId',
+                            populate: {
+                                path: 'userId',
+                                select: 'profileImage',
+                            },
+                        },
+                    ],
+                })
+                .lean<Array<Slot & { booking: any }>>();
+
+            const sorted = slots.sort((a, b) => {
+                const statusOrder = { paid: 1, pending: 2 };
+                const statusA = statusOrder[a.status] ?? 99;
+                const statusB = statusOrder[b.status] ?? 99;
+
+                if (statusA !== statusB) return statusA - statusB;
+                return (
+                    new Date(a.startTime).getTime() -
+                    new Date(b.startTime).getTime()
+                );
+            });
+
+            const filteredSorted = sorted.filter(slot => slot.booking)
+
+            return filteredSorted.map(({ startTime, endTime, date, booking, ...rest }) => {
+                const teacher: any = booking.teacherId;
+                const startLocal = dayjs.utc(startTime).tz('Asia/Bangkok');
+                const endLocal = dayjs.utc(endTime).tz('Asia/Bangkok');
+
+                const dateDisplay = startLocal.locale('th').format('D MMMM YYYY');
+                const start = startLocal.format('HH:mm');
+                const end = endLocal.format('HH:mm');
+
+                const bookingStartLocal = dayjs.utc(startTime).tz('Asia/Bangkok');
+                const bookingEndLocal = dayjs.utc(endTime).tz('Asia/Bangkok');
+                const bookingDateDisplay = dayjs(bookingStartLocal)
+                    .locale('th')
+                    .format('D MMMM YYYY');
+                const bookingStart = bookingStartLocal.format('HH:mm');
+                const bookingEnd = bookingEndLocal.format('HH:mm');
+                const bookingPaidAtDisplay = booking.paidAt
+                    ? dayjs(booking.paidAt).locale('th').format('D MMMM YYYY')
+                    : null;
+
+                const formattedBoking = {
+                    ...booking,
+                    date: bookingDateDisplay,
+                    startTime: bookingStart,
+                    endTime: bookingEnd,
+                    paidAt: bookingPaidAtDisplay,
+                    teacher: {
+                        _id: teacher?._id,
+                        name: teacher?.name,
+                        lastName: teacher?.lastName,
+                        verifyStatus: teacher?.verifyStatus,
+                        profileImage: teacher?.userId?.profileImage ?? null,
                     },
-                ],
-            })
-            .lean<Array<Slot & { booking: any }>>();
+                };
 
-        const sorted = slots.sort((a, b) => {
-            const statusOrder = { paid: 1, pending: 2 };
-            const statusA = statusOrder[a.status] ?? 99;
-            const statusB = statusOrder[b.status] ?? 99;
+                return {
+                    date: dateDisplay,
+                    startTime: start,
+                    endTime: end,
+                    booking: formattedBoking,
+                    ...rest,
+                };
+            });
+        } catch (error: unknown) {
+            const errorMessage = getErrorMessage(error)
 
-            if (statusA !== statusB) return statusA - statusB;
-            return (
-                new Date(a.startTime).getTime() -
-                new Date(b.startTime).getTime()
-            );
-        });
+            errorLog(this.logEntity, errorMessage)
 
-        return sorted.map(({ startTime, endTime, date, booking, ...rest }) => {
-            const teacher: any = booking.teacherId;
-            const startLocal = dayjs.utc(startTime).tz('Asia/Bangkok');
-            const endLocal = dayjs.utc(endTime).tz('Asia/Bangkok');
+            throw error
 
-            const dateDisplay = startLocal.locale('th').format('D MMMM YYYY');
-            const start = startLocal.format('HH:mm');
-            const end = endLocal.format('HH:mm');
-
-            const bookingStartLocal = dayjs.utc(startTime).tz('Asia/Bangkok');
-            const bookingEndLocal = dayjs.utc(endTime).tz('Asia/Bangkok');
-            const bookingDateDisplay = dayjs(bookingStartLocal)
-                .locale('th')
-                .format('D MMMM YYYY');
-            const bookingStart = bookingStartLocal.format('HH:mm');
-            const bookingEnd = bookingEndLocal.format('HH:mm');
-            const bookingPaidAtDisplay = booking.paidAt
-                ? dayjs(booking.paidAt).locale('th').format('D MMMM YYYY')
-                : null;
-
-            const formattedBoking = {
-                ...booking,
-                date: bookingDateDisplay,
-                startTime: bookingStart,
-                endTime: bookingEnd,
-                paidAt: bookingPaidAtDisplay,
-                teacher: {
-                    _id: teacher?._id,
-                    name: teacher?.name,
-                    lastName: teacher?.lastName,
-                    verifyStatus: teacher?.verifyStatus,
-                    profileImage: teacher?.userId?.profileImage ?? null,
-                },
-            };
-
-            return {
-                date: dateDisplay,
-                startTime: start,
-                endTime: end,
-                booking: formattedBoking,
-                ...rest,
-            };
-        });
+        }
     }
 
     async getSlotById(userId: string, slotId: string): Promise<any> {
