@@ -1,5 +1,6 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 import { Document, Types } from 'mongoose';
+import { CourseStatus } from '../enums/course.enum';
 
 @Schema({ timestamps: true })
 export class Course extends Document<Types.ObjectId> {
@@ -12,26 +13,34 @@ export class Course extends Document<Types.ObjectId> {
     @Prop({ type: String, default: null })
     courseImageUrl: string | null;
 
-    @Prop({ type: Types.ObjectId, ref: 'Subject', required: true })
+    @Prop({ type: Types.ObjectId, ref: 'SubjectList', required: true })
     subjectId: Types.ObjectId;
 
     @Prop({ type: String, required: true })
     courseName: string;
 
-    @Prop({ type: String, required: true })
-    courseGoal: string;
+    @Prop({ type: String, required: false, default: null })
+    courseGoal: string | null;
 
-    @Prop({ type: Number, required: true })
-    courseTotalHours: number;
+    @Prop({ type: Number, required: false, default: null })
+    courseTotalHours: number | null;
 
-    @Prop({ type: Number, required: true })
-    price: number;
+    @Prop({ type: Number, required: false, default: null })
+    price: number | null;
 
-    @Prop({ type: String, required: true })
-    courseDetail: string;
+    @Prop({ type: String, required: false, default: null })
+    courseDetail: string | null;
 
     @Prop({ type: Boolean, required: true, default: false })
     issueCertificate: boolean;
+
+    @Prop({
+        type: String,
+        enum: CourseStatus,
+        required: true,
+        default: CourseStatus.PUBLISHED,
+    })
+    status: CourseStatus;
 }
 
 export type CourseDocument = Course & Document;

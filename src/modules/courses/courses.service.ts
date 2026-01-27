@@ -18,6 +18,7 @@ import { CreateCourseDto } from './dto/create-course.dto';
 import { UpdateCourseDto } from './dto/update-course.dto';
 import { Course, CourseDocument } from './schemas/course.schema';
 import { Teacher, TeacherDocument } from '../teachers/schemas/teacher.schema';
+import { CourseStatus } from './enums/course.enum';
 
 @Injectable()
 export class CoursesService {
@@ -47,6 +48,7 @@ export class CoursesService {
                 price: createCourseDto.price,
                 courseDetail: createCourseDto.courseDetail,
                 issueCertificate: createCourseDto.issueCertificate,
+                status: createCourseDto.status,
                 teacherId: teacher._id,
                 createdBy: createObjectId(userId),
             });
@@ -74,45 +76,73 @@ export class CoursesService {
     }
 
     async findAll() {
-        return this.courseModel.find();
+        const courses = await this.courseModel
+            .find({ status: CourseStatus.PUBLISHED })
+            .populate('subjectId');
+
+        devLog('courses', courses);
+
+        return courses;
     }
 
     async getMyCreatedCourses(userId: string) {
-        return this.courseModel.find({ createdBy: createObjectId(userId) });
+        try {
+            const courses = await this.courseModel.find({
+                createdBy: createObjectId(userId),
+            });
+
+            return courses;
+        } catch (error: unknown) {
+            const errorMessage = getErrorMessage(error);
+
+            errorLog(
+                this.logEntity,
+                `[GET MY CREATED COURSES ERROR] -> ${errorMessage}`,
+            );
+
+            throw error;
+        }
     }
 
-    async findOne(id: string) {
-        const course = await this.courseModel.findById(id);
+    async findOne(courseId: string) {
+        const course = await this.courseModel.findById(courseId);
 
         if (!course) {
-            throw new NotFoundException(`Course with ID ${id} not found`);
+            throw new NotFoundException(`Course with ID ${courseId} not found`);
         }
         return course;
     }
 
-    async update(userId: string, id: string, updateCourseDto: UpdateCourseDto) {
-        const course = await this.findOne(id);
+    async update(
+        userId: string,
+        courseId: string,
+        updateCourseDto: UpdateCourseDto,
+    ) {
+        const course = await this.findOne(courseId);
 
         if (course.createdBy.toString() !== userId) {
             throw new BadRequestException('คุณไม่มีสิทธิ์แก้ไขคอร์สนี้');
         }
 
-        const updatedCourse = await this.courseModel
-            .findByIdAndUpdate(id, updateCourseDto, { new: true })
-            .exec();
+        const updatedCourse = await this.courseModel.findByIdAndUpdate(
+            courseId,
+            updateCourseDto,
+            { new: true },
+        );
 
         return updatedCourse;
     }
 
-    async remove(userId: string, id: string) {
-        const course = await this.findOne(id);
+    async remove(userId: string, courseId: string) {
+        const course = await this.findOne(courseId);
 
-        if (course.createdBy.toString() !== userId) {
+        if (course.createdBy.toString() !== userId)
             throw new BadRequestException('คุณไม่มีสิทธิ์ลบคอร์สนี้');
-        }
 
-        const result = await this.courseModel.findByIdAndDelete(id).exec();
-        return result;
+        const deletedCourse =
+            await this.courseModel.findByIdAndDelete(courseId);
+
+        return deletedCourse;
     }
 
     async updateCourseImage(

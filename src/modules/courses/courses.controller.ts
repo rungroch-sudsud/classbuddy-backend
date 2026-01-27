@@ -53,6 +53,8 @@ export class CoursesController {
     @ApiBearerAuth()
     @UseGuards(JwtGuard)
     async getMyCreatedCourses(@CurrentUser() userId: string) {
+        devLog(this.logEntity, 'GET MY CREATED COURSES -> RUNNING...');
+
         const courses = await this.coursesService.getMyCreatedCourses(userId);
 
         return {
@@ -61,15 +63,42 @@ export class CoursesController {
         };
     }
 
+    @Get(':id')
+    async findOne(@Param('id') courseId: string) {
+        devLog(this.logEntity, 'FIND ONE COURSE -> RUNNING...');
+
+        const course = await this.coursesService.findOne(courseId);
+
+        devLog(this.logEntity, 'FIND ONE COURSE -> SUCCESS');
+
+        return {
+            message: 'ดึงข้อมูลคอร์สเรียนสำเร็จ',
+            data: course,
+        };
+    }
+
     @Patch(':id')
     @ApiBearerAuth()
     @UseGuards(JwtGuard)
-    update(
+    async update(
         @CurrentUser() userId: string,
-        @Param('id') id: string,
+        @Param('id') courseId: string,
         @Body() updateCourseDto: UpdateCourseDto,
     ) {
-        return this.coursesService.update(userId, id, updateCourseDto);
+        devLog(this.logEntity, 'UPDATE COURSE -> RUNNING...');
+
+        const updatedCourse = await this.coursesService.update(
+            userId,
+            courseId,
+            updateCourseDto,
+        );
+
+        devLog(this.logEntity, 'UPDATE COURSE -> SUCCESS');
+
+        return {
+            message: 'อัปเดตคอร์สเรียนสำเร็จ',
+            data: updatedCourse,
+        };
     }
 
     @Patch(':id/image')
@@ -80,14 +109,14 @@ export class CoursesController {
     @UploadInterceptor('courseImageFile', 1, 5)
     async upsertCourseImage(
         @CurrentUser() userId: string,
-        @Param('id') id: string,
+        @Param('id') courseId: string,
         @UploadedFile() courseImageFile: Express.Multer.File,
     ) {
         devLog(this.logEntity, 'UPSERT COURSE IMAGE --> RUNNING...');
 
         const data = await this.coursesService.updateCourseImage(
             userId,
-            id,
+            courseId,
             courseImageFile,
         );
 
@@ -100,7 +129,19 @@ export class CoursesController {
     @Delete(':id')
     @ApiBearerAuth()
     @UseGuards(JwtGuard)
-    remove(@CurrentUser() userId: string, @Param('id') id: string) {
-        return this.coursesService.remove(userId, id);
+    async remove(
+        @CurrentUser() userId: string,
+        @Param('id') courseId: string,
+    ) {
+        devLog(this.logEntity, 'REMOVE COURSE -> RUNNING...');
+
+        const result = await this.coursesService.remove(userId, courseId);
+
+        devLog(this.logEntity, 'REMOVE COURSE -> SUCCESS');
+
+        return {
+            message: 'ลบคอร์สเรียนสำเร็จ',
+            data: result,
+        };
     }
 }
