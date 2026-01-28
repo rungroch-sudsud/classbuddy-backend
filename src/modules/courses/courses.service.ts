@@ -19,6 +19,8 @@ import { UpdateCourseDto } from './dto/update-course.dto';
 import { Course, CourseDocument } from './schemas/course.schema';
 import { Teacher, TeacherDocument } from '../teachers/schemas/teacher.schema';
 import { CourseStatus } from './enums/course.enum';
+import { SubjectList } from '../subjects/schemas/subject.schema';
+import { CourseWithSubject } from './schemas/populated-course.schema';
 
 @Injectable()
 export class CoursesService {
@@ -78,7 +80,8 @@ export class CoursesService {
     async findAll() {
         const courses = await this.courseModel
             .find({ status: CourseStatus.PUBLISHED })
-            .populate('subjectId');
+            .populate('subjectId')
+            .lean<Array<CourseWithSubject>>();
 
         devLog('courses', courses);
 
@@ -87,11 +90,27 @@ export class CoursesService {
 
     async getMyCreatedCourses(userId: string) {
         try {
-            const courses = await this.courseModel.find({
-                createdBy: createObjectId(userId),
+            const courses = await this.courseModel
+                .find({
+                    createdBy: createObjectId(userId),
+                })
+                .populate('subjectId')
+                .lean<Array<CourseWithSubject>>();
+
+            const formattedCourses = courses.map((course) => {
+                const subjectId = course.subjectId._id.toString();
+                const subject = course.subjectId;
+
+                return {
+                    ...course,
+                    subjectId,
+                    subject,
+                };
             });
 
-            return courses;
+            devLog('formattedCourse', formattedCourses);
+
+            return formattedCourses;
         } catch (error: unknown) {
             const errorMessage = getErrorMessage(error);
 

@@ -1,8 +1,8 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
-import { Document } from 'mongoose';
+import { Document, Types } from 'mongoose';
 
 @Schema()
-export class SubjectList {
+export class SubjectList extends Document<Types.ObjectId> {
     @Prop({ unique: true, required: true })
     name: string;
 
