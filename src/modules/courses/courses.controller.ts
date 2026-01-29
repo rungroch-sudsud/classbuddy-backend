@@ -9,7 +9,13 @@ import {
     UploadedFile,
     UseGuards,
 } from '@nestjs/common';
-import { ApiBearerAuth, ApiBody, ApiConsumes, ApiTags } from '@nestjs/swagger';
+import {
+    ApiBearerAuth,
+    ApiBody,
+    ApiConsumes,
+    ApiOperation,
+    ApiTags,
+} from '@nestjs/swagger';
 import { UploadFileDto } from 'src/shared/docs/upload.file.docs';
 import { UploadInterceptor } from 'src/shared/interceptors/upload.interceptor';
 import { CurrentUser } from 'src/shared/utils/currentUser';
@@ -45,8 +51,18 @@ export class CoursesController {
     }
 
     @Get()
-    findAll() {
-        return this.coursesService.findAll();
+    @ApiOperation({
+        summary: 'ดึงรายชื่อคอร์สเรียนที่เปิดสอน (สำหรับนักเรียน)',
+    })
+    async getAvailableCourses() {
+        devLog(this.logEntity, 'GET AVAILABLE COURSES -> RUNNING...');
+
+        const courses = await this.coursesService.getAvailableCourses();
+
+        return {
+            message: 'ดึงข้อมูลคอร์สเรียนที่เปิดสอนสำเร็จ',
+            data: courses,
+        };
     }
 
     @Get('mine')
@@ -129,10 +145,7 @@ export class CoursesController {
     @Delete(':id')
     @ApiBearerAuth()
     @UseGuards(JwtGuard)
-    async remove(
-        @CurrentUser() userId: string,
-        @Param('id') courseId: string,
-    ) {
+    async remove(@CurrentUser() userId: string, @Param('id') courseId: string) {
         devLog(this.logEntity, 'REMOVE COURSE -> RUNNING...');
 
         const result = await this.coursesService.remove(userId, courseId);

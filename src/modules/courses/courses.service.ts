@@ -20,7 +20,10 @@ import { Course, CourseDocument } from './schemas/course.schema';
 import { Teacher, TeacherDocument } from '../teachers/schemas/teacher.schema';
 import { CourseStatus } from './enums/course.enum';
 import { SubjectList } from '../subjects/schemas/subject.schema';
-import { CourseWithSubject } from './schemas/populated-course.schema';
+import {
+    CourseWithSubject,
+    CourseWithTeacherAndSubject,
+} from './schemas/populated-course.schema';
 
 @Injectable()
 export class CoursesService {
@@ -77,15 +80,31 @@ export class CoursesService {
         }
     }
 
-    async findAll() {
-        const courses = await this.courseModel
-            .find({ status: CourseStatus.PUBLISHED })
-            .populate('subjectId')
-            .lean<Array<CourseWithSubject>>();
+    async getAvailableCourses() {
+        try {
+            const courses = await this.courseModel
+                .find({ status: CourseStatus.PUBLISHED })
+                .populate('subjectId')
+                .populate({
+                    path: 'teacherId',
+                    populate: {
+                        path: 'userId',
+                        select: 'name lastName profileImage',
+                    },
+                })
+                .lean<Array<CourseWithTeacherAndSubject>>();
 
-        devLog('courses', courses);
+            devLog('courses', courses);
 
-        return courses;
+            return courses;
+        } catch (error) {
+            const errorMessage = getErrorMessage(error);
+            errorLog(
+                this.logEntity,
+                `[GET AVAILABLE COURSES ERROR] -> ${errorMessage}`,
+            );
+            throw error;
+        }
     }
 
     async getMyCreatedCourses(userId: string) {
