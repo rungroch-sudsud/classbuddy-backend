@@ -19,8 +19,8 @@ export class Course extends Document<Types.ObjectId> {
     @Prop({ type: String, required: true })
     courseName: string;
 
-    @Prop({ type: String, required: false, default: null })
-    courseGoal: string | null;
+    @Prop({ type: [String], required: false, default: [] })
+    courseGoals: string[];
 
     @Prop({ type: Number, required: false, default: null })
     courseTotalHours: number | null;

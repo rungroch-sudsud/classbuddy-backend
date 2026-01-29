@@ -45,7 +45,7 @@ export class CoursesService {
             const createdCourse = await this.courseModel.create({
                 subjectId: createObjectId(createCourseDto.subjectId),
                 courseName: createCourseDto.courseName,
-                courseGoal: createCourseDto.courseGoal,
+                courseGoals: createCourseDto.courseGoals,
                 courseTotalHours: createCourseDto.courseTotalHours,
                 price: createCourseDto.price,
                 courseDetail: createCourseDto.courseDetail,

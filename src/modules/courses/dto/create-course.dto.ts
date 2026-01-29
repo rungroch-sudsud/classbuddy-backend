@@ -7,7 +7,7 @@ export const CreateCourseSchema = z
     .object({
         subjectId: z.string().regex(/^[0-9a-fA-F]{24}$/, 'รหัสวิชาไม่ถูกต้อง'),
         courseName: z.string().min(1, 'กรุณากรอกชื่อคอร์สเรียน'),
-        courseGoal: z.string().nullish(),
+        courseGoals: z.array(z.string()).nullish(),
         courseTotalHours: z
             .number()
             .min(businessConfig.course.minimumHours, 'กรุณากรอกจำนวนชั่วโมงรวม')
@@ -33,14 +33,15 @@ export const CreateCourseSchema = z
     })
     .superRefine((data, ctx) => {
         if (data.status === CourseStatus.PUBLISHED) {
-            const courseGoal = data.courseGoal?.trim();
-            const courseGoalIsEmpty = courseGoal === '' || courseGoal === null;
+            const courseGoals = data.courseGoals;
+            const courseGoalsIsEmpty =
+                !courseGoals || courseGoals.length === 0 || courseGoals.every(g => g.trim() === '');
 
-            if (courseGoalIsEmpty) {
+            if (courseGoalsIsEmpty) {
                 ctx.addIssue({
                     code: z.ZodIssueCode.custom,
                     message: 'กรุณากรอกเป้าหมายของคอร์ส',
-                    path: ['courseGoal'],
+                    path: ['courseGoals'],
                 });
             }
 
